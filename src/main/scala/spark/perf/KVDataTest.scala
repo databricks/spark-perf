@@ -12,7 +12,7 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
   //   - Support skewed distribution of groups
   //   - Throw error of number of unique keys/values inconsistent with number of characters
 
-  abstract def runTest(rdd: RDD[(String, String)], reduceTasks: Int)
+  def runTest(rdd: RDD[(String, String)], reduceTasks: Int)
 
   val NUM_TRIALS =    ("num-trials",    "number of trials to run", 5)
   val REDUCE_TASKS =  ("reduce-tasks",  "number of reduce tasks", 100)

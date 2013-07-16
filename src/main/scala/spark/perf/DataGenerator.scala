@@ -31,7 +31,7 @@ object DataGenerator {
       // Use per-partition seeds to avoid having identical data at all partitions
       val effectiveSeed = (randomSeed ^ index).toString.hashCode
       val r = new Random(effectiveSeed)
-      (0 to recordsPerPartition).map{i =>
+      (1 to recordsPerPartition).map{i =>
         val key = generatePaddedString(keyLength, uniqueKeys, r)
         val value = generatePaddedString(valueLength, uniqueValues, r)
         (key, value)
