@@ -11,17 +11,36 @@ object DataGenerator {
     fmtString.format(r.nextInt(maxValue))
   }
 
-
-  def createKVDataSet(sc: SparkContext, numKeys: Int, numValues: Int, numRecords: Int,
-    keyLength: Int, valueLength: Int, numPartitions: Int, persistenceType: String)
+  /** Creates and materializes a (K, V) dataset according to the supplied parameters. */
+  def createKVDataSet(
+    sc: SparkContext,
+    numRecords: Int,
+    uniqueKeys: Int,
+    keyLength: Int,
+    uniqueValues: Int,
+    valueLength: Int,
+    numPartitions: Int,
+    randomSeed: Int,
+    persistenceType: String,
+    storageLocation: Option[String] = None)
   : RDD[(String, String)] = {
+
     val recordsPerPartition = (numRecords / numPartitions.toDouble).toInt
-    val inputRDD = sc.parallelize(Seq(), numPartitions).mapPartitions(n => {
-      val r = new Random()
+
+    def generatePartition(index: Int) = {
+      // Use per-partition seeds to avoid having identical data at all partitions
+      val effectiveSeed = (randomSeed ^ index).toString.hashCode
+      val r = new Random(effectiveSeed)
       (0 to recordsPerPartition).map{i =>
-        (generatePaddedString(keyLength, numKeys, r), generatePaddedString(valueLength, numValues, r))
+        val key = generatePaddedString(keyLength, uniqueKeys, r)
+        val value = generatePaddedString(valueLength, uniqueValues, r)
+        (key, value)
       }.iterator
-    })
+    }
+
+    val inputRDD = sc.parallelize(Seq(), numPartitions).mapPartitionsWithIndex{case (index, n) => {
+      generatePartition(index)
+    }}
 
     val rdd = persistenceType match {
       case "memory" => {
@@ -35,7 +54,8 @@ object DataGenerator {
         tmp
       }
       case _ => {
-        val filename = "/tmp/spark-perf-%s".format(System.currentTimeMillis())
+        val filename = storageLocation.getOrElse(
+          "/tmp/spark-perf-%s".format(System.currentTimeMillis()))
         inputRDD.map{case (k, v) => "%s\t%s".format(k, v)}.saveAsTextFile(filename)
         sc.textFile(filename).map(s => (s.split("\t")(0), s.split("\t")(1)))
       }
