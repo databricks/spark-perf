@@ -54,6 +54,7 @@ object DataGenerator {
         tmp
       }
       case _ => {
+        // TODO(pwendell) Throw exception if option not recognized
         val filename = storageLocation.getOrElse(
           "/tmp/spark-perf-%s".format(System.currentTimeMillis()))
         inputRDD.map{case (k, v) => "%s\t%s".format(k, v)}.saveAsTextFile(filename)

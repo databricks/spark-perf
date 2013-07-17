@@ -10,23 +10,22 @@ import java.util.Random
 abstract class KVDataTest(sc: SparkContext) extends PerfTest {
   // TODO (pwendell):
   //   - Support skewed distribution of groups
-  //   - Throw error of number of unique keys/values inconsistent with number of characters
 
   def runTest(rdd: RDD[(String, String)], reduceTasks: Int)
 
-  val NUM_TRIALS =    ("num-trials",    "number of trials to run", 5)
-  val REDUCE_TASKS =  ("reduce-tasks",  "number of reduce tasks", 100)
-  val NUM_RECORDS =   ("num-records",   "number of input pairs", 100000)
-  val UNIQUE_KEYS =   ("unique-keys",   "(approx) number of unique keys", 10000)
-  val KEY_LENGTH =    ("key-length",    "lenth of keys in characters", 100)
-  val UNIQUE_VALUES = ("unique-values", "(approx) number of unique values per key", 100)
-  val VALUE_LENGTH =  ("value-length",  "length of values in characters", 100)
-  val NUM_PARTITIONS =   ("num-partitions", "number of input partitions", 10000)
-  val RANDOM_SEED =      ("random-seed", "seed for random number generator", new Random().nextInt)
-  val PERSISTENCE_TYPE = ("persistent-type", "input persistence (memory, disk, HDFS)", "memory")
+  val NUM_TRIALS =    ("num-trials",    "number of trials to run")
+  val REDUCE_TASKS =  ("reduce-tasks",  "number of reduce tasks")
+  val NUM_RECORDS =   ("num-records",   "number of input pairs")
+  val UNIQUE_KEYS =   ("unique-keys",   "(approx) number of unique keys")
+  val KEY_LENGTH =    ("key-length",    "lenth of keys in characters")
+  val UNIQUE_VALUES = ("unique-values", "(approx) number of unique values per key")
+  val VALUE_LENGTH =  ("value-length",  "length of values in characters")
+  val NUM_PARTITIONS =   ("num-partitions", "number of input partitions")
+  val RANDOM_SEED =      ("random-seed", "seed for random number generator")
+  val PERSISTENCE_TYPE = ("persistent-type", "input persistence (memory, disk)")
 
-  val intOptions = Seq(NUM_TRIALS, REDUCE_TASKS, KEY_LENGTH, VALUE_LENGTH, UNIQUE_KEYS, NUM_RECORDS,
-    NUM_PARTITIONS, RANDOM_SEED)
+  val intOptions = Seq(NUM_TRIALS, REDUCE_TASKS, KEY_LENGTH, VALUE_LENGTH, UNIQUE_KEYS,
+    UNIQUE_VALUES, NUM_RECORDS, NUM_PARTITIONS, RANDOM_SEED)
   val stringOptions = Seq(PERSISTENCE_TYPE)
   val options = intOptions ++ stringOptions
 
@@ -34,11 +33,11 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
   var optionSet: OptionSet = _
   var rdd: RDD[(String, String)] = _
 
-  intOptions.map{case (opt, desc, default) =>
-    parser.accepts(opt, desc).withOptionalArg().ofType(classOf[Int]).defaultsTo(default)
+  intOptions.map{case (opt, desc) =>
+    parser.accepts(opt, desc).withRequiredArg().ofType(classOf[Int]).required()
   }
-  stringOptions.map{case (opt, desc, default) =>
-    parser.accepts(opt, desc).withOptionalArg().ofType(classOf[String]).defaultsTo(default)
+  stringOptions.map{case (opt, desc) =>
+    parser.accepts(opt, desc).withRequiredArg().ofType(classOf[String]).required()
   }
 
   override def initialize(args: Array[String]) = {
@@ -55,14 +54,14 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
     val randomSeed: Int = optionSet.valueOf(RANDOM_SEED._1).asInstanceOf[Int]
     val persistenceType: String = optionSet.valueOf(PERSISTENCE_TYPE._1).asInstanceOf[String]
 
-    if (uniqueKeys.toString.length < keyLength) throw new Exception(
+    if (uniqueKeys.toString.length > keyLength) throw new Exception(
       "Can't pack %s unique keys into %s digits".format(uniqueKeys, keyLength))
 
-    if (uniqueValues.toString.length < valueLength) throw new Exception(
+    if (uniqueValues.toString.length > valueLength) throw new Exception(
       "Can't pack %s unique values into %s digits".format(uniqueValues, valueLength))
 
-    DataGenerator.createKVDataSet(sc, numRecords, uniqueKeys, keyLength, uniqueValues, valueLength,
-      numPartitions, randomSeed, persistenceType)
+    rdd = DataGenerator.createKVDataSet(sc, numRecords, uniqueKeys, keyLength, uniqueValues,
+      valueLength, numPartitions, randomSeed, persistenceType)
   }
 
   override def getParams = options.map(_._1).map(o => (o, optionSet.valueOf(o).toString))
@@ -77,5 +76,29 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
       val end = System.currentTimeMillis()
       (end - start).toDouble / 1000.0
     }
+  }
+}
+
+class AggregateByKey(sc: SparkContext) extends KVDataTest(sc) {
+  override def runTest(rdd: RDD[(String, String)], reduceTasks: Int) {
+    rdd.map{case (k, v) => (k, v.toInt)}.reduceByKey(_ + _, reduceTasks).collect
+  }
+}
+
+class SortByKey(sc: SparkContext) extends KVDataTest(sc) {
+  override def runTest(rdd: RDD[(String, String)], reduceTasks: Int) {
+    rdd.sortByKey(numPartitions=reduceTasks).count
+  }
+}
+
+class Count(sc: SparkContext) extends KVDataTest(sc) {
+  override def runTest(rdd: RDD[(String, String)], reduceTasks: Int) {
+    rdd.count
+  }
+}
+
+class CountWithFilter(sc: SparkContext) extends KVDataTest(sc) {
+  override def runTest(rdd: RDD[(String, String)], reduceTasks: Int) {
+    rdd.filter{case (k, v) => k.toInt % 2 == 1}.count
   }
 }
