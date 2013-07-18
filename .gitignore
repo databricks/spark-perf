@@ -1,4 +1,7 @@
-spark/
-target/
-*.xml
+/config/config.py
+/spark
+target
 *.iml
+*.pyc
+*.swp
+*.xml

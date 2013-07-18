@@ -9,6 +9,7 @@ if len(sys.argv) != 2:
   sys.exit("Usage: ./run [Git Commit Hash]")
 
 proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
+sbt_cmd = "sbt -Xmx1024m -XX:MaxPermSize=256M -XX:+CMSPermGenSweepingEnabled"
 
 # Check if a config file exists
 if not os.path.isfile(proj_dir+"/config/config.py"):
@@ -27,13 +28,13 @@ else:
   Popen("cd spark; git pull origin master:master", stdout=sys.stderr, shell=True).wait()
 
 # Build Spark
-sys.stderr.write("Building branch %s. This may take a while...\n" % sys.argv[1])
-Popen("cd spark; git reset --hard %s; %ssbt/sbt package" % (sys.argv[1], proj_dir),
-      stdout=sys.stderr, shell=True).wait()
+#sys.stderr.write("Building branch %s. This may take a while...\n" % sys.argv[1])
+#Popen("cd spark; git reset --hard %s; %s package" % (sys.argv[1], sbt_cmd),
+#      stdout=sys.stderr, shell=True).wait()
 
 # Building the perf-tests code against the downloaded version of Spark.
 sys.stderr.write("Building spark-perf...\n")
-Popen("cd %s; sbt/sbt compile" % proj_dir, stdout=sys.stderr, shell=True).wait()
+Popen("cd %s; %s package" % (proj_dir, sbt_cmd), stdout=sys.stderr, shell=True).wait()
 
 # Sync the whole directory to the slaves. 
 # Here we are assuming we are using our Amazon EC2 AMI, fixing this is a TODO.
@@ -51,15 +52,16 @@ new_env["SPARK_JAVA_OPTS"] = ""
 for k, v in config.JAVA_OPTS.iteritems():
   new_env["SPARK_JAVA_OPTS"] += "-D%s=%s " % (k, v)
 
+#TODO(andyk): Probably remove this.
 # Adding perf-tests classes to the classpath
-new_env["CLASSPATH"] = proj_dir + "/target/scala-2.9.2/classes/"
+# new_env["CLASSPATH"] = proj_dir + "/target/scala-2.9.2/classes/"
 
 # Clear the Spark local directories.
 def clear_dir (dir_name):
-    sys.stderr.write("Clearing dir %s.\n" % dir_name)
-    Popen("rm -r %s/*" % dir_name, stdout=sys.stderr, shell=True).wait()
-    sys.stderr.write("%s/mesos-ec2/copy-dir %s\n" % (dir_name, dir_name))
-    Popen("%s/mesos-ec2/copy-dir %s" % (dir_name, dir_name), stdout=sys.stderr, shell=True).wait()
+  sys.stderr.write("Clearing dir %s.\n" % dir_name)
+  Popen("rm -r %s/*" % dir_name, stdout=sys.stderr, shell=True).wait()
+  sys.stderr.write("%s/mesos-ec2/copy-dir %s\n" % (dir_name, dir_name))
+  Popen("%s/mesos-ec2/copy-dir %s" % (dir_name, dir_name), stdout=sys.stderr, shell=True).wait()
 
 map(clear_dir, config.JAVA_OPTS["spark.local.dir"].split(","))
 
@@ -73,7 +75,7 @@ for test_cmd, option_sets in config.TESTS.iteritems():
   option_set_arrays = [i.toArray() for i in option_sets]
   for opt_list in itertools.product(*option_set_arrays):
     # TODO(andy): Add a timout on the subprocess.
-    cmd = "env; %s %s" % (test_cmd, " ".join(opt_list))
+    cmd = '%s "run %s %s"' % (sbt_cmd, test_cmd, " ".join(opt_list))
     sys.stderr.write("running command: %s\n" % cmd)
     result = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
     print "%s, [%s], [%s]" % (test_cmd, " ".join(opt_list), result)
