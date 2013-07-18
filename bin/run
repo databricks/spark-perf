@@ -28,9 +28,9 @@ else:
   Popen("cd spark; git pull origin master:master", stdout=sys.stderr, shell=True).wait()
 
 # Build Spark
-#print("Building branch %s. This may take a while...\n" % sys.argv[1])
-#Popen("cd spark; git reset --hard %s; %s package" % (sys.argv[1], sbt_cmd),
-#      stdout=sys.stderr, shell=True).wait()
+print("Building branch %s. This may take a while...\n" % sys.argv[1])
+Popen("cd spark; git reset --hard %s; %s package" % (sys.argv[1], sbt_cmd),
+      stdout=sys.stderr, shell=True).wait()
 
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building spark-perf...\n")
