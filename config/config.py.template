@@ -1,0 +1,86 @@
+# Variables in ALL_CAPS are used by the testing framework,
+# while variables in lower_case are used locally to set up
+# other variables.
+
+# Spark Configuration Options
+# --------------------------------------------------
+
+# If this is not set the script will look at your env variables
+ENV_VARS = {
+  "MASTER": "local",
+  "SPARK_MEM": "8g",
+  "SCALA_HOME": "/usr/local/Cellar/scala29/2.9.2/libexec",
+  # Default RDD Storage Level: 
+  # NONE, DISK_ONLY, DISK_ONLY_2, 
+  # MEMORY_ONLY, MEMORY_ONLY_2, MEMORY_ONLY_SER, MEMORY_ONLY_SER_2
+  # MEMORY_AND_DISK, MEMORY_AND_DISK_2, MEMORY_AND_DISK_SER, MEMORY_AND_DISK_SER_2
+  "RDD_STORAGE_LEVEL": "NONE",
+  "MESOS_NATIVE_LIBRARY": None
+}
+
+# Each element of this list below will be tested with all
+# test-level combination defined later in this file
+JAVA_OPTS = {
+  # Fraction of JVM memory used for caching RDDs
+  "spark.storage.memoryFraction": 0.66,
+  # Use coarse-grained mesos scheduling
+  "spark.mesos.coarse": False,
+  # Type of serialization used: spark.JavaSerializer, spark.KryoSerializer
+  "spark.serializer": "spark.JavaSerializer",
+  # Enable/Disable Compression
+  "spark.blockManager.compress": False,
+  # Temp file directory
+  "spark.local.dir": "/mnt/tmp"
+}
+
+# Test Configuration
+# --------------------------------------------------
+
+# Represents an option and a set of values for that option
+# that we will sweep over in a test run.
+class OptionSet:
+  def __init__(self, name, vals):
+    self.name = name
+    self.vals = vals
+  def toArray(self):
+    return ["--%s=%s" % (self.name, val) for val in self.vals]
+
+
+# Set up OptionSets.
+# Note that giant cross product is done over all OptionSets passed to each
+# which may be combinations of those set up here.
+# --------------------------------------------------------
+
+# The following options value sets are shared among all tests.
+common_args = [
+  # How many times to run each experiment - used to warm up system caches.
+  OptionSet("num-trials", [2]),
+  # The number of input partitions.
+  OptionSet("num-partitions", [3]),
+  # The number of reduce tasks.
+  OptionSet("reduce-tasks", [4]),
+  # A random seed to make tests reproducable.
+  OptionSet("random-seed", [5]),
+  # input persistence strategyi (can be "memory" or "disk").
+  OptionSet("persistent-type", ["memory"])
+]
+
+# The following options value sets are shared among all tests of
+# operations on key-value data.
+key_val_test_args = [
+  OptionSet("unique-keys",   [6]),
+  OptionSet("key-length",    [7]),
+  OptionSet("unique-values", [8]),
+  OptionSet("value-length",  [8])
+]
+
+# Set up the actual tests. Each test is represtented by a key val pair
+# where key = test_cmd, and val = list<OptionSet>.
+# @param option_space is a list with elements of type OptionSet or list of args
+# --------------------------------------------------
+TESTS = {
+  "java spark.perf.TestRunner aggregate-by-key": common_args + key_val_test_args,
+  "java spark.perf.TestRunner sort-by-key": common_args + key_val_test_args,
+  "java spark.perf.TestRunner count": common_args + key_val_test_args,
+  "java spark.perf.TestRunner count-with-filter": common_args + key_val_test_args
+}

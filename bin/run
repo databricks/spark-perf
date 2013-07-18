@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+
+import itertools
+import os.path
+import sys
+from subprocess import Popen, PIPE
+
+if len(sys.argv) != 2:
+  sys.exit("Usage: ./run [Git Commit Hash]")
+
+proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
+
+# Check if a config file exists
+if not os.path.isfile(proj_dir+"/config/config.py"):
+  sys.exit("Please create a config file called %s/config/config.py" % proj_dir)
+
+# import the configuration settings
+sys.path.append(proj_dir + "/config")
+import config
+
+sys.stderr.write("Downloading Spark...\n")
+# Clone the Git repository and create a branch for the hash.
+if not os.path.isdir("spark"):
+  Popen("git clone git://github.com/mesos/spark.git", stdout=sys.stderr, shell=True).wait()
+# Pull just in case spark was already cloned earlier.
+else:
+  Popen("cd spark; git pull origin master:master", stdout=sys.stderr, shell=True).wait()
+
+# Build Spark
+sys.stderr.write("Building branch %s. This may take a while...\n" % sys.argv[1])
+Popen("cd spark; git reset --hard %s; %ssbt/sbt package" % (sys.argv[1], proj_dir),
+      stdout=sys.stderr, shell=True).wait()
+
+# Building the perf-tests code against the downloaded version of Spark.
+sys.stderr.write("Building spark-perf...\n")
+Popen("cd %s; sbt/sbt compile" % proj_dir, stdout=sys.stderr, shell=True).wait()
+
+# Sync the whole directory to the slaves. 
+# Here we are assuming we are using our Amazon EC2 AMI, fixing this is a TODO.
+Popen("%s/mesos-ec2/copy-dir %s" % (proj_dir, proj_dir), stdout=sys.stderr, shell=True).wait()
+Popen("%s/mesos-ec2/copy-dir not found. Continuing without..." % proj_dir, stdout=PIPE, shell=True).wait()
+
+
+# Set Spark Environment Variables (from config.py)
+# --------------------------------------------------
+new_env = os.environ.copy()
+for name, val in config.ENV_VARS.iteritems():
+  new_env[name] = str(val)
+
+new_env["SPARK_JAVA_OPTS"] = ""
+for k, v in config.JAVA_OPTS.iteritems():
+  new_env["SPARK_JAVA_OPTS"] += "-D%s=%s " % (k, v)
+
+# Adding perf-tests classes to the classpath
+new_env["CLASSPATH"] = proj_dir + "/target/scala-2.9.2/classes/"
+
+# Clear the Spark local directories.
+def clear_dir (dir_name):
+    sys.stderr.write("Clearing dir %s.\n" % dir_name)
+    Popen("rm -r %s/*" % dir_name, stdout=sys.stderr, shell=True).wait()
+    sys.stderr.write("%s/mesos-ec2/copy-dir %s\n" % (dir_name, dir_name))
+    Popen("%s/mesos-ec2/copy-dir %s" % (dir_name, dir_name), stdout=sys.stderr, shell=True).wait()
+
+map(clear_dir, config.JAVA_OPTS["spark.local.dir"].split(","))
+
+
+# Run all tests set up in the Config file.
+# --------------------------------------------------
+for test_cmd, option_sets in config.TESTS.iteritems():
+  print("\nRunning all tests for %s." % test_cmd)
+  # Run a test for all combinations of the OptionSets given, then capture
+  # and print the output.
+  option_set_arrays = [i.toArray() for i in option_sets]
+  for opt_list in itertools.product(*option_set_arrays):
+    # TODO(andy): Add a timout on the subprocess.
+    cmd = "env; %s %s" % (test_cmd, " ".join(opt_list))
+    sys.stderr.write("running command: %s\n" % cmd)
+    result = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
+    print "%s, [%s], [%s]" % (test_cmd, " ".join(opt_list), result)
+    sys.stdout.flush()
