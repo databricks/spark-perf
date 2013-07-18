@@ -24,6 +24,6 @@ object TestRunner {
     test.initialize(otherArgs)
     test.createInputData()
     val results = test.run()
-    println(results.map(r => "%.3f".format(r)).mkString(","))
+    println("results: " + results.map(r => "%.3f".format(r)).mkString(","))
   }
 }

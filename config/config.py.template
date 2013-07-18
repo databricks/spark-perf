@@ -69,7 +69,7 @@ common_args = [
 # The following options value sets are shared among all tests of
 # operations on key-value data.
 key_val_test_args = [
-  OptionSet("num-records",   [6,6]),
+  OptionSet("num-records",   [6,60]),
   OptionSet("unique-keys",   [7]),
   OptionSet("key-length",    [8]),
   OptionSet("unique-values", [9]),
@@ -77,13 +77,14 @@ key_val_test_args = [
 ]
 
 # Set up the actual tests. Each test is represtented by a key val pair
-# where key = test_cmd, and val = list<OptionSet>.
+# where key = short_name, test_cmd, and val = list<OptionSet>.
 # @param option_space is a list with elements of type OptionSet or list of args
 # --------------------------------------------------
 scala_tests_base_cmd = "spark.perf.TestRunner local"
-TESTS = {
-  "%s aggregate-by-key" % scala_tests_base_cmd: common_args + key_val_test_args,
-  "%s sort-by-key" % scala_tests_base_cmd: common_args + key_val_test_args,
-  "%s count" % scala_tests_base_cmd: common_args + key_val_test_args,
-  "%s count-with-filter" % scala_tests_base_cmd: common_args + key_val_test_args
-}
+kv_args = common_args + key_val_test_args
+TESTS = [
+  ("scala-agg-by-key", "%s aggregate-by-key" % scala_tests_base_cmd, kv_args),
+  ("scala-sort-by-key", "%s sort-by-key" % scala_tests_base_cmd, kv_args),
+  ("scala-count", "%s count" % scala_tests_base_cmd, kv_args),
+  ("scala-count-w-fltr", "%s count-with-filter" % scala_tests_base_cmd, kv_args)
+]

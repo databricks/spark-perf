@@ -5,8 +5,8 @@ import os.path
 import sys
 from subprocess import Popen, PIPE
 
-if len(sys.argv) != 2:
-  sys.exit("Usage: ./run [Git Commit Hash]")
+if len(sys.argv) != 3:
+  sys.exit("Usage: ./run [Git Commit Hash] [Output Filename]")
 
 proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
 sbt_cmd = "sbt -Xmx1024m -XX:MaxPermSize=256M -XX:+CMSPermGenSweepingEnabled"
@@ -19,7 +19,7 @@ if not os.path.isfile(proj_dir+"/config/config.py"):
 sys.path.append(proj_dir + "/config")
 import config
 
-sys.stderr.write("Downloading Spark...\n")
+print("Downloading Spark...\n")
 # Clone the Git repository and create a branch for the hash.
 if not os.path.isdir("spark"):
   Popen("git clone git://github.com/mesos/spark.git", stdout=sys.stderr, shell=True).wait()
@@ -28,12 +28,12 @@ else:
   Popen("cd spark; git pull origin master:master", stdout=sys.stderr, shell=True).wait()
 
 # Build Spark
-#sys.stderr.write("Building branch %s. This may take a while...\n" % sys.argv[1])
+#print("Building branch %s. This may take a while...\n" % sys.argv[1])
 #Popen("cd spark; git reset --hard %s; %s package" % (sys.argv[1], sbt_cmd),
 #      stdout=sys.stderr, shell=True).wait()
 
 # Building the perf-tests code against the downloaded version of Spark.
-sys.stderr.write("Building spark-perf...\n")
+print("Building spark-perf...\n")
 Popen("cd %s; %s package" % (proj_dir, sbt_cmd), stdout=sys.stderr, shell=True).wait()
 
 # Sync the whole directory to the slaves. 
@@ -58,25 +58,45 @@ for k, v in config.JAVA_OPTS.iteritems():
 
 # Clear the Spark local directories.
 def clear_dir (dir_name):
-  sys.stderr.write("Clearing dir %s.\n" % dir_name)
+  print("Clearing dir %s.\n" % dir_name)
   Popen("rm -r %s/*" % dir_name, stdout=sys.stderr, shell=True).wait()
-  sys.stderr.write("%s/mesos-ec2/copy-dir %s\n" % (dir_name, dir_name))
+  print("%s/mesos-ec2/copy-dir %s\n" % (dir_name, dir_name))
   Popen("%s/mesos-ec2/copy-dir %s" % (dir_name, dir_name), stdout=sys.stderr, shell=True).wait()
 
 map(clear_dir, config.JAVA_OPTS["spark.local.dir"].split(","))
 
+def average(in_list):
+  return sum(in_list) / len(in_list)
+
+def variance(in_list):
+  variance = 0
+  for x in in_list:
+    variance = variance + (average(in_list) - x) ** 2
+  return variance / len(in_list)
 
 # Run all tests set up in the Config file.
 # --------------------------------------------------
-for test_cmd, option_sets in config.TESTS.iteritems():
-  print("\nRunning all tests for %s." % test_cmd)
+out_file = open(sys.argv[2], 'w')
+for short_name, test_cmd, option_sets in config.TESTS:
+  print("\n---------------------------------------------")
+  print("Running all tests for %s.\n" % test_cmd)
   # Run a test for all combinations of the OptionSets given, then capture
   # and print the output.
   option_set_arrays = [i.toArray() for i in option_sets]
   for opt_list in itertools.product(*option_set_arrays):
+    results_token = "results: "
     # TODO(andy): Add a timout on the subprocess.
     cmd = '%s "run %s %s"' % (sbt_cmd, test_cmd, " ".join(opt_list))
-    sys.stderr.write("running command: %s\n" % cmd)
-    result = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
-    print "%s, [%s], [%s]" % (test_cmd, " ".join(opt_list), result)
+    print("\nrunning command: %s\n" % cmd)
+    output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
+    result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
+    result_list = result_line.replace(results_token, "").split(",")
+    # TODO(andy): For even cardinality lists, return average of middle two elts.
+    result_list = sorted([float(x) for x in result_list])
+    result_med = result_list[len(result_list)/2]
+    result_var = variance(result_list)
+    result_string = "%s, %s, %s, %s" % (short_name, " ".join(opt_list), result_med, result_var)
+    print(result_string)
+    out_file.write(result_string + "\n")
     sys.stdout.flush()
+    out_file.flush()
