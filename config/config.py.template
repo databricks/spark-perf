@@ -80,7 +80,7 @@ key_val_test_args = [
 # where key = short_name, test_cmd, and val = list<OptionSet>.
 # @param option_space is a list with elements of type OptionSet or list of args
 # --------------------------------------------------
-scala_tests_base_cmd = "spark.perf.TestRunner local"
+scala_tests_base_cmd = "spark.perf.TestRunner %s" % SPARK_MASTER
 kv_args = common_args + key_val_test_args
 TESTS = [
   ("scala-agg-by-key", "%s aggregate-by-key" % scala_tests_base_cmd, kv_args),
