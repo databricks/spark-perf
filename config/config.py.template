@@ -7,15 +7,11 @@
 
 SPARK_MASTER = "local"
 
-# If this is not set the script will look at your env variables
-# TODO(pwendell) - I'm not sure these are necessary anymore
-ENV_VARS = {
-  "SPARK_MEM": "4g",
-  "SCALA_HOME": "/usr/local/Cellar/scala29/2.9.2/libexec",
-}
+# Should contain spark-env.sh and slaves file.
+SPARK_CONF_DIR = "/home/pwendell/Documents/spark/conf"
 
-# Each element of this list below will be tested with all
-# test-level combination defined later in this file
+# Java options. 
+# NOTE: This will be overridden if you define SPARK_JAVA_OPTS in spark-env.sh  
 JAVA_OPTS = {
   # Fraction of JVM memory used for caching RDDs
   "spark.storage.memoryFraction": 0.66,

@@ -32,6 +32,13 @@ print("Building branch %s. This may take a while...\n" % sys.argv[1])
 Popen("cd spark; git reset --hard %s; %s package" % (sys.argv[1], sbt_cmd),
       stdout=sys.stderr, shell=True).wait()
 
+# Copy Spark configuration files to new directory
+print("Copying configuration files to Spark")
+if not os.path.exists(config.SPARK_CONF_DIR):
+  sys.exit("Could not find Spark config directory: %s" % config.SPARK_CONF_DIR)
+Popen("cp %s/* %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir), 
+      stdout=sys.stderr, shell=True)
+
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building spark-perf...\n")
 Popen("cd %s; %s package" % (proj_dir, sbt_cmd), stdout=sys.stderr, shell=True).wait()
@@ -42,19 +49,13 @@ Popen("%s/spark-ec2/copy-dir %s" % (proj_dir, proj_dir), stdout=sys.stderr, shel
 print("%s/spark-ec2/copy-dir not found. Continuing without syncing to slaves..." % proj_dir)
 
 
-# Set Spark Environment Variables (from config.py)
+# Set Spark Java Options (from config.py)
 # --------------------------------------------------
 new_env = os.environ.copy()
-for name, val in config.ENV_VARS.iteritems():
-  new_env[name] = str(val)
 
 new_env["SPARK_JAVA_OPTS"] = ""
 for k, v in config.JAVA_OPTS.iteritems():
   new_env["SPARK_JAVA_OPTS"] += "-D%s=%s " % (k, v)
-
-#TODO(andyk): Probably remove this.
-# Adding perf-tests classes to the classpath
-# new_env["CLASSPATH"] = proj_dir + "/target/scala-2.9.2/classes/"
 
 # Clear the Spark local directories.
 def clear_dir (dir_name):
@@ -76,6 +77,11 @@ def variance(in_list):
 
 # Run all tests set up in the Config file.
 # --------------------------------------------------
+if "spark://" in config.SPARK_MASTER:
+  prinln("Restarting standalone scheduler...")
+  Popen("%s/spark/bin/stop-all.sh", stdout=sys.stderr, shell=True)
+  Popen("%s/spark/bin/start-all.sh", stdout=sys.stderr, shell=True)
+
 out_file = open(sys.argv[2], 'w')
 for short_name, test_cmd, option_sets in config.TESTS:
   print("\n---------------------------------------------")
