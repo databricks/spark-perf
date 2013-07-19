@@ -89,6 +89,10 @@ for short_name, test_cmd, option_sets in config.TESTS:
     cmd = '%s "run %s %s"' % (sbt_cmd, test_cmd, " ".join(opt_list))
     print("\nrunning command: %s\n" % cmd)
     output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
+    if results_token not in output:
+      print("Test did not produce expected results. Output was:")
+      print(output)
+      sys.exit(1)
     result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
     result_list = result_line.replace(results_token, "").split(",")
     # TODO(andy): For even cardinality lists, return average of middle two elts.
