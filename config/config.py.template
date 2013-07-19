@@ -7,7 +7,8 @@
 
 SPARK_MASTER = "local"
 
-# Should contain spark-env.sh and slaves file.
+# After building a new Spark, conf files (e.g. spark-env.sh and slaves file)
+# will be copied in from this directory.
 SPARK_CONF_DIR = "/home/pwendell/Documents/spark/conf"
 
 # Java options. 
