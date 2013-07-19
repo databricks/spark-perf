@@ -63,7 +63,7 @@ for k, v in config.JAVA_OPTS.iteritems():
 def clear_dir (dir_name):
   print("Clearing dir %s.\n" % dir_name)
   run_cmd("rm -r %s/*" % dir_name)
-  run_cmd("%s/mesos-ec2/copy-dir %s" % (dir_name, dir_name))
+  run_cmd("%s/spark-ec2/copy-dir %s" % (dir_name, dir_name))
 
 map(clear_dir, config.JAVA_OPTS["spark.local.dir"].split(","))
 
