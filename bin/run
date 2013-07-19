@@ -9,7 +9,7 @@ if len(sys.argv) != 3:
   sys.exit("Usage: ./run [Git Commit Hash] [Output Filename]")
 
 proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
-sbt_cmd = "sbt -Xmx1024m -XX:MaxPermSize=256M -XX:+CMSPermGenSweepingEnabled"
+sbt_cmd = "sbt/sbt -Xmx1024m -XX:MaxPermSize=256M -XX:+CMSPermGenSweepingEnabled"
 
 # Check if a config file exists
 if not os.path.isfile(proj_dir+"/config/config.py"):

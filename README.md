@@ -4,7 +4,6 @@ This is a framework for repeatedly running a suite of performance tests for the 
 
 == Requirements ==
 * We currently assume that an instance of Spark is already running (or that you will use local mode, e.g. for the purpose of testing these scripts) and you will configure the tests to use it (see the instructions on running the tests below for more details about how).
-* the `sbt` command must be on your path.
 * /root/spark-ec2/copy-dir is used to copy the perf jars from the Spark Master to all Spark slaves. This is based on the assumption that you are probably running the tests using the spark EC2 AMI.
 
 == Running the Tests ==
