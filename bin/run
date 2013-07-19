@@ -38,8 +38,8 @@ Popen("cd %s; %s package" % (proj_dir, sbt_cmd), stdout=sys.stderr, shell=True).
 
 # Sync the whole directory to the slaves. 
 # Here we are assuming we are using our Amazon EC2 AMI, fixing this is a TODO.
-Popen("%s/mesos-ec2/copy-dir %s" % (proj_dir, proj_dir), stdout=sys.stderr, shell=True).wait()
-Popen("%s/mesos-ec2/copy-dir not found. Continuing without..." % proj_dir, stdout=PIPE, shell=True).wait()
+Popen("%s/spark-ec2/copy-dir %s" % (proj_dir, proj_dir), stdout=sys.stderr, shell=True).wait()
+print("%s/spark-ec2/copy-dir not found. Continuing without syncing to slaves..." % proj_dir)
 
 
 # Set Spark Environment Variables (from config.py)
