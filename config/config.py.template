@@ -61,7 +61,7 @@ common_args = [
 # The following options value sets are shared among all tests of
 # operations on key-value data.
 key_val_test_args = [
-  OptionSet("num-records",   [6,60]),
+  OptionSet("num-records",   [100]),
   OptionSet("unique-keys",   [7]),
   OptionSet("key-length",    [8]),
   OptionSet("unique-values", [9]),
