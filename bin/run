@@ -9,7 +9,7 @@ if len(sys.argv) != 3:
   sys.exit("Usage: ./run [Git Commit Hash] [Output Filename]")
 
 proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
-sbt_cmd = "sbt/sbt -Xmx1024m -XX:MaxPermSize=256M -XX:+CMSPermGenSweepingEnabled"
+sbt_cmd = "sbt/sbt"
 
 # Check if a config file exists
 if not os.path.isfile(proj_dir+"/config/config.py"):
@@ -100,3 +100,5 @@ for short_name, test_cmd, option_sets in config.TESTS:
     out_file.write(result_string + "\n")
     sys.stdout.flush()
     out_file.flush()
+
+print("Finished running all tests. See CSV output in %s" % sys.argv[2])

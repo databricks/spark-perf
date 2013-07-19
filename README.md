@@ -10,11 +10,11 @@ This is a framework for repeatedly running a suite of performance tests for the 
 # Start a spark cluster to run the tests on
 # SSH into the Spark master and git clone perf-tests
 # cd spark-perfs
-# copy config/config.py.template to config/config.py and modify as necessary
+# copy config/config.py.template to config/config.py and modify as necessary (specifically, you probably want to update SPARK_MASTER and SCALA_HOME)
 # `bin/run [hash of spark commit to test] [output results csv filename]`
 
 == Notes ==
-* We use a slightly modified version (as of the time this was written) of the [spark-ec2/copy-dir script](https://github.com/mesos/spark-ec2/blob/bf8b4155a1fcd6fc5c1141323858fd6d021ce6a3/copy-dir.sh).
+* We include/use a slightly modified version (as of the time this was written) of the [spark-ec2/copy-dir script](https://github.com/mesos/spark-ec2/blob/bf8b4155a1fcd6fc5c1141323858fd6d021ce6a3/copy-dir.sh).
 
 == Acknowledgements ==
 This testing framework started as a port + heavy modifiation of a predecessor
