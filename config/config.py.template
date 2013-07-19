@@ -7,16 +7,11 @@
 
 SPARK_MASTER = "local"
 
-
 # If this is not set the script will look at your env variables
+# TODO(pwendell) - I'm not sure these are necessary anymore
 ENV_VARS = {
   "SPARK_MEM": "4g",
   "SCALA_HOME": "/usr/local/Cellar/scala29/2.9.2/libexec",
-  # Default RDD Storage Level: 
-  # NONE, DISK_ONLY, DISK_ONLY_2, 
-  # MEMORY_ONLY, MEMORY_ONLY_2, MEMORY_ONLY_SER, MEMORY_ONLY_SER_2
-  # MEMORY_AND_DISK, MEMORY_AND_DISK_2, MEMORY_AND_DISK_SER, MEMORY_AND_DISK_SER_2
-  "RDD_STORAGE_LEVEL": "NONE"
 }
 
 # Each element of this list below will be tested with all
