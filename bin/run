@@ -20,7 +20,7 @@ def run_cmd(cmd):
 
 # Check if a config file exists
 if not os.path.isfile(proj_dir+"/config/config.py"):
-  sys.exit("Please create a config file called %s/config/config.py by copying and then modifying %s/config/config.py.template" % proj_dir, proj_dir)
+  sys.exit("Please create a config file called %s/config/config.py by copying and then modifying %s/config/config.py.template" % (proj_dir, proj_dir))
 
 # import the configuration settings
 sys.path.append(proj_dir + "/config")
