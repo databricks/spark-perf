@@ -5,25 +5,23 @@
 # Spark Configuration Options
 # --------------------------------------------------
 
-SPARK_MASTER = "local"
+SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
 
-# After building a new Spark, conf files (e.g. spark-env.sh and slaves file)
-# will be copied in from this directory.
-SPARK_CONF_DIR = "/home/pwendell/Documents/spark/conf"
+# The test framework clones its own clean copy Spark, and then
+# the files in this dir (e.g. spark-env.sh and slaves file)
+# are copied from this directory to that Spark's conf dir
+# before we start the spark. To test on your local machine,
+# create a spark-env.sh and a slaves file with the master and
+# a single slave both set as your local machine.
+SPARK_CONF_DIR = "/root/spark/conf"
 
 # Java options. 
 # NOTE: This will be overridden if you define SPARK_JAVA_OPTS in spark-env.sh  
 JAVA_OPTS = {
   # Fraction of JVM memory used for caching RDDs
   "spark.storage.memoryFraction": 0.66,
-  # Use coarse-grained mesos scheduling
-  "spark.mesos.coarse": False,
   # Type of serialization used: spark.JavaSerializer, spark.KryoSerializer
   "spark.serializer": "spark.JavaSerializer",
-  # Enable/Disable Compression
-  "spark.blockManager.compress": False,
-  # Temp file directory
-  "spark.local.dir": "/mnt/tmp"
 }
 
 # Test Configuration
@@ -47,6 +45,8 @@ class OptionSet:
 # The following options value sets are shared among all tests.
 common_args = [
   # How many times to run each experiment - used to warm up system caches.
+  # This is the only OptionSet that should probably only have a single value
+  # (i.e., length 1) since it doesn't make sense to have multiple values here.
   OptionSet("num-trials", [2]),
   # The number of input partitions.
   OptionSet("num-partitions", [3]),
@@ -72,11 +72,10 @@ key_val_test_args = [
 # where key = short_name, test_cmd, and val = list<OptionSet>.
 # @param option_space is a list with elements of type OptionSet or list of args
 # --------------------------------------------------
-scala_tests_base_cmd = "spark.perf.TestRunner %s" % SPARK_MASTER
 kv_args = common_args + key_val_test_args
 TESTS = [
-  ("scala-agg-by-key", "%s aggregate-by-key" % scala_tests_base_cmd, kv_args),
-  ("scala-sort-by-key", "%s sort-by-key" % scala_tests_base_cmd, kv_args),
-  ("scala-count", "%s count" % scala_tests_base_cmd, kv_args),
-  ("scala-count-w-fltr", "%s count-with-filter" % scala_tests_base_cmd, kv_args)
+  ("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", kv_args),
+  ("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", kv_args),
+  ("scala-count", "spark.perf.TestRunner count", kv_args),
+  ("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter", kv_args)
 ]

@@ -8,6 +8,9 @@ from subprocess import Popen, PIPE
 if len(sys.argv) != 3:
   sys.exit("Usage: ./run [Git Commit Hash] [Output Filename]")
 
+commit_to_test = sys.argv[1]
+output_filename = sys.argv[2]
+
 proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
 sbt_cmd = "sbt/sbt"
 
@@ -24,20 +27,19 @@ sys.path.append(proj_dir + "/config")
 import config
 
 print("Downloading Spark...\n")
-# Clone the Git repository and create a branch for the hash.
+# Clone or fetch updates for the spark repository.
 if not os.path.isdir("spark"):
-  run_cmd("git clone git://github.com/mesos/spark.git")
-# Pull just in case spark was already cloned earlier.
+  run_cmd("git clone %s", config.SPARK_GIT_REPO)
 else:
-  run_cmd("cd spark; git pull origin master:master")
+  run_cmd("cd spark; git fetch origin")
 
 # Build Spark
-print("Building branch %s. This may take a while...\n" % sys.argv[1])
-run_cmd("cd spark; git reset --hard %s; %s package" % (sys.argv[1], sbt_cmd))
+print("Cleaning Spark and building branch %s. This may take a while...\n" % commit_to_test)
+run_cmd("cd spark; git clean -f -d -x; git reset --hard %s; %s clean package" % (commit_to_test, sbt_cmd))
 
 # Copy Spark configuration files to new directory
-print("Copying configuration files to Spark")
-if not os.path.exists(config.SPARK_CONF_DIR):
+print("Copying all files from %s to %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
+if not os.path.exists("%s/spark-env.sh" % config.SPARK_CONF_DIR):
   sys.exit("Could not find Spark config directory: %s" % config.SPARK_CONF_DIR)
 run_cmd("cp %s/* %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
 
@@ -47,13 +49,13 @@ run_cmd("cd %s; %s package" % (proj_dir, sbt_cmd))
 
 # Sync the whole directory to the slaves. 
 # Here we are assuming we are using our Amazon EC2 AMI, fixing this is a TODO.
+if not os.path.exists("%s/spark-ec2/copy-dir" % proj_dir):
+  sys.exit("%s/spark-ec2/copy-dir not found, giving up." % proj_dir)
+print("Syncing the test directory to the slaves.")
 run_cmd("%s/spark-ec2/copy-dir %s" % (proj_dir, proj_dir))
-if not os.path.exists("%s/spark-ec2/copy-dir"):
-  print("%s/spark-ec2/copy-dir not found. Continuing without syncing to slaves..." % proj_dir)
 
 
 # Set Spark Java Options (from config.py)
-# --------------------------------------------------
 new_env = os.environ.copy()
 
 new_env["SPARK_JAVA_OPTS"] = ""
@@ -65,10 +67,30 @@ new_env["SPARK_HOME"] = "%s/spark" % proj_dir
 def clear_dir (dir_name):
   print("Clearing dir %s.\n" % dir_name)
   run_cmd("rm -r %s/*" % dir_name)
-  run_cmd("%s/spark-ec2/copy-dir %s" % (dir_name, dir_name))
+  run_cmd("%s/spark-ec2/copy-dir %s" % (proj_dir, dir_name))
 
-map(clear_dir, config.JAVA_OPTS["spark.local.dir"].split(","))
+spark_env = open("%s/spark-env.sh" % config.SPARK_CONF_DIR, 'r').read() 
+re_result = re.search(r'spark.local.dir=([^"]*)"', spark_env)
+if re_result:
+  spark_local_dirs = re_result.group(1).split(",")
+  map(clear_dir, spark_local_dirs)
 
+# Setup the Spark master variable based on the spark-env.sh file
+# from the specified Spark conf directory.
+cluster_url = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
+print("cluster_url set to %s from /root/spark-ec2/cluster-url" % cluster_url)
+
+# Try shutting down the cluster started by the Spark EC2 scripts,
+# just in case it is still running.
+if os.path.exists("/root/spark/bin/stop-all.sh"):
+  run_cmd("/root/spark/bin/stop-all.sh" % proj_dir)
+
+# Restart our test Spark cluster.
+print("Restarting standalone scheduler...")
+run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
+run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
+
+# Some utility functions to calculate useful stats on test output.
 def average(in_list):
   return sum(in_list) / len(in_list)
 
@@ -78,14 +100,8 @@ def variance(in_list):
     variance = variance + (average(in_list) - x) ** 2
   return variance / len(in_list)
 
-# Run all tests set up in the Config file.
-# --------------------------------------------------
-if "spark://" in config.SPARK_MASTER:
-  print("Restarting standalone scheduler...")
-  run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
-  run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
-
-out_file = open(sys.argv[2], 'w')
+# Run all tests specified in the Config file.
+out_file = open(output_filename, 'w')
 for short_name, test_cmd, option_sets in config.TESTS:
   print("\n---------------------------------------------")
   print("Running all tests for %s.\n" % test_cmd)
@@ -95,7 +111,10 @@ for short_name, test_cmd, option_sets in config.TESTS:
   for opt_list in itertools.product(*option_set_arrays):
     results_token = "results: "
     # TODO(andy): Add a timout on the subprocess.
-    cmd = '%s "run %s %s"' % (sbt_cmd, test_cmd, " ".join(opt_list))
+    cmd = '%s "run %s %s %s"' % (sbt_cmd,
+                                 test_cmd,
+                                 cluster_url,
+                                 " ".join(opt_list))
     print("\nrunning command: %s\n" % cmd)
     output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
     if results_token not in output:
@@ -116,4 +135,4 @@ for short_name, test_cmd, option_sets in config.TESTS:
     sys.stdout.flush()
     out_file.flush()
 
-print("Finished running all tests. See CSV output in %s" % sys.argv[2])
+print("Finished running all tests. See CSV output in %s" % output_filename)
