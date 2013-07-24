@@ -7,13 +7,17 @@
 
 SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
 
-# The test framework clones its own clean copy Spark, and then
+# The test framework clones its own clean copy of Spark, and then
 # the files in this dir (e.g. spark-env.sh and slaves file)
 # are copied from this directory to that Spark's conf dir
-# before we start the spark. To test on your local machine,
-# create a spark-env.sh and a slaves file with the master and
-# a single slave both set as your local machine.
+# before we start the Spark. To test on your local machine,
+# create a spark-env.sh and a slaves file with a single slave set
+# as your local machine.
 SPARK_CONF_DIR = "/root/spark/conf"
+
+# This default setting assumes we are running on the Apark EC2 AMI. Developers
+# will probably want to change this to SPARK_CLUSTER_URL = "local" for testing.
+SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
 
 # Java options. 
 # NOTE: This will be overridden if you define SPARK_JAVA_OPTS in spark-env.sh  

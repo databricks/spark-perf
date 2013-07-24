@@ -1,59 +1,76 @@
 #!/usr/bin/env python
 
+import argparse
+import re
 import itertools
 import os.path
 import sys
 from subprocess import Popen, PIPE
 
-if len(sys.argv) != 3:
-  sys.exit("Usage: ./run [Git Commit Hash] [Output Filename]")
-
-commit_to_test = sys.argv[1]
-output_filename = sys.argv[2]
-
 proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
 sbt_cmd = "sbt/sbt"
 
+parser = argparse.ArgumentParser(description='Run Spark Peformance Tests.')
+
+parser.add_argument('commit_id', help='git commit id to checkout and test')
+parser.add_argument('output_filename', help='file to write results in')
+parser.add_argument('--config-file', help='override default location of config file, must be a python file that ends in .py', default=proj_dir+"/config/config.py")
+parser.add_argument('--skip-spark-prep', help='skip downloading and building Spark (requires Spark already be built in the spark directory)', action='store_true')
+
+args = parser.parse_args()
+assert args.config_file.endswith(".py"), "config filename must end with .py"
+
 # Run shell command and ignore output
 def run_cmd(cmd):
+  print(cmd)
   Popen(cmd, stdout=sys.stderr, shell=True).wait()
 
-# Check if a config file exists
-if not os.path.isfile(proj_dir+"/config/config.py"):
-  sys.exit("Please create a config file called %s/config/config.py by copying and then modifying %s/config/config.py.template" % (proj_dir, proj_dir))
+def copy_dir_to_slaves(dir_name, slaves):
+  for slave in slaves:
+    print("rsync'ing %s to slave %s" % (dir_name, slave))
+    run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s" "%s:%s" & sleep 0.5' % (dir_name, slave.strip(), os.path.abspath(dir_name)))
 
-# import the configuration settings
-sys.path.append(proj_dir + "/config")
-import config
+# Check if the config file exists
+assert os.path.isfile(args.config_file), "Please create a config file called %s (you probably just want to copy and then modify %s/config/config.py.template)" % (args.config_file, proj_dir)
 
-print("Downloading Spark...\n")
-# Clone or fetch updates for the spark repository.
-if not os.path.isdir("spark"):
-  run_cmd("git clone %s", config.SPARK_GIT_REPO)
+# import the configuration settings from the config file
+print("added %s to path" % os.path.dirname(args.config_file))
+sys.path.append(os.path.dirname(args.config_file))
+print("running import %s" % os.path.basename(args.config_file).split(".")[0])
+exec("import %s" % os.path.basename(args.config_file).split(".")[0])
+
+if args.skip_spark_prep:
+  print("Skipping prepartion tasks for Spark (i.e, git clone or update, checkout, build, copy conf files)")
 else:
-  run_cmd("cd spark; git fetch origin")
+  # Clone or fetch updates for the spark repository.
+  if not os.path.isdir("spark"):
+    print("Git cloning Spark...")
+    run_cmd("git clone %s" % config.SPARK_GIT_REPO)
+  else:
+    print("Updating Spark repo...")
+    run_cmd("cd spark; git fetch origin")
 
-# Build Spark
-print("Cleaning Spark and building branch %s. This may take a while...\n" % commit_to_test)
-run_cmd("cd spark; git clean -f -d -x; git reset --hard %s; %s clean package" % (commit_to_test, sbt_cmd))
+  # Build Spark
+  print("Cleaning Spark and building branch %s. This may take a while...\n" % args.commit_id)
+  run_cmd("cd spark; git clean -f -d -x; git reset --hard %s; %s clean package" % (args.commit_id, sbt_cmd))
 
-# Copy Spark configuration files to new directory
-print("Copying all files from %s to %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
-if not os.path.exists("%s/spark-env.sh" % config.SPARK_CONF_DIR):
-  sys.exit("Could not find Spark config directory: %s" % config.SPARK_CONF_DIR)
-run_cmd("cp %s/* %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
+  # Copy Spark configuration files to new directory
+  print("Copying all files from %s to %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
+  assert os.path.exists("%s/spark-env.sh" % config.SPARK_CONF_DIR), \
+         "Could not find required file %s/spark-env.sh" % config.SPARK_CONF_DIR
+  assert os.path.exists("%s/slaves" % config.SPARK_CONF_DIR), \
+         "Could not find required file %s/slaves" % config.SPARK_CONF_DIR
+  run_cmd("cp %s/* %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
 
 # Building the perf-tests code against the downloaded version of Spark.
-print("Building spark-perf...\n")
+print("Building perf-tests...")
 run_cmd("cd %s; %s package" % (proj_dir, sbt_cmd))
 
 # Sync the whole directory to the slaves. 
-# Here we are assuming we are using our Amazon EC2 AMI, fixing this is a TODO.
-if not os.path.exists("%s/spark-ec2/copy-dir" % proj_dir):
-  sys.exit("%s/spark-ec2/copy-dir not found, giving up." % proj_dir)
 print("Syncing the test directory to the slaves.")
-run_cmd("%s/spark-ec2/copy-dir %s" % (proj_dir, proj_dir))
-
+slaves_file_raw = open("%s/slaves" % config.SPARK_CONF_DIR, 'r').read().split("\n")
+slaves_list = filter(lambda x: not x.startswith("#"), slaves_file_raw)
+copy_dir_to_slaves(proj_dir, slaves_list)
 
 # Set Spark Java Options (from config.py)
 new_env = os.environ.copy()
@@ -65,7 +82,7 @@ new_env["SPARK_HOME"] = "%s/spark" % proj_dir
 
 # Clear the Spark local directories.
 def clear_dir (dir_name):
-  print("Clearing dir %s.\n" % dir_name)
+  print("Clearing spark local dir %s." % dir_name)
   run_cmd("rm -r %s/*" % dir_name)
   run_cmd("%s/spark-ec2/copy-dir %s" % (proj_dir, dir_name))
 
@@ -75,13 +92,8 @@ if re_result:
   spark_local_dirs = re_result.group(1).split(",")
   map(clear_dir, spark_local_dirs)
 
-# Setup the Spark master variable based on the spark-env.sh file
-# from the specified Spark conf directory.
-cluster_url = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
-print("cluster_url set to %s from /root/spark-ec2/cluster-url" % cluster_url)
-
 # Try shutting down the cluster started by the Spark EC2 scripts,
-# just in case it is still running.
+# just in case it (exists and) is still running.
 if os.path.exists("/root/spark/bin/stop-all.sh"):
   run_cmd("/root/spark/bin/stop-all.sh" % proj_dir)
 
@@ -101,7 +113,7 @@ def variance(in_list):
   return variance / len(in_list)
 
 # Run all tests specified in the Config file.
-out_file = open(output_filename, 'w')
+out_file = open(args.output_filename, 'w')
 for short_name, test_cmd, option_sets in config.TESTS:
   print("\n---------------------------------------------")
   print("Running all tests for %s.\n" % test_cmd)
@@ -111,9 +123,8 @@ for short_name, test_cmd, option_sets in config.TESTS:
   for opt_list in itertools.product(*option_set_arrays):
     results_token = "results: "
     # TODO(andy): Add a timout on the subprocess.
-    cmd = '%s "run %s %s %s"' % (sbt_cmd,
+    cmd = '%s "run %s %s"' % (sbt_cmd,
                                  test_cmd,
-                                 cluster_url,
                                  " ".join(opt_list))
     print("\nrunning command: %s\n" % cmd)
     output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
@@ -135,4 +146,4 @@ for short_name, test_cmd, option_sets in config.TESTS:
     sys.stdout.flush()
     out_file.flush()
 
-print("Finished running all tests. See CSV output in %s" % output_filename)
+print("Finished running all tests. See CSV output in %s" % args.output_filename)
