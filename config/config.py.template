@@ -15,10 +15,9 @@ SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
 # as your local machine.
 SPARK_CONF_DIR = "/root/spark/conf"
 
-# This default setting assumes we are running on the Apark EC2 AMI. Developers
-# will probably want to change this to SPARK_CLUSTER_URL = "local" for testing.
-import socket
-SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname()
+# This default setting assumes we are running on the Spark EC2 AMI. Developers will probably want
+# to change this to SPARK_CLUSTER_URL = "spark://localhost:7077" for testing.
+SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
 
 # Java options. 
 # NOTE: This will be overridden if you define SPARK_JAVA_OPTS in spark-env.sh  
