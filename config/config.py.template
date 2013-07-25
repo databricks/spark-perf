@@ -50,8 +50,8 @@ class OptionSet:
 # The following options value sets are shared among all tests.
 common_args = [
   # How many times to run each experiment - used to warm up system caches.
-  # This is the only OptionSet that should probably only have a single value
-  # (i.e., length 1) since it doesn't make sense to have multiple values here.
+  # This OptionSet should probably only have a single value (i.e., length 1)
+  # since it doesn't make sense to have multiple values here.
   OptionSet("num-trials", [2]),
   # The number of input partitions.
   OptionSet("num-partitions", [3]),
