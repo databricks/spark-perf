@@ -5,6 +5,7 @@ import itertools
 import os.path
 import re
 import sys
+import time
 from subprocess import Popen, PIPE
 
 proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
@@ -20,26 +21,46 @@ parser.add_argument('--skip-spark-prep', help='skip downloading and building Spa
 args = parser.parse_args()
 assert args.config_file.endswith(".py"), "config filename must end with .py"
 
-# Run shell command and ignore output
+# Run shell command and ignore output.
 def run_cmd(cmd):
   print(cmd)
   Popen(cmd, stdout=sys.stderr, shell=True).wait()
 
+# Copy a directory to a list of slaves. Provides similar functionality to
+# spark-ec2/copy-dir (this is a port of that actually).
 def copy_dir_to_slaves(dir_name, slaves):
   for slave in slaves:
     print("rsync'ing %s to slave %s" % (dir_name, slave))
     run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s" "%s:%s" & sleep 0.5' % (dir_name, slave.strip(), os.path.abspath(dir_name)))
 
-# Check if the config file exists
+
+# Check if the config file exists.
 assert os.path.isfile(args.config_file), "Please create a config file called %s (you probably just want to copy and then modify %s/config/config.py.template)" % (args.config_file, proj_dir)
 
-# import the configuration settings from the config file
+# Import the configuration settings from the config file.
 print("Adding %s to path" % os.path.dirname(args.config_file))
 sys.path.append(os.path.dirname(args.config_file))
 print("running import %s" % os.path.basename(args.config_file).split(".")[0])
 exec("import %s" % os.path.basename(args.config_file).split(".")[0])
 
+# Try shutting down the cluster started by the Spark EC2 scripts,
+# just in case it (exists and) is still running.
+if os.path.exists("/root/spark/bin/stop-all.sh"):
+  run_cmd("/root/spark/bin/stop-all.sh" % proj_dir)
+
+# Stop our Spark cluster, if it's running.
+print("Stopping Spark standalone cluster (if one is running)...")
+assert os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir), \
+       "%s/spark/bin/stop-all.sh must exist" % proj_dir
+run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
+time.sleep(2) # Killing the cluster takes a little time so give it a second.
+
+# Prep Spark (unless arg was passed that causes this to be skipped).
 if args.skip_spark_prep:
+  # TODO(andy): Make this check for the jar we will be including on the
+  #             classpath (as part of work Patrick is doing), instead of
+  #             just looking for spark/target.
+  assert os.path.exists("%s/spark/target" % proj_dir), "You chose to skip Spark prep, but we can't since %s/spark does not exist, so Spark needs to be rebuilt/packaged." % proj_dir
   print("Skipping prepartion tasks for Spark (i.e, git clone or update, checkout, build, copy conf files)")
 else:
   # Clone or fetch updates for the spark repository.
@@ -50,17 +71,24 @@ else:
     print("Updating Spark repo...")
     run_cmd("cd spark; git fetch origin")
 
-  # Build Spark
+  # Build Spark.
   print("Cleaning Spark and building branch %s. This may take a while...\n" % args.commit_id)
   run_cmd("cd spark; git clean -f -d -x; git reset --hard %s; %s clean package" % (args.commit_id, sbt_cmd))
 
-  # Copy Spark configuration files to new directory
+  # Copy Spark configuration files to new directory.
   print("Copying all files from %s to %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
   assert os.path.exists("%s/spark-env.sh" % config.SPARK_CONF_DIR), \
          "Could not find required file %s/spark-env.sh" % config.SPARK_CONF_DIR
   assert os.path.exists("%s/slaves" % config.SPARK_CONF_DIR), \
          "Could not find required file %s/slaves" % config.SPARK_CONF_DIR
   run_cmd("cp %s/* %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
+
+# Start our Spark cluster.
+print("Starting a Spark standalone cluster to use for testing...")
+assert os.path.exists("%s/spark/bin/start-all.sh" % proj_dir), \
+       "%s/spark/bin/start-all.sh must exist" % proj_dir
+run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
+time.sleep(2) # Starting the cluster takes a little time so give it a second.
 
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building perf-tests...")
@@ -95,16 +123,6 @@ else:
   sys.exit("These scripts require you to explicitly set spark.local.dir in spark-env.sh so that "
            "it can be cleaned. The way we check this is pretty picky, specifically we try to "
            "find the following string in spark-env.sh: spark.local.dir=ONE_OR_MORE_DIRNAMES\"")
-
-# Try shutting down the cluster started by the Spark EC2 scripts,
-# just in case it (exists and) is still running.
-if os.path.exists("/root/spark/bin/stop-all.sh"):
-  run_cmd("/root/spark/bin/stop-all.sh" % proj_dir)
-
-# Restart our test Spark cluster.
-print("Restarting standalone scheduler...")
-run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
-run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
@@ -149,3 +167,4 @@ for short_name, test_cmd, option_sets in config.TESTS:
     out_file.flush()
 
 print("Finished running all tests. See CSV output in %s" % args.output_filename)
+print("We left your test cluster running. You should be able to kill at by running ./spark/bin/stop-all.sh")
