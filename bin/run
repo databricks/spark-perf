@@ -34,7 +34,7 @@ def copy_dir_to_slaves(dir_name, slaves):
 assert os.path.isfile(args.config_file), "Please create a config file called %s (you probably just want to copy and then modify %s/config/config.py.template)" % (args.config_file, proj_dir)
 
 # import the configuration settings from the config file
-print("added %s to path" % os.path.dirname(args.config_file))
+print("Adding %s to path" % os.path.dirname(args.config_file))
 sys.path.append(os.path.dirname(args.config_file))
 print("running import %s" % os.path.basename(args.config_file).split(".")[0])
 exec("import %s" % os.path.basename(args.config_file).split(".")[0])
@@ -91,6 +91,10 @@ re_result = re.search(r'spark.local.dir=([^"]*)"', spark_env)
 if re_result:
   spark_local_dirs = re_result.group(1).split(",")
   map(clear_dir, spark_local_dirs)
+else:
+  sys.exit("These scripts require you to explicitly set spark.local.dir in spark-env.sh so that "
+           "it can be cleaned. The way we check this is pretty picky, specifically we try to "
+           "find the following string in spark-env.sh: spark.local.dir=ONE_OR_MORE_DIRNAMES\"")
 
 # Try shutting down the cluster started by the Spark EC2 scripts,
 # just in case it (exists and) is still running.
@@ -123,9 +127,7 @@ for short_name, test_cmd, option_sets in config.TESTS:
   for opt_list in itertools.product(*option_set_arrays):
     results_token = "results: "
     # TODO(andy): Add a timout on the subprocess.
-    cmd = '%s "run %s %s"' % (sbt_cmd,
-                                 test_cmd,
-                                 " ".join(opt_list))
+    cmd = '%s "run %s %s"' % (sbt_cmd, test_cmd, " ".join(opt_list))
     print("\nrunning command: %s\n" % cmd)
     output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
     if results_token not in output:
