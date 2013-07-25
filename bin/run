@@ -16,7 +16,12 @@ parser = argparse.ArgumentParser(description='Run Spark Peformance Tests.')
 parser.add_argument('commit_id', help='git commit id to checkout and test')
 parser.add_argument('output_filename', help='file to write results in')
 parser.add_argument('--config-file', help='override default location of config file, must be a python file that ends in .py', default=proj_dir+"/config/config.py")
-parser.add_argument('--skip-spark-prep', help='skip downloading and building Spark (requires Spark already be built in the spark directory)', action='store_true')
+parser.add_argument('--skip-spark-prep', help='skip downloading and building' \
+  'Spark (requires Spark already be built in the spark directory)', 
+   action='store_true')
+parser.add_argument('--skip-test-prep', help='skip building and packaging' \
+  'tests (requires perf-tests already be packaged in the target/ directory)', 
+  action='store_true')
 
 args = parser.parse_args()
 assert args.config_file.endswith(".py"), "config filename must end with .py"
@@ -92,7 +97,12 @@ time.sleep(2) # Starting the cluster takes a little time so give it a second.
 
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building perf-tests...")
-run_cmd("cd %s; %s package" % (proj_dir, sbt_cmd))
+if args.skip_test_prep:
+  test_jar = "%s/target/perf-tests-assembly.jar" % proj_dir
+  assert os.path.exists(test_jar), "You tried to skip packaging the perf "\
+    "tests, but %s was not already present" % test_jar
+else:
+  run_cmd("cd %s; %s assembly" % (proj_dir, sbt_cmd))
 
 # Sync the whole directory to the slaves. 
 print("Syncing the test directory to the slaves.")
@@ -103,16 +113,13 @@ copy_dir_to_slaves(proj_dir, slaves_list)
 # Set Spark Java Options (from config.py)
 new_env = os.environ.copy()
 
-new_env["SPARK_JAVA_OPTS"] = ""
-for k, v in config.JAVA_OPTS.iteritems():
-  new_env["SPARK_JAVA_OPTS"] += "-D%s=%s " % (k, v)
 new_env["SPARK_HOME"] = "%s/spark" % proj_dir
 
 # Clear the Spark local directories.
 def clear_dir (dir_name):
   print("Clearing spark local dir %s." % dir_name)
   run_cmd("rm -r %s/*" % dir_name)
-  run_cmd("%s/spark-ec2/copy-dir %s" % (proj_dir, dir_name))
+  copy_dir_to_slaves(dir_name, slaves_list)
 
 spark_env = open("%s/spark-env.sh" % config.SPARK_CONF_DIR, 'r').read() 
 re_result = re.search(r'spark.local.dir=([^"]*)"', spark_env)
@@ -145,7 +152,11 @@ for short_name, test_cmd, option_sets in config.TESTS:
   for opt_list in itertools.product(*option_set_arrays):
     results_token = "results: "
     # TODO(andy): Add a timout on the subprocess.
-    cmd = '%s "run %s %s"' % (sbt_cmd, test_cmd, " ".join(opt_list))
+    classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
+    java_options = "".join(["-D%s=%s " % (key, value) for (key, value) in config.JAVA_OPTS.items()])
+    cmd = "%s %s -cp %s %s %s %s" % (
+      config.SCALA_CMD, java_options, classpath, test_cmd, 
+      config.SPARK_CLUSTER_URL, " ".join(opt_list))
     print("\nrunning command: %s\n" % cmd)
     output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
     if results_token not in output:

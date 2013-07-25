@@ -1,3 +1,5 @@
+import AssemblyKeys._
+
 name := "spark-perf"
 
 version := "0.1"
@@ -17,4 +19,19 @@ libraryDependencies += "com.google.guava" % "guava" % "14.0.1"
 unmanagedJars in Compile <++= baseDirectory map  { base =>
   val finder: PathFinder = (file("spark")) ** "*.jar"
   finder.get
+}
+
+assemblySettings
+
+test in assembly := {}
+
+jarName in assembly := "perf-tests-assembly.jar"
+
+mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) => 
+  {
+   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+   case PathList("reference.conf", xs @ _*) => MergeStrategy.concat
+   case PathList("application.conf", xs @ _*) => MergeStrategy.concat
+   case _ => MergeStrategy.first
+  }
 }
