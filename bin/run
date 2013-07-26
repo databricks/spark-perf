@@ -153,10 +153,10 @@ for short_name, test_cmd, option_sets in config.TESTS:
     results_token = "results: "
     # TODO(andy): Add a timout on the subprocess.
     classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
-    java_options = "".join(["-D%s=%s " % (key, value) for (key, value) in config.JAVA_OPTS.items()])
-    cmd = "%s %s -cp %s %s %s %s" % (
-      config.SCALA_CMD, java_options, classpath, test_cmd, 
-      config.SPARK_CLUSTER_URL, " ".join(opt_list))
+    java_options = "".join(["-D%s=%s " % (key, value) for (key, value) in 
+                           config.JAVA_OPTS.iteritems()])
+    cmd = "%s %s -cp %s %s %s %s" % (config.SCALA_CMD, java_options, classpath, test_cmd, 
+                                     config.SPARK_CLUSTER_URL, " ".join(opt_list))
     print("\nrunning command: %s\n" % cmd)
     output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
     if results_token not in output:
