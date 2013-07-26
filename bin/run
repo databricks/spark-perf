@@ -106,13 +106,6 @@ else:
 
   os.chdir("..")
 
-# Start our Spark cluster.
-print("Starting a Spark standalone cluster to use for testing...")
-assert os.path.exists("%s/spark/bin/start-all.sh" % proj_dir), ("%s/spark/bin/start-all.sh must "
-    "exist") % proj_dir
-run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
-time.sleep(2) # Starting the cluster takes a little time so give it a second.
-
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building perf-tests...")
 if config.SKIP_TEST_PREP:
@@ -127,6 +120,13 @@ print("Syncing the test directory to the slaves.")
 slaves_file_raw = open("%s/slaves" % config.SPARK_CONF_DIR, 'r').read().split("\n")
 slaves_list = filter(lambda x: not x.startswith("#"), slaves_file_raw)
 copy_dir_to_slaves(proj_dir, slaves_list)
+
+# Start our Spark cluster.
+print("Starting a Spark standalone cluster to use for testing...")
+assert os.path.exists("%s/spark/bin/start-all.sh" % proj_dir), ("%s/spark/bin/start-all.sh must "
+    "exist") % proj_dir
+run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
+time.sleep(5) # Starting the cluster takes a little time so give it a second.
 
 # Set Spark Java Options (from config.py)
 new_env = os.environ.copy()
