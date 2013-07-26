@@ -11,25 +11,25 @@ from subprocess import Popen, PIPE
 proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
 sbt_cmd = "sbt/sbt"
 
-parser = argparse.ArgumentParser(description='Run Spark Peformance Tests.')
+parser = argparse.ArgumentParser(description='Run Spark peformance tests. Before running, edit the supplied configuration file.')
 
-parser.add_argument('commit_id', help='git commit id to checkout and test. The repository '
-  'location configured via SPARK_GIT_REPO is named "origin". Other than a hash code, you can also '
-  'provide a branch name, or to test a pull request, give a string of the format origin/pr/N to '
-  'checkout pull request N')
-parser.add_argument('output_filename', help='file to write results in')
-parser.add_argument('--config-file', help='override default location of config file, must be a python file that ends in .py', default=proj_dir+"/config/config.py")
-parser.add_argument('--skip-spark-prep', help='skip downloading and building' \
-  'Spark (requires Spark already be built in the spark directory)', 
-   action='store_true')
-parser.add_argument('--skip-test-prep', help='skip building and packaging' \
-  'tests (requires perf-tests already be packaged in the target/ directory)', 
-  action='store_true')
-parser.add_argument('--skip-disk-warmup', help='skip warming up Spark local disks', 
-                    action='store_true')
+parser.add_argument('--config-file', help='override default location of config file, must be a '
+    'python file that ends in .py', default="%s/config/config.py" % proj_dir)
 
 args = parser.parse_args()
 assert args.config_file.endswith(".py"), "config filename must end with .py"
+
+# Check if the config file exists.
+assert os.path.isfile(args.config_file), ("Please create a config file called %s (you probably "
+    "just want to copy and then modify %s/config/config.py.template)" % 
+    (args.config_file, proj_dir))
+
+# Import the configuration settings from the config file.
+print("Adding %s to path" % os.path.dirname(args.config_file))
+sys.path.append(os.path.dirname(args.config_file))
+print("running import %s" % os.path.basename(args.config_file).split(".")[0])
+exec("import %s" % os.path.basename(args.config_file).split(".")[0])
+assert config.COMMIT_ID is not "", "Please specify COMMIT_ID in %s" % args.config_file
 
 # Run shell command and ignore output.
 def run_cmd(cmd, exit_on_fail=True):
@@ -40,31 +40,23 @@ def run_cmd(cmd, exit_on_fail=True):
   print(cmd)
   return_code = Popen(cmd, stdout=sys.stderr, shell=True).wait()
   if exit_on_fail:
-    assert return_code == 0, "The following shell command finished with a non-zero returnode (%s): %s" % (return_code, cmd)
+    assert return_code == 0, ("The following shell command finished with a non-zero returnode (%s):"
+        " %s") % (return_code, cmd)
 
 # Copy a directory to a list of slaves. Provides similar functionality to
 # spark-ec2/copy-dir (this is a port of that actually).
 def copy_dir_to_slaves(dir_name, slaves):
   for slave in slaves:
     print("rsync'ing %s to slave %s" % (dir_name, slave))
-    run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s" "%s:%s" & sleep 0.5' % (dir_name, slave.strip(), os.path.abspath(dir_name)))
+    run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s"'
+        '"%s:%s" & sleep 0.5' % (dir_name, slave.strip(), os.path.abspath(dir_name)))
 
 
 # Run the supplied command on each slave.
 def run_cmd_on_slaves(cmd_name, slaves):
   for slave in slaves:
     print("Running command on slave %s." % slave)
-    run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (
-            slave, cmd_name))
-
-# Check if the config file exists.
-assert os.path.isfile(args.config_file), "Please create a config file called %s (you probably just want to copy and then modify %s/config/config.py.template)" % (args.config_file, proj_dir)
-
-# Import the configuration settings from the config file.
-print("Adding %s to path" % os.path.dirname(args.config_file))
-sys.path.append(os.path.dirname(args.config_file))
-print("running import %s" % os.path.basename(args.config_file).split(".")[0])
-exec("import %s" % os.path.basename(args.config_file).split(".")[0])
+    run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (slave, cmd_name))
 
 # Try shutting down the cluster started by the Spark EC2 scripts,
 # just in case it (exists and) is still running.
@@ -78,27 +70,30 @@ if os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir):
   time.sleep(2) # Killing the cluster takes a little time so give it a second.
 
 # Prep Spark (unless arg was passed that causes this to be skipped).
-if args.skip_spark_prep:
+if config.SKIP_SPARK_PREP:
   # TODO(andy): Make this check for the jar we will be including on the
   #             classpath (as part of work Patrick is doing), instead of
   #             just looking for spark/target.
-  assert os.path.exists("%s/spark/target" % proj_dir), "You chose to skip Spark prep, but we can't since %s/spark does not exist, so Spark needs to be rebuilt/packaged." % proj_dir
-  print("Skipping prepartion tasks for Spark (i.e, git clone or update, checkout, build, copy conf files)")
+  assert os.path.exists("%s/spark/target" % proj_dir), ("You chose to skip Spark prep, but we "
+      "can't since %s/spark does not exist, so Spark needs to be rebuilt/packaged.") % proj_dir
+  print("Skipping prepartion tasks for Spark (i.e, git clone or update, checkout, build, copy "
+      "conf files)")
 else:
   # Clone or fetch updates for the spark repository.
   if not os.path.isdir("spark"):
     print("Git cloning Spark...")
     run_cmd("git clone %s spark" % config.SPARK_GIT_REPO)
-    run_cmd("cd spark; git config --add remote.origin.fetch '+refs/pull/*/head:refs/remotes/origin/pr/*'")
+    run_cmd("cd spark; git config --add remote.origin.fetch "
+        "'+refs/pull/*/head:refs/remotes/origin/pr/*'")
 
   os.chdir("spark")
   print("Updating Spark repo...")
   run_cmd("git fetch")
 
   # Build Spark.
-  print("Cleaning Spark and building branch %s. This may take a while...\n" % args.commit_id)
+  print("Cleaning Spark and building branch %s. This may take a while...\n" % config.COMMIT_ID)
   run_cmd("git clean -f -d -x")
-  run_cmd("git reset --hard %s" % args.commit_id)
+  run_cmd("git reset --hard %s" % config.COMMIT_ID)
   run_cmd("%s clean package" % sbt_cmd)
 
   # Copy Spark configuration files to new directory.
@@ -113,17 +108,17 @@ else:
 
 # Start our Spark cluster.
 print("Starting a Spark standalone cluster to use for testing...")
-assert os.path.exists("%s/spark/bin/start-all.sh" % proj_dir), \
-       "%s/spark/bin/start-all.sh must exist" % proj_dir
+assert os.path.exists("%s/spark/bin/start-all.sh" % proj_dir), ("%s/spark/bin/start-all.sh must "
+    "exist") % proj_dir
 run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
 time.sleep(2) # Starting the cluster takes a little time so give it a second.
 
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building perf-tests...")
-if args.skip_test_prep:
+if config.SKIP_TEST_PREP:
   test_jar = "%s/target/perf-tests-assembly.jar" % proj_dir
-  assert os.path.exists(test_jar), "You tried to skip packaging the perf "\
-    "tests, but %s was not already present" % test_jar
+  assert os.path.exists(test_jar), ("You tried to skip packaging the perf tests, but %s was not "
+      "already present") % test_jar
 else:
   run_cmd("cd %s; %s assembly" % (proj_dir, sbt_cmd))
 
@@ -150,19 +145,18 @@ if re_result:
   spark_local_dirs = re_result.group(1).split(",")
   map(clear_dir, spark_local_dirs)
 else:
-  sys.exit("ERROR: These scripts require you to explicitly set spark.local.dir in spark-env.sh so"
-           "that it can be cleaned. The way we check this is pretty picky, specifically we try to "
-           "find the following string in spark-env.sh: spark.local.dir=ONE_OR_MORE_DIRNAMES\" so "
-           "you will want a line like this: "
-           "SPARK_JAVA_OPTS+=\" -Dspark.local.dir=/tmp\"")
+  sys.exit("ERROR: These scripts require you to explicitly set spark.local.dir in spark-env.sh"
+      "so that it can be cleaned. The way we check this is pretty picky, specifically we try to "
+      "find the following string in spark-env.sh: spark.local.dir=ONE_OR_MORE_DIRNAMES\" so you "
+      "will want a line like this: SPARK_JAVA_OPTS+=\" -Dspark.local.dir=/tmp\"")
 
-if not args.skip_disk_warmup:
+if not config.SKIP_DISK_WARMUP:
   for d in spark_local_dirs:
     # TODO(pwendell): Make these configurable and set in the conf file once we migrate options there
     bytes_to_write = 1000 * 1024 * 1024
     bytes_per_file = 5 * 1024 * 1024
     command = "dd if=/dev/urandom bs=%s count=1 | split -a 5 -b %s - %s/random" % (
-              bytes_to_write, bytes_per_file, d)
+        bytes_to_write, bytes_per_file, d)
     print("Generating test data for %s, this may take some time" % d)
     run_cmd(command)
     run_cmd_on_slaves(command, slaves_list)
@@ -178,7 +172,7 @@ def variance(in_list):
   return variance / len(in_list)
 
 # Run all tests specified in the Config file.
-out_file = open(args.output_filename, 'w')
+out_file = open(config.OUTPUT_FILENAME, 'w')
 for short_name, test_cmd, option_sets in config.TESTS:
   print("\n---------------------------------------------")
   print("Running all tests for %s.\n" % test_cmd)
@@ -190,9 +184,9 @@ for short_name, test_cmd, option_sets in config.TESTS:
     # TODO(andy): Add a timout on the subprocess.
     classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
     java_options = "".join(["-D%s=%s " % (key, value) for (key, value) in 
-                           config.JAVA_OPTS.iteritems()])
+        config.JAVA_OPTS.iteritems()])
     cmd = "%s %s -cp %s %s %s %s" % (config.SCALA_CMD, java_options, classpath, test_cmd, 
-                                     config.SPARK_CLUSTER_URL, " ".join(opt_list))
+        config.SPARK_CLUSTER_URL, " ".join(opt_list))
     print("\nrunning command: %s\n" % cmd)
     output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
     if results_token not in output:
@@ -207,11 +201,12 @@ for short_name, test_cmd, option_sets in config.TESTS:
     result_var = variance(result_list)
     result_first = result_list[0]
     result_last = result_list[len(result_list) - 1]
-    result_string = "%s, %s, %s, %s, %s, %s" % (short_name, " ".join(opt_list), result_med, result_var, result_first, result_last)
+    result_string = "%s, %s, %s, %s, %s, %s" % (short_name, " ".join(opt_list), result_med, 
+        result_var, result_first, result_last)
     print(result_string)
     out_file.write(result_string + "\n")
     sys.stdout.flush()
     out_file.flush()
 
-print("Finished running all tests. See CSV output in %s" % args.output_filename)
+print("Finished running all tests. See CSV output in %s" % config.OUTPUT_FILENAME)
 print("We left your test cluster running. You should be able to kill it by running ./spark/bin/stop-all.sh")
