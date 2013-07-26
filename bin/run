@@ -13,7 +13,10 @@ sbt_cmd = "sbt/sbt"
 
 parser = argparse.ArgumentParser(description='Run Spark Peformance Tests.')
 
-parser.add_argument('commit_id', help='git commit id to checkout and test')
+parser.add_argument('commit_id', help='git commit id to checkout and test. The repository '
+  'location configured via SPARK_GIT_REPO is named "origin". Other than a hash code, you can also '
+  'provide a branch name, or to test a pull request, give a string of the format origin/pr/N to '
+  'checkout pull request N')
 parser.add_argument('output_filename', help='file to write results in')
 parser.add_argument('--config-file', help='override default location of config file, must be a python file that ends in .py', default=proj_dir+"/config/config.py")
 parser.add_argument('--skip-spark-prep', help='skip downloading and building' \
@@ -27,9 +30,15 @@ args = parser.parse_args()
 assert args.config_file.endswith(".py"), "config filename must end with .py"
 
 # Run shell command and ignore output.
-def run_cmd(cmd):
+def run_cmd(cmd, exit_on_fail=True):
+  if cmd.find(";") != -1:
+    print("***************************")
+    print("WARNING: the following command contains a semicolon which may cause non-zero return "
+          "values to be ignored. This isn't necessarily a problem, but proceed with caution!")
   print(cmd)
-  Popen(cmd, stdout=sys.stderr, shell=True).wait()
+  return_code = Popen(cmd, stdout=sys.stderr, shell=True).wait()
+  if exit_on_fail:
+    assert return_code == 0, "The following shell command finished with a non-zero returnode (%s): %s" % (return_code, cmd)
 
 # Copy a directory to a list of slaves. Provides similar functionality to
 # spark-ec2/copy-dir (this is a port of that actually).
@@ -54,11 +63,10 @@ if os.path.exists("/root/spark/bin/stop-all.sh"):
   run_cmd("/root/spark/bin/stop-all.sh" % proj_dir)
 
 # Stop our Spark cluster, if it's running.
-print("Stopping Spark standalone cluster (if one is running)...")
-assert os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir), \
-       "%s/spark/bin/stop-all.sh must exist" % proj_dir
-run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
-time.sleep(2) # Killing the cluster takes a little time so give it a second.
+if os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir):
+  print("Stopping Spark standalone cluster...")
+  run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
+  time.sleep(2) # Killing the cluster takes a little time so give it a second.
 
 # Prep Spark (unless arg was passed that causes this to be skipped).
 if args.skip_spark_prep:
@@ -71,14 +79,18 @@ else:
   # Clone or fetch updates for the spark repository.
   if not os.path.isdir("spark"):
     print("Git cloning Spark...")
-    run_cmd("git clone %s" % config.SPARK_GIT_REPO)
-  else:
-    print("Updating Spark repo...")
-    run_cmd("cd spark; git fetch origin")
+    run_cmd("git clone %s spark" % config.SPARK_GIT_REPO)
+    run_cmd("cd spark; git config --add remote.origin.fetch '+refs/pull/*/head:refs/remotes/origin/pr/*'")
+
+  os.chdir("spark")
+  print("Updating Spark repo...")
+  run_cmd("git fetch")
 
   # Build Spark.
   print("Cleaning Spark and building branch %s. This may take a while...\n" % args.commit_id)
-  run_cmd("cd spark; git clean -f -d -x; git reset --hard %s; %s clean package" % (args.commit_id, sbt_cmd))
+  run_cmd("git clean -f -d -x")
+  run_cmd("git reset --hard %s" % args.commit_id)
+  run_cmd("%s clean package" % sbt_cmd)
 
   # Copy Spark configuration files to new directory.
   print("Copying all files from %s to %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
@@ -87,6 +99,8 @@ else:
   assert os.path.exists("%s/slaves" % config.SPARK_CONF_DIR), \
          "Could not find required file %s/slaves" % config.SPARK_CONF_DIR
   run_cmd("cp %s/* %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
+
+  os.chdir("..")
 
 # Start our Spark cluster.
 print("Starting a Spark standalone cluster to use for testing...")
@@ -118,7 +132,7 @@ new_env["SPARK_HOME"] = "%s/spark" % proj_dir
 # Clear the Spark local directories.
 def clear_dir (dir_name):
   print("Clearing spark local dir %s." % dir_name)
-  run_cmd("rm -r %s/*" % dir_name)
+  run_cmd("rm -r %s/*" % dir_name, False)
   copy_dir_to_slaves(dir_name, slaves_list)
 
 spark_env = open("%s/spark-env.sh" % config.SPARK_CONF_DIR, 'r').read() 
@@ -127,9 +141,11 @@ if re_result:
   spark_local_dirs = re_result.group(1).split(",")
   map(clear_dir, spark_local_dirs)
 else:
-  sys.exit("These scripts require you to explicitly set spark.local.dir in spark-env.sh so that "
-           "it can be cleaned. The way we check this is pretty picky, specifically we try to "
-           "find the following string in spark-env.sh: spark.local.dir=ONE_OR_MORE_DIRNAMES\"")
+  sys.exit("ERROR: These scripts require you to explicitly set spark.local.dir in spark-env.sh so"
+           "that it can be cleaned. The way we check this is pretty picky, specifically we try to "
+           "find the following string in spark-env.sh: spark.local.dir=ONE_OR_MORE_DIRNAMES\" so "
+           "you will want a line like this: "
+           "SPARK_JAVA_OPTS+=\" -Dspark.local.dir=/tmp\"")
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
@@ -178,4 +194,4 @@ for short_name, test_cmd, option_sets in config.TESTS:
     out_file.flush()
 
 print("Finished running all tests. See CSV output in %s" % args.output_filename)
-print("We left your test cluster running. You should be able to kill at by running ./spark/bin/stop-all.sh")
+print("We left your test cluster running. You should be able to kill it by running ./spark/bin/stop-all.sh")
