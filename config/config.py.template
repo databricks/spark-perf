@@ -28,6 +28,9 @@ JAVA_OPTS = {
   "spark.serializer": "spark.JavaSerializer",
 }
 
+# Command used to launch Scala
+SCALA_CMD = "scala"
+
 # Test Configuration
 # --------------------------------------------------
 
