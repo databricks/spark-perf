@@ -44,7 +44,7 @@ def copy_dir_to_slaves(dir_name, slaves):
 # Run the supplied command on each slave.
 def run_cmd_on_slaves(cmd_name, slaves):
   for slave in slaves:
-    print("running command on slave %s" % slave)
+    print("Running command on slave %s." % slave)
     run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (
             slave, cmd_name))
 
