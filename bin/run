@@ -61,7 +61,7 @@ def run_cmd_on_slaves(cmd_name, slaves):
 # Try shutting down the cluster started by the Spark EC2 scripts,
 # just in case it (exists and) is still running.
 if os.path.exists("/root/spark/bin/stop-all.sh"):
-  run_cmd("/root/spark/bin/stop-all.sh" % proj_dir)
+  run_cmd("/root/spark/bin/stop-all.sh")
 
 # Stop our Spark cluster, if it's running.
 if os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir):
