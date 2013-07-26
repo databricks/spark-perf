@@ -1,9 +1,19 @@
+import time
+
 # Variables in ALL_CAPS are used by the testing framework,
 # while variables in lower_case are used locally to set up
 # other variables.
 
-# Spark Configuration Options
+# Standard Configuration Options
 # --------------------------------------------------
+
+# Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO is 
+# named "origin". Other than a hash code, you can also provide a branch name, or to test a pull 
+# request, give a string of the format origin/pr/N to checkout pull request N.
+COMMIT_ID = ""
+
+# File to write results to
+OUTPUT_FILENAME = "spark_perf_output_%s" % time.strftime("%Y-%m-%d_%H-%M-%S") 
 
 SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
 
@@ -86,3 +96,16 @@ TESTS = [
   ("scala-count", "spark.perf.TestRunner count", kv_args),
   ("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter", kv_args)
 ]
+
+# Advanced Configuration Options
+# --------------------------------------------------
+
+# Skip downloading and building Spark (requires Spark already be built in the spark directory).
+SKIP_SPARK_PREP = False
+
+# Skip building and packaging tests (requires perf-tests already be packaged in the target 
+# directory).
+SKIP_TEST_PREP = False
+
+# Skip warming up local disks
+SKIP_DISK_WARMUP = False

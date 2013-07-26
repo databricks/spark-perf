@@ -13,20 +13,7 @@ sbt_cmd = "sbt/sbt"
 
 parser = argparse.ArgumentParser(description='Run Spark Peformance Tests.')
 
-parser.add_argument('commit_id', help='git commit id to checkout and test. The repository '
-  'location configured via SPARK_GIT_REPO is named "origin". Other than a hash code, you can also '
-  'provide a branch name, or to test a pull request, give a string of the format origin/pr/N to '
-  'checkout pull request N')
-parser.add_argument('output_filename', help='file to write results in')
 parser.add_argument('--config-file', help='override default location of config file, must be a python file that ends in .py', default=proj_dir+"/config/config.py")
-parser.add_argument('--skip-spark-prep', help='skip downloading and building' \
-  'Spark (requires Spark already be built in the spark directory)', 
-   action='store_true')
-parser.add_argument('--skip-test-prep', help='skip building and packaging' \
-  'tests (requires perf-tests already be packaged in the target/ directory)', 
-  action='store_true')
-parser.add_argument('--skip-disk-warmup', help='skip warming up Spark local disks', 
-                    action='store_true')
 
 args = parser.parse_args()
 assert args.config_file.endswith(".py"), "config filename must end with .py"
@@ -78,7 +65,7 @@ if os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir):
   time.sleep(2) # Killing the cluster takes a little time so give it a second.
 
 # Prep Spark (unless arg was passed that causes this to be skipped).
-if args.skip_spark_prep:
+if config.SKIP_SPARK_PREP:
   # TODO(andy): Make this check for the jar we will be including on the
   #             classpath (as part of work Patrick is doing), instead of
   #             just looking for spark/target.
@@ -96,9 +83,9 @@ else:
   run_cmd("git fetch")
 
   # Build Spark.
-  print("Cleaning Spark and building branch %s. This may take a while...\n" % args.commit_id)
+  print("Cleaning Spark and building branch %s. This may take a while...\n" % config.COMMIT_ID)
   run_cmd("git clean -f -d -x")
-  run_cmd("git reset --hard %s" % args.commit_id)
+  run_cmd("git reset --hard %s" % config.COMMIT_ID)
   run_cmd("%s clean package" % sbt_cmd)
 
   # Copy Spark configuration files to new directory.
@@ -120,7 +107,7 @@ time.sleep(2) # Starting the cluster takes a little time so give it a second.
 
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building perf-tests...")
-if args.skip_test_prep:
+if config.SKIP_TEST_PREP:
   test_jar = "%s/target/perf-tests-assembly.jar" % proj_dir
   assert os.path.exists(test_jar), "You tried to skip packaging the perf "\
     "tests, but %s was not already present" % test_jar
@@ -156,7 +143,7 @@ else:
            "you will want a line like this: "
            "SPARK_JAVA_OPTS+=\" -Dspark.local.dir=/tmp\"")
 
-if not args.skip_disk_warmup:
+if not config.SKIP_DISK_WARMUP:
   for d in spark_local_dirs:
     # TODO(pwendell): Make these configurable and set in the conf file once we migrate options there
     bytes_to_write = 1000 * 1024 * 1024
@@ -178,7 +165,7 @@ def variance(in_list):
   return variance / len(in_list)
 
 # Run all tests specified in the Config file.
-out_file = open(args.output_filename, 'w')
+out_file = open(config.OUTPUT_FILENAME, 'w')
 for short_name, test_cmd, option_sets in config.TESTS:
   print("\n---------------------------------------------")
   print("Running all tests for %s.\n" % test_cmd)
@@ -213,5 +200,5 @@ for short_name, test_cmd, option_sets in config.TESTS:
     sys.stdout.flush()
     out_file.flush()
 
-print("Finished running all tests. See CSV output in %s" % args.output_filename)
+print("Finished running all tests. See CSV output in %s" % config.OUTPUT_FILENAME)
 print("We left your test cluster running. You should be able to kill it by running ./spark/bin/stop-all.sh")
