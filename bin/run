@@ -22,6 +22,8 @@ parser.add_argument('--skip-spark-prep', help='skip downloading and building' \
 parser.add_argument('--skip-test-prep', help='skip building and packaging' \
   'tests (requires perf-tests already be packaged in the target/ directory)', 
   action='store_true')
+parser.add_argument('--skip-disk-warmup', help='skip warming up Spark local disks', 
+                    action='store_true')
 
 args = parser.parse_args()
 assert args.config_file.endswith(".py"), "config filename must end with .py"
@@ -130,6 +132,16 @@ else:
   sys.exit("These scripts require you to explicitly set spark.local.dir in spark-env.sh so that "
            "it can be cleaned. The way we check this is pretty picky, specifically we try to "
            "find the following string in spark-env.sh: spark.local.dir=ONE_OR_MORE_DIRNAMES\"")
+
+if not args.skip_disk_warmup:
+  for d in spark_local_dirs:
+    # TODO(pwendell): Make these configurable and set in the conf file once we migrate options there
+    bytes_to_write = 1000 * 1024 * 1024
+    bytes_per_file = 5 * 1024 * 1024
+    run_cmd("dd if=/dev/urandom bs=%s count=1 | split -a 5 -b %s - %s/random" % 
+            (bytes_to_write, bytes_per_file, d))
+    print("Syncing local directory %s to slaves, may take some time" % d)
+    copy_dir_to_slaves(d, slaves_list)
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
