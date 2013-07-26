@@ -25,6 +25,8 @@ parser.add_argument('--skip-spark-prep', help='skip downloading and building' \
 parser.add_argument('--skip-test-prep', help='skip building and packaging' \
   'tests (requires perf-tests already be packaged in the target/ directory)', 
   action='store_true')
+parser.add_argument('--skip-disk-warmup', help='skip warming up Spark local disks', 
+                    action='store_true')
 
 args = parser.parse_args()
 assert args.config_file.endswith(".py"), "config filename must end with .py"
@@ -47,6 +49,13 @@ def copy_dir_to_slaves(dir_name, slaves):
     print("rsync'ing %s to slave %s" % (dir_name, slave))
     run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s" "%s:%s" & sleep 0.5' % (dir_name, slave.strip(), os.path.abspath(dir_name)))
 
+
+# Run the supplied command on each slave.
+def run_cmd_on_slaves(cmd_name, slaves):
+  for slave in slaves:
+    print("Running command on slave %s." % slave)
+    run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (
+            slave, cmd_name))
 
 # Check if the config file exists.
 assert os.path.isfile(args.config_file), "Please create a config file called %s (you probably just want to copy and then modify %s/config/config.py.template)" % (args.config_file, proj_dir)
@@ -146,6 +155,17 @@ else:
            "find the following string in spark-env.sh: spark.local.dir=ONE_OR_MORE_DIRNAMES\" so "
            "you will want a line like this: "
            "SPARK_JAVA_OPTS+=\" -Dspark.local.dir=/tmp\"")
+
+if not args.skip_disk_warmup:
+  for d in spark_local_dirs:
+    # TODO(pwendell): Make these configurable and set in the conf file once we migrate options there
+    bytes_to_write = 1000 * 1024 * 1024
+    bytes_per_file = 5 * 1024 * 1024
+    command = "dd if=/dev/urandom bs=%s count=1 | split -a 5 -b %s - %s/random" % (
+              bytes_to_write, bytes_per_file, d)
+    print("Generating test data for %s, this may take some time" % d)
+    run_cmd(command)
+    run_cmd_on_slaves(command, slaves_list)
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
