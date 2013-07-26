@@ -19,6 +19,18 @@ parser.add_argument('--config-file', help='override default location of config f
 args = parser.parse_args()
 assert args.config_file.endswith(".py"), "config filename must end with .py"
 
+# Check if the config file exists.
+assert os.path.isfile(args.config_file), ("Please create a config file called %s (you probably "
+    "just want to copy and then modify %s/config/config.py.template)" % 
+    (args.config_file, proj_dir))
+
+# Import the configuration settings from the config file.
+print("Adding %s to path" % os.path.dirname(args.config_file))
+sys.path.append(os.path.dirname(args.config_file))
+print("running import %s" % os.path.basename(args.config_file).split(".")[0])
+exec("import %s" % os.path.basename(args.config_file).split(".")[0])
+assert config.COMMIT_ID is not "", "Please specify COMMIT_ID in %s" % args.config_file
+
 # Run shell command and ignore output.
 def run_cmd(cmd, exit_on_fail=True):
   if cmd.find(";") != -1:
@@ -45,17 +57,6 @@ def run_cmd_on_slaves(cmd_name, slaves):
   for slave in slaves:
     print("Running command on slave %s." % slave)
     run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (slave, cmd_name))
-
-# Check if the config file exists.
-assert os.path.isfile(args.config_file), ("Please create a config file called %s (you probably "
-    "just want to copy and then modify %s/config/config.py.template)" % 
-    (args.config_file, proj_dir))
-
-# Import the configuration settings from the config file.
-print("Adding %s to path" % os.path.dirname(args.config_file))
-sys.path.append(os.path.dirname(args.config_file))
-print("running import %s" % os.path.basename(args.config_file).split(".")[0])
-exec("import %s" % os.path.basename(args.config_file).split(".")[0])
 
 # Try shutting down the cluster started by the Spark EC2 scripts,
 # just in case it (exists and) is still running.
