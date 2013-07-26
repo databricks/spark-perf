@@ -34,8 +34,7 @@ def run_cmd(cmd, exit_on_fail=True):
   if cmd.find(";") != -1:
     print("***************************")
     print("WARNING: the following command contains a semicolon which may cause non-zero return "
-          "values to be ignored. Some commands contain multiple sub-commands (and thus use "
-          "use semicolons) on purpose. But this is dangerous so proceed with caution!")
+          "values to be ignored. This isn't necessarily a problem, but proceed with caution!")
   print(cmd)
   return_code = Popen(cmd, stdout=sys.stderr, shell=True).wait()
   if exit_on_fail:
