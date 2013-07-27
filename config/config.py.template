@@ -60,7 +60,7 @@ class OptionSet:
 # Java options.
 common_java_opts = {
   # Fraction of JVM memory used for caching RDDs
-  JavaOptionSet("spark.storage.memoryFraction", [0.33, 0.66]),
+  JavaOptionSet("spark.storage.memoryFraction", [0.66]),
   # Type of serialization used: spark.JavaSerializer, spark.KryoSerializer
   JavaOptionSet("spark.serializer", ["spark.JavaSerializer"])
 }
