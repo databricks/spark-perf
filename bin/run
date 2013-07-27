@@ -137,7 +137,7 @@ new_env["SPARK_HOME"] = "%s/spark" % proj_dir
 def clear_dir (dir_name):
   print("Clearing spark local dir %s." % dir_name)
   run_cmd("rm -r %s/*" % dir_name, False)
-  copy_dir_to_slaves(dir_name, slaves_list)
+  copy_dir_to_slaves("%s/" % dir_name, slaves_list)
 
 spark_local_dirs = "" 
 spark_env = open("%s/spark-env.sh" % config.SPARK_CONF_DIR, 'r').read()
