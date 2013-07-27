@@ -173,40 +173,40 @@ def variance(in_list):
 
 # Run all tests specified in the Config file.
 out_file = open(config.OUTPUT_FILENAME, 'w')
-for short_name, test_cmd, option_sets in config.TESTS:
+for short_name, test_cmd, java_opt_sets, opt_sets in config.TESTS:
   print("\n---------------------------------------------")
   print("Running all tests for %s.\n" % test_cmd)
   # Run a test for all combinations of the OptionSets given, then capture
   # and print the output.
-  option_set_arrays = [i.toArray() for i in option_sets]
-  for opt_list in itertools.product(*option_set_arrays):
-    results_token = "results: "
-    # TODO(andy): Add a timout on the subprocess.
-    classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
-    java_options = "".join(["-D%s=%s " % (key, value) for (key, value) in 
-        config.JAVA_OPTS.iteritems()])
-    cmd = "%s %s -cp %s %s %s %s" % (config.SCALA_CMD, java_options, classpath, test_cmd, 
-        config.SPARK_CLUSTER_URL, " ".join(opt_list))
-    print("\nrunning command: %s\n" % cmd)
-    output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
-    if results_token not in output:
-      print("Test did not produce expected results. Output was:")
-      print(output)
-      sys.exit(1)
-    result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
-    result_list = result_line.replace(results_token, "").split(",")
-    # TODO(andy): For even cardinality lists, return average of middle two elts.
-    result_list = sorted([float(x) for x in result_list])
-    result_med = result_list[len(result_list)/2]
-    result_var = variance(result_list)
-    result_first = result_list[0]
-    result_last = result_list[len(result_list) - 1]
-    result_string = "%s, %s, %s, %s, %s, %s" % (short_name, " ".join(opt_list), result_med, 
-        result_var, result_first, result_last)
-    print(result_string)
-    out_file.write(result_string + "\n")
-    sys.stdout.flush()
-    out_file.flush()
+  java_opt_set_arrays = [i.toArray() for i in java_opt_sets]
+  opt_set_arrays = [i.toArray() for i in opt_sets]
+  for java_opt_list in itertools.product(*java_opt_set_arrays):
+    for opt_list in itertools.product(*opt_set_arrays):
+      results_token = "results: "
+      # TODO(andy): Add a timout on the subprocess.
+      classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
+      cmd = "%s %s -cp %s %s %s %s" % (config.SCALA_CMD, " ".join(java_opt_list), classpath,
+          test_cmd, config.SPARK_CLUSTER_URL, " ".join(opt_list))
+      print("\nrunning command: %s\n" % cmd)
+      output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
+      if results_token not in output:
+        print("Test did not produce expected results. Output was:")
+        print(output)
+        sys.exit(1)
+      result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
+      result_list = result_line.replace(results_token, "").split(",")
+      # TODO(andy): For even cardinality lists, return average of middle two elts.
+      result_list = sorted([float(x) for x in result_list])
+      result_med = result_list[len(result_list)/2]
+      result_var = variance(result_list)
+      result_first = result_list[0]
+      result_last = result_list[len(result_list) - 1]
+      result_string = "%s, %s, %s, %s, %s, %s" % (short_name, " ".join(opt_list) + 
+          " ".join(java_opt_list), result_med, result_var, result_first, result_last)
+      print(result_string)
+      out_file.write(result_string + "\n")
+      sys.stdout.flush()
+      out_file.flush()
 
 print("Finished running all tests. See CSV output in %s" % config.OUTPUT_FILENAME)
 print("We left your test cluster running. You should be able to kill it by running ./spark/bin/stop-all.sh")
