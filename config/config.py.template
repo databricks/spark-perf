@@ -29,38 +29,44 @@ SPARK_CONF_DIR = "/root/spark/conf"
 # to change this to SPARK_CLUSTER_URL = "spark://localhost:7077" for testing.
 SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
 
-# Java options. 
-# NOTE: This will be overridden if you define SPARK_JAVA_OPTS in spark-env.sh  
-JAVA_OPTS = {
-  # Fraction of JVM memory used for caching RDDs
-  "spark.storage.memoryFraction": 0.66,
-  # Type of serialization used: spark.JavaSerializer, spark.KryoSerializer
-  "spark.serializer": "spark.JavaSerializer",
-}
-
 # Command used to launch Scala
 SCALA_CMD = "scala"
 
 # Test Configuration
 # --------------------------------------------------
 
-# Represents an option and a set of values for that option
-# that we will sweep over in a test run.
+# Represents a Java option and a set of values for it that we will sweep over in a test run.
+class JavaOptionSet:
+  def __init__(self, name, vals):
+    self.name = name
+    self.vals = vals
+  def to_array(self):
+    return ["-D%s=%s" % (self.name, val) for val in self.vals]
+
+# Represents an option and a set of values for that option that we will sweep over in a test run.
 class OptionSet:
   def __init__(self, name, vals):
     self.name = name
     self.vals = vals
-  def toArray(self):
+  def to_array(self):
     return ["--%s=%s" % (self.name, val) for val in self.vals]
 
 
 # Set up OptionSets.
-# Note that giant cross product is done over all OptionSets passed to each
+# Note that giant cross product is done over all JavaOptionsSets + OptionSets passed to each test
 # which may be combinations of those set up here.
 # --------------------------------------------------------
 
+# Java options.
+common_java_opts = {
+  # Fraction of JVM memory used for caching RDDs
+  JavaOptionSet("spark.storage.memoryFraction", [0.66]),
+  # Type of serialization used: spark.JavaSerializer, spark.KryoSerializer
+  JavaOptionSet("spark.serializer", ["spark.JavaSerializer"])
+}
+
 # The following options value sets are shared among all tests.
-common_args = [
+common_opts = [
   # How many times to run each experiment - used to warm up system caches.
   # This OptionSet should probably only have a single value (i.e., length 1)
   # since it doesn't make sense to have multiple values here.
@@ -77,7 +83,7 @@ common_args = [
 
 # The following options value sets are shared among all tests of
 # operations on key-value data.
-key_val_test_args = [
+key_val_test_opts = [
   OptionSet("num-records",   [100]),
   OptionSet("unique-keys",   [7]),
   OptionSet("key-length",    [8]),
@@ -89,12 +95,12 @@ key_val_test_args = [
 # where key = short_name, test_cmd, and val = list<OptionSet>.
 # @param option_space is a list with elements of type OptionSet or list of args
 # --------------------------------------------------
-kv_args = common_args + key_val_test_args
+kv_opts = common_opts + key_val_test_opts
 TESTS = [
-  ("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", kv_args),
-  ("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", kv_args),
-  ("scala-count", "spark.perf.TestRunner count", kv_args),
-  ("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter", kv_args)
+  ("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", common_java_opts, kv_opts),
+  ("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", common_java_opts, kv_opts),
+  ("scala-count", "spark.perf.TestRunner count", common_java_opts, kv_opts),
+  ("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter", common_java_opts, kv_opts)
 ]
 
 # Advanced Configuration Options
