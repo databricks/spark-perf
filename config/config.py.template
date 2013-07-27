@@ -44,8 +44,7 @@ SCALA_CMD = "scala"
 # Test Configuration
 # --------------------------------------------------
 
-# Represents a Java option and a set of values for it
-# that we will sweep over in a test run.
+# Represents a Java option and a set of values for it that we will sweep over in a test run.
 class JavaOptionSet:
   def __init__(self, name, vals):
     self.name = name
@@ -53,8 +52,7 @@ class JavaOptionSet:
   def toArray(self):
     return ["-D%s=%s" % (self.name, val) for val in self.vals]
 
-# Represents an option and a set of values for that option
-# that we will sweep over in a test run.
+# Represents an option and a set of values for that option that we will sweep over in a test run.
 class OptionSet:
   def __init__(self, name, vals):
     self.name = name
