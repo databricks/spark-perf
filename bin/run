@@ -199,11 +199,11 @@ for short_name, test_cmd, option_sets in config.TESTS:
     # TODO(andy): For even cardinality lists, return average of middle two elts.
     result_list = sorted([float(x) for x in result_list])
     result_med = result_list[len(result_list)/2]
-    result_var = sqrt(variance(result_list))
+    result_std = sqrt(variance(result_list))
     result_first = result_list[0]
     result_last = result_list[len(result_list) - 1]
-    result_string = "%s, %s, %s, %s, %s, %s" % (short_name, " ".join(opt_list), result_med, 
-        result_var, result_first, result_last)
+    result_string = "%s, %s, %s, %.3f, %s, %s" % (short_name, " ".join(opt_list), result_med,
+        result_std, result_first, result_last)
     print(result_string)
     out_file.write(result_string + "\n")
     sys.stdout.flush()
