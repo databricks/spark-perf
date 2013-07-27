@@ -29,15 +29,6 @@ SPARK_CONF_DIR = "/root/spark/conf"
 # to change this to SPARK_CLUSTER_URL = "spark://localhost:7077" for testing.
 SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
 
-# Java options. 
-# NOTE: This will be overridden if you define SPARK_JAVA_OPTS in spark-env.sh  
-JAVA_OPTS = {
-  # Fraction of JVM memory used for caching RDDs
-  "spark.storage.memoryFraction": 0.66,
-  # Type of serialization used: spark.JavaSerializer, spark.KryoSerializer
-  "spark.serializer": "spark.JavaSerializer",
-}
-
 # Command used to launch Scala
 SCALA_CMD = "scala"
 
