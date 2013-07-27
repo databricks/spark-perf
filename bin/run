@@ -118,7 +118,7 @@ else:
 # Sync the whole directory to the slaves. 
 print("Syncing the test directory to the slaves.")
 slaves_file_raw = open("%s/slaves" % config.SPARK_CONF_DIR, 'r').read().split("\n")
-slaves_list = filter(lambda x: not x.startswith("#"), slaves_file_raw)
+slaves_list = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
 copy_dir_to_slaves(proj_dir, slaves_list)
 
 # Start our Spark cluster.
