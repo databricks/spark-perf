@@ -53,7 +53,7 @@ class OptionSet:
 
 
 # Set up OptionSets.
-# Note that giant cross product is done over all JavaOptionsSets + OptionSets passed to each
+# Note that giant cross product is done over all JavaOptionsSets + OptionSets passed to each test
 # which may be combinations of those set up here.
 # --------------------------------------------------------
 
