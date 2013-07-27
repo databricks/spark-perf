@@ -96,12 +96,17 @@ key_val_test_opts = [
 # @param option_space is a list with elements of type OptionSet or list of args
 # --------------------------------------------------
 kv_opts = common_opts + key_val_test_opts
-TESTS = [
-  ("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", common_java_opts, kv_opts),
-  ("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", common_java_opts, kv_opts),
-  ("scala-count", "spark.perf.TestRunner count", common_java_opts, kv_opts),
-  ("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter", common_java_opts, kv_opts)
-]
+TESTS = []
+
+TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", common_java_opts, kv_opts)]
+
+TESTS += [("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", common_java_opts, kv_opts)
+
+TESTS += [("scala-count", "spark.perf.TestRunner count", common_java_opts, kv_opts)]
+
+TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter",
+    common_java_opts, kv_opts)]
+
 
 # Advanced Configuration Options
 # --------------------------------------------------
