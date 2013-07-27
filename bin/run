@@ -139,11 +139,11 @@ def clear_dir (dir_name):
   run_cmd("rm -r %s/*" % dir_name, False)
   copy_dir_to_slaves(dir_name, slaves_list)
 
-spark_env = open("%s/spark-env.sh" % config.SPARK_CONF_DIR, 'r').read() 
+spark_local_dirs = "" 
+spark_env = open("%s/spark-env.sh" % config.SPARK_CONF_DIR, 'r').read()
 re_result = re.search(r'spark.local.dir=([^"]*)"', spark_env)
 if re_result:
   spark_local_dirs = re_result.group(1).split(",")
-  map(clear_dir, spark_local_dirs)
 else:
   sys.exit("ERROR: These scripts require you to explicitly set spark.local.dir in spark-env.sh"
       "so that it can be cleaned. The way we check this is pretty picky, specifically we try to "
@@ -160,6 +160,8 @@ if not config.SKIP_DISK_WARMUP:
     print("Generating test data for %s, this may take some time" % d)
     run_cmd(command)
     run_cmd_on_slaves(command, slaves_list)
+
+map(clear_dir, spark_local_dirs)
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
