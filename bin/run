@@ -179,8 +179,8 @@ for short_name, test_cmd, java_opt_sets, opt_sets in config.TESTS:
   print("Running all tests for %s.\n" % test_cmd)
   # Run a test for all combinations of the OptionSets given, then capture
   # and print the output.
-  java_opt_set_arrays = [i.toArray() for i in java_opt_sets]
-  opt_set_arrays = [i.toArray() for i in opt_sets]
+  java_opt_set_arrays = [i.to_array() for i in java_opt_sets]
+  opt_set_arrays = [i.to_array() for i in opt_sets]
   for java_opt_list in itertools.product(*java_opt_set_arrays):
     for opt_list in itertools.product(*opt_set_arrays):
       results_token = "results: "
