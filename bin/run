@@ -155,11 +155,17 @@ if not config.SKIP_DISK_WARMUP:
     # TODO(pwendell): Make these configurable and set in the conf file once we migrate options there
     bytes_to_write = 1000 * 1024 * 1024
     bytes_per_file = 5 * 1024 * 1024
-    command = "dd if=/dev/urandom bs=%s count=1 | split -a 5 -b %s - %s/random" % (
+    
+    gen_command = "dd if=/dev/urandom bs=%s count=1 | split -a 5 -b %s - %s/random" % (
         bytes_to_write, bytes_per_file, d)
+    # Ensures the directory exists
+    dir_command = "mkdir -p %s" % d
+
     print("Generating test data for %s, this may take some time" % d)
-    run_cmd(command)
-    run_cmd_on_slaves(command, slaves_list)
+    run_cmd(dir_command)
+    run_cmd(gen_command)
+    run_cmd_on_slaves(dir_command, slaves_list)
+    run_cmd_on_slaves(gen_command, slaves_list)
 
 map(clear_dir, spark_local_dirs)
 
