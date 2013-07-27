@@ -48,7 +48,7 @@ def run_cmd(cmd, exit_on_fail=True):
 def copy_dir_to_slaves(dir_name, slaves):
   for slave in slaves:
     print("rsync'ing %s to slave %s" % (dir_name, slave))
-    run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s"'
+    run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s" '
         '"%s:%s" & sleep 0.5' % (dir_name, slave.strip(), os.path.abspath(dir_name)))
 
 
