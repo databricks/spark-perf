@@ -88,9 +88,9 @@ common_opts = [
   OptionSet("reduce-tasks", [4]),
   # A random seed to make tests reproducable.
   OptionSet("random-seed", [5]),
-  # input persistence strategyi (can be "memory" or "disk").
+  # Input persistence strategy (can be "memory" or "disk").
   OptionSet("persistent-type", ["memory"]),
-  # whether to wait for input in order to exit the JVM
+  # Whether to wait for input in order to exit the JVM.
   FlagSet("wait-for-exit", [False])
 ]
 
