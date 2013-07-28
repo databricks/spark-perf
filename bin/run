@@ -49,7 +49,7 @@ def run_cmd(cmd, exit_on_fail=True):
 def copy_dir_to_slaves(dir_name, slaves):
   for slave in slaves:
     print("rsync'ing %s to slave %s" % (dir_name, slave))
-    run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s"'
+    run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s" '
         '"%s:%s" & sleep 0.5' % (dir_name, slave.strip(), os.path.abspath(dir_name)))
 
 
@@ -107,13 +107,6 @@ else:
 
   os.chdir("..")
 
-# Start our Spark cluster.
-print("Starting a Spark standalone cluster to use for testing...")
-assert os.path.exists("%s/spark/bin/start-all.sh" % proj_dir), ("%s/spark/bin/start-all.sh must "
-    "exist") % proj_dir
-run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
-time.sleep(2) # Starting the cluster takes a little time so give it a second.
-
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building perf-tests...")
 if config.SKIP_TEST_PREP:
@@ -126,8 +119,15 @@ else:
 # Sync the whole directory to the slaves. 
 print("Syncing the test directory to the slaves.")
 slaves_file_raw = open("%s/slaves" % config.SPARK_CONF_DIR, 'r').read().split("\n")
-slaves_list = filter(lambda x: not x.startswith("#"), slaves_file_raw)
+slaves_list = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
 copy_dir_to_slaves(proj_dir, slaves_list)
+
+# Start our Spark cluster.
+print("Starting a Spark standalone cluster to use for testing...")
+assert os.path.exists("%s/spark/bin/start-all.sh" % proj_dir), ("%s/spark/bin/start-all.sh must "
+    "exist") % proj_dir
+run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
+time.sleep(5) # Starting the cluster takes a little time so give it a second.
 
 # Set Spark Java Options (from config.py)
 new_env = os.environ.copy()
@@ -138,13 +138,13 @@ new_env["SPARK_HOME"] = "%s/spark" % proj_dir
 def clear_dir (dir_name):
   print("Clearing spark local dir %s." % dir_name)
   run_cmd("rm -r %s/*" % dir_name, False)
-  copy_dir_to_slaves(dir_name, slaves_list)
+  copy_dir_to_slaves("%s/" % dir_name, slaves_list)
 
-spark_env = open("%s/spark-env.sh" % config.SPARK_CONF_DIR, 'r').read() 
+spark_local_dirs = "" 
+spark_env = open("%s/spark-env.sh" % config.SPARK_CONF_DIR, 'r').read()
 re_result = re.search(r'spark.local.dir=([^"]*)"', spark_env)
 if re_result:
   spark_local_dirs = re_result.group(1).split(",")
-  map(clear_dir, spark_local_dirs)
 else:
   sys.exit("ERROR: These scripts require you to explicitly set spark.local.dir in spark-env.sh"
       "so that it can be cleaned. The way we check this is pretty picky, specifically we try to "
@@ -156,11 +156,19 @@ if not config.SKIP_DISK_WARMUP:
     # TODO(pwendell): Make these configurable and set in the conf file once we migrate options there
     bytes_to_write = 1000 * 1024 * 1024
     bytes_per_file = 5 * 1024 * 1024
-    command = "dd if=/dev/urandom bs=%s count=1 | split -a 5 -b %s - %s/random" % (
+    
+    gen_command = "dd if=/dev/urandom bs=%s count=1 | split -a 5 -b %s - %s/random" % (
         bytes_to_write, bytes_per_file, d)
+    # Ensures the directory exists
+    dir_command = "mkdir -p %s" % d
+
     print("Generating test data for %s, this may take some time" % d)
-    run_cmd(command)
-    run_cmd_on_slaves(command, slaves_list)
+    run_cmd(dir_command)
+    run_cmd(gen_command)
+    run_cmd_on_slaves(dir_command, slaves_list)
+    run_cmd_on_slaves(gen_command, slaves_list)
+
+map(clear_dir, spark_local_dirs)
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
@@ -179,8 +187,8 @@ for short_name, test_cmd, java_opt_sets, opt_sets in config.TESTS:
   print("Running all tests for %s.\n" % test_cmd)
   # Run a test for all combinations of the OptionSets given, then capture
   # and print the output.
-  java_opt_set_arrays = [i.toArray() for i in java_opt_sets]
-  opt_set_arrays = [i.toArray() for i in opt_sets]
+  java_opt_set_arrays = [i.to_array() for i in java_opt_sets]
+  opt_set_arrays = [i.to_array() for i in opt_sets]
   for java_opt_list in itertools.product(*java_opt_set_arrays):
     for opt_list in itertools.product(*opt_set_arrays):
       results_token = "results: "
