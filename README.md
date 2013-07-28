@@ -1,4 +1,4 @@
-# Spark Peformance Tests
+# Spark Performance Tests
 
 This is a framework for repeatedly running a suite of performance tests for the [Spark cluster computing framework](http://spark-project.org).
 
@@ -8,7 +8,7 @@ This is a framework for repeatedly running a suite of performance tests for the 
 3. cd perfs-tests
 4. copy config/config.py.template to config/config.py and modify as necessary. Specifically, you must set COMMIT_ID.
 
-## Test development & running on a custom (non-Spark EC2) cluster
+## Developing and Running on a Non-Spark EC2 Cluster
 The default configuration settings aim to make it easy to run on Amazon using the Spark EC2
 scripts. To run in another environment, customize config.py. For example, when developing and
 testing this framework, we recommend running a master and slave daemon on your development machine
