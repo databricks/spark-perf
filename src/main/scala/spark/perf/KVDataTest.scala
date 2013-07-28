@@ -1,10 +1,9 @@
 package spark.perf
 
+import joptsimple.{OptionSet, OptionParser}
+
 import spark.{SparkContext, RDD}
 import spark.SparkContext._
-
-import joptsimple.{OptionSet, OptionParser}
-import java.util.Random
 
 /** Parent class for tests which run on a large (key, value) dataset. */
 abstract class KVDataTest(sc: SparkContext) extends PerfTest {
@@ -23,11 +22,13 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
   val NUM_PARTITIONS =   ("num-partitions", "number of input partitions")
   val RANDOM_SEED =      ("random-seed", "seed for random number generator")
   val PERSISTENCE_TYPE = ("persistent-type", "input persistence (memory, disk)")
+  val WAIT_FOR_EXIT =    ("wait-for-exit", "JVM will not exit until input is received from stdin")
 
   val intOptions = Seq(NUM_TRIALS, REDUCE_TASKS, KEY_LENGTH, VALUE_LENGTH, UNIQUE_KEYS,
     UNIQUE_VALUES, NUM_RECORDS, NUM_PARTITIONS, RANDOM_SEED)
   val stringOptions = Seq(PERSISTENCE_TYPE)
-  val options = intOptions ++ stringOptions
+  val booleanOptions = Seq(WAIT_FOR_EXIT)
+  val options = intOptions ++ stringOptions  ++ booleanOptions
 
   val parser = new OptionParser()
   var optionSet: OptionSet = _
@@ -39,9 +40,15 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
   stringOptions.map{case (opt, desc) =>
     parser.accepts(opt, desc).withRequiredArg().ofType(classOf[String]).required()
   }
+  booleanOptions.map{case (opt, desc) =>
+    parser.accepts(opt, desc)
+  }
+
+  var waitForExit = false
 
   override def initialize(args: Array[String]) = {
     optionSet = parser.parse(args.toSeq: _*)
+    waitForExit = optionSet.has(WAIT_FOR_EXIT._1)
   }
 
   override def createInputData() = {
@@ -70,12 +77,18 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
     val numTrials = optionSet.valueOf(NUM_TRIALS._1).asInstanceOf[Int]
     val reduceTasks = optionSet.valueOf(REDUCE_TASKS._1).asInstanceOf[Int]
 
-    (1 to numTrials).map { t =>
+    val result = (1 to numTrials).map { t =>
       val start = System.currentTimeMillis()
       runTest(rdd, reduceTasks)
       val end = System.currentTimeMillis()
       (end - start).toDouble / 1000.0
     }
+
+    if (waitForExit) {
+      System.err.println("Test is finished. To exit JVM and continue, press Enter:")
+      readLine()
+    }
+    result
   }
 }
 
