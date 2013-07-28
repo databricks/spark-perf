@@ -1,0 +1,19 @@
+# This is a check-list of config vars that need to be updated after developers update their
+# config.py file by copying an updated config.py.template. These are the lines to paste into
+# config.py replacing the default lines that exist.
+
+COMMIT_ID = "master"
+
+SPARK_CONF_DIR = "/Users/andyk/Development/spark-local-conf"
+
+import socket; SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname()
+
+scale_factor = 0.000001
+
+Remove this line (and remove the comma at the end of the line above it):
+JavaOptionSet("spark.executor.memory", ["9g"])',
+
+Maybe update these:
+SKIP_SPARK_PREP = True
+SKIP_TEST_PREP = True
+SKIP_DISK_WARMUP = True
