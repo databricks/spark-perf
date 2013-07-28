@@ -4,16 +4,17 @@
 
 COMMIT_ID = "master"
 
-SPARK_CONF_DIR = "/Users/andyk/Development/spark-local-conf"
+SPARK_CONF_DIR = "YOUR LOCAL DIR HERE"
 
+# The following trick might not work for you depending on your dev station network config.
 import socket; SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname()
 
 scale_factor = 0.000001
 
-Remove this line:
+Remove this line (unless you actually have 9gb of memory and want to use it):
 JavaOptionSet("spark.executor.memory", ["9g"])',
 
-Maybe update these:
+Might want to update these:
 SKIP_SPARK_PREP = True
 SKIP_TEST_PREP = True
 SKIP_DISK_WARMUP = True
