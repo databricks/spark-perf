@@ -1,8 +1,6 @@
+"""Configuration options for running the Spark performance tests (perf-tests)."""
+
 import time
-
-# Variables in ALL_CAPS are used by the testing framework, while variables in lower_case are
-# used locally to set up other variables.
-
 
 # Standard Configuration Options
 # --------------------------------------------------
@@ -32,26 +30,28 @@ SCALA_CMD = "scala"
 
 # The default values configured below are appropriate for approximately 20 m1.xlarge nodes.
 # Use this variable to scale the values if you are running the tests with more or fewer nodes.
-scale_factor = 1.0
+SCALE_FACTOR = 1.0
 
 
 # Test Configuration
 # ----------------------------------------------------------------------------------------
 
-# Represents a Java option and a set of values for it that we will sweep over in a test run.
-class JavaOptionSet:
+class JavaOptionSet(object):
+  """Represents a Java option and a set of values for it to sweep over."""
   def __init__(self, name, vals):
     self.name = name
     self.vals = vals
   def to_array(self):
+    """Return array of strings each representing a Java option name/value pair."""
     return ["-D%s=%s" % (self.name, val) for val in self.vals]
 
-# Represents an option and a set of values for that option that we will sweep over in a test run.
-class OptionSet:
+class OptionSet(object):
+  """Represents an option and a set of values for it to sweep over."""
   def __init__(self, name, vals):
     self.name = name
     self.vals = vals
   def to_array(self):
+    """Return array of strings each representing a command line option name/value pair."""
     return ["--%s=%s" % (self.name, val) for val in self.vals]
 
 
@@ -59,7 +59,7 @@ class OptionSet:
 # passed to each test which may be combinations of those set up here.
 
 # First set up Java options.
-common_java_opts = {
+COMMON_JAVA_OPTS = {
   # Fraction of JVM memory used for caching RDDs
   JavaOptionSet("spark.storage.memoryFraction", [0.66]),
   JavaOptionSet("spark.serializer", ["spark.JavaSerializer"]),
@@ -67,7 +67,7 @@ common_java_opts = {
 }
 
 # The following options value sets are shared among all tests.
-common_opts = [
+COMMON_OPTS = [
   # How many times to run each experiment - used to warm up system caches.
   # This OptionSet should probably only have a single value (i.e., length 1)
   # since it doesn't make sense to have multiple values here.
@@ -84,12 +84,12 @@ common_opts = [
 
 # The following options value sets are shared among all tests of
 # operations on key-value data.
-assert scale_factor > 0 and scale_factor <= 1.0, "scale_factor must be > 0 and <= 10."
-key_val_test_opts = [
-  OptionSet("num-records",   [max(1,int(200 * 1000 * 1000 * scale_factor))]),
-  OptionSet("unique-keys",   [max(1, int(20 * 1000 * scale_factor))]),
+assert SCALE_FACTOR > 0 and SCALE_FACTOR <= 1.0, "SCALE_FACTOR must be > 0 and <= 10."
+KEY_VAL_TEST_OPTS = [
+  OptionSet("num-records",   [max(1,int(200 * 1000 * 1000 * SCALE_FACTOR))]),
+  OptionSet("unique-keys",   [max(1, int(20 * 1000 * SCALE_FACTOR))]),
   OptionSet("key-length",    [10]),
-  OptionSet("unique-values", [max(1, int(1000 * 1000 * scale_factor))]),
+  OptionSet("unique-values", [max(1, int(1000 * 1000 * SCALE_FACTOR))]),
   OptionSet("value-length",  [10])
 ]
 
@@ -99,17 +99,17 @@ key_val_test_opts = [
 # Set up the actual tests. Each test is represtented by a key val pair
 # where key = short_name, test_cmd, and val = list<OptionSet>.
 # @param option_space is a list with elements of type OptionSet or list of args
-kv_opts = common_opts + key_val_test_opts
+KV_OPTS = COMMON_OPTS + KEY_VAL_TEST_OPTS
 TESTS = []
 
-TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", common_java_opts, kv_opts)]
+TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", COMMON_JAVA_OPTS, KV_OPTS)]
 
-TESTS += [("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", common_java_opts, kv_opts)]
+TESTS += [("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", COMMON_JAVA_OPTS, KV_OPTS)]
 
-TESTS += [("scala-count", "spark.perf.TestRunner count", common_java_opts, kv_opts)]
+TESTS += [("scala-count", "spark.perf.TestRunner count", COMMON_JAVA_OPTS, KV_OPTS)]
 
 TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter",
-    common_java_opts, kv_opts)]
+    COMMON_JAVA_OPTS, KV_OPTS)]
 
 
 # Advanced Configuration Options
