@@ -3,7 +3,7 @@
 import time
 
 # Standard Configuration Options
-# --------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
 # Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO is 
 # named "origin". Other than a hash code, you can also provide a branch name, or to test a pull 
