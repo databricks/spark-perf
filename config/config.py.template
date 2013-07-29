@@ -32,6 +32,8 @@ SCALA_CMD = "scala"
 # Use this variable to scale the values if you are running the tests with more or fewer nodes.
 SCALE_FACTOR = 1.0
 
+assert SCALE_FACTOR > 0 , "SCALE_FACTOR must be > 0."
+
 
 # Test Configuration
 # ----------------------------------------------------------------------------------------
@@ -70,9 +72,9 @@ class JavaOptionSet(OptionSet):
 # Set up OptionSets. Note that giant cross product is done over all JavaOptionsSets + OptionSets
 # passed to each test which may be combinations of those set up here.
 
-# First set up Java options.
+# Java options.
 COMMON_JAVA_OPTS = {
-  # Fraction of JVM memory used for caching RDDs
+  # Fraction of JVM memory used for caching RDDs.
   JavaOptionSet("spark.storage.memoryFraction", [0.66]),
   JavaOptionSet("spark.serializer", ["spark.JavaSerializer"]),
   JavaOptionSet("spark.executor.memory", ["9g"])
@@ -112,7 +114,6 @@ KEY_VAL_TEST_OPTS = [
 
 KV_OPTS = COMMON_OPTS + KEY_VAL_TEST_OPTS
 
-assert SCALE_FACTOR > 0 and SCALE_FACTOR <= 1.0, "SCALE_FACTOR must be > 0 and <= 10."
 TESTS = []
 
 TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", SCALE_FACTOR,
@@ -140,3 +141,11 @@ SKIP_TEST_PREP = False
 
 # Skip warming up local disks
 SKIP_DISK_WARMUP = False
+
+# Total number of bytes used to warm up each local directory.
+DISK_WARMUP_BYTES = 200 * 1024 * 1024
+
+# Number of files to create when warming up each local directory. Bytes will be evenly divided 
+# across files.
+DISK_WARMUP_FILES = 200
+
