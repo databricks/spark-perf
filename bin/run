@@ -182,13 +182,14 @@ def variance(in_list):
 
 # Run all tests specified in the Config file.
 out_file = open(config.OUTPUT_FILENAME, 'w')
-for short_name, test_cmd, java_opt_sets, opt_sets in config.TESTS:
+for short_name, test_cmd, scale_factor, java_opt_sets, opt_sets in config.TESTS:
   print("\n---------------------------------------------")
   print("Running all tests for %s.\n" % test_cmd)
   # Run a test for all combinations of the OptionSets given, then capture
   # and print the output.
-  java_opt_set_arrays = [i.to_array() for i in java_opt_sets]
-  opt_set_arrays = [i.to_array() for i in opt_sets]
+  print("scale factor is %f" % scale_factor)
+  java_opt_set_arrays = [i.to_array(scale_factor) for i in java_opt_sets]
+  opt_set_arrays = [i.to_array(scale_factor) for i in opt_sets]
   for java_opt_list in itertools.product(*java_opt_set_arrays):
     for opt_list in itertools.product(*opt_set_arrays):
       results_token = "results: "

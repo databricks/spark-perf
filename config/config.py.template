@@ -5,13 +5,13 @@ import time
 # Standard Configuration Options
 # ----------------------------------------------------------------------------------------
 
-# Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO is 
-# named "origin". Other than a hash code, you can also provide a branch name, or to test a pull 
+# Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO is
+# named "origin". Other than a hash code, you can also provide a branch name, or to test a pull
 # request, give a string of the format origin/pr/N to checkout pull request N.
 COMMIT_ID = ""
 
 # File to write results to.
-OUTPUT_FILENAME = "spark_perf_output_%s" % time.strftime("%Y-%m-%d_%H-%M-%S") 
+OUTPUT_FILENAME = "spark_perf_output_%s" % time.strftime("%Y-%m-%d_%H-%M-%S")
 
 SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
 
@@ -36,23 +36,35 @@ SCALE_FACTOR = 1.0
 # Test Configuration
 # ----------------------------------------------------------------------------------------
 
-class JavaOptionSet(object):
-  """Represents a Java option and a set of values for it to sweep over."""
-  def __init__(self, name, vals):
-    self.name = name
-    self.vals = vals
-  def to_array(self):
-    """Return array of strings each representing a Java option name/value pair."""
-    return ["-D%s=%s" % (self.name, val) for val in self.vals]
-
 class OptionSet(object):
   """Represents an option and a set of values for it to sweep over."""
-  def __init__(self, name, vals):
+  def __init__(self, name, vals, can_scale=False):
     self.name = name
     self.vals = vals
-  def to_array(self):
-    """Return array of strings each representing a command line option name/value pair."""
-    return ["--%s=%s" % (self.name, val) for val in self.vals]
+    self.can_scale = can_scale
+
+  def scaled_vals(self, scale_factor):
+    """If this class can_scale, then return scaled vals. Else return values as-is."""
+    if self.can_scale:
+      return [max(1, int(val * scale_factor)) for val in self.vals]
+    else:
+      return [val for val in self.vals]
+
+  def to_array(self, scale_factor = 1.0):
+    """
+    Return array of strings each representing a command line option name/value pair.
+    If can_scale is True, all values will be multipled by scale_factor before being returned.
+    """
+    return ["--%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
+
+
+class JavaOptionSet(OptionSet):
+  def __init__(self, name, vals, can_scale=False):
+    OptionSet.__init__(self, name, vals, can_scale)
+
+  def to_array(self, scale_factor = 1.0):
+    """Return array of strings each representing a Java option name/value pair."""
+    return ["-D%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
 
 
 # Set up OptionSets. Note that giant cross product is done over all JavaOptionsSets + OptionSets
@@ -73,9 +85,9 @@ COMMON_OPTS = [
   # since it doesn't make sense to have multiple values here.
   OptionSet("num-trials", [5]),
   # The number of input partitions.
-  OptionSet("num-partitions", [3]),
+  OptionSet("num-partitions", [400], True),
   # The number of reduce tasks.
-  OptionSet("reduce-tasks", [400]),
+  OptionSet("reduce-tasks", [400], True),
   # A random seed to make tests reproducable.
   OptionSet("random-seed", [5]),
   # input persistence strategyi (can be "memory" or "disk").
@@ -84,31 +96,35 @@ COMMON_OPTS = [
 
 # The following options value sets are shared among all tests of
 # operations on key-value data.
-assert SCALE_FACTOR > 0 and SCALE_FACTOR <= 1.0, "SCALE_FACTOR must be > 0 and <= 10."
 KEY_VAL_TEST_OPTS = [
-  OptionSet("num-records",   [max(1,int(200 * 1000 * 1000 * SCALE_FACTOR))]),
-  OptionSet("unique-keys",   [max(1, int(20 * 1000 * SCALE_FACTOR))]),
-  OptionSet("key-length",    [10]),
-  OptionSet("unique-values", [max(1, int(1000 * 1000 * SCALE_FACTOR))]),
-  OptionSet("value-length",  [10])
+  OptionSet("num-records", [200 * 1000 * 1000], True),
+  OptionSet("unique-keys",[20 * 1000], True),
+  OptionSet("key-length", [10]),
+  OptionSet("unique-values", [1000 * 1000], True),
+  OptionSet("value-length", [10])
 ]
 
 
 # Test setup
 # ----------------------------------------------------------------------------------------
-# Set up the actual tests. Each test is represtented by a key val pair
-# where key = short_name, test_cmd, and val = list<OptionSet>.
-# @param option_space is a list with elements of type OptionSet or list of args
+# Set up the actual tests. Each test is represtented by a tuple: (short_name, test_cmd,
+# scale_factor, list<JavaOptionSet>, list<OptionSet>).
+
 KV_OPTS = COMMON_OPTS + KEY_VAL_TEST_OPTS
+
+assert SCALE_FACTOR > 0 and SCALE_FACTOR <= 1.0, "SCALE_FACTOR must be > 0 and <= 10."
 TESTS = []
 
-TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", COMMON_JAVA_OPTS, KV_OPTS)]
+TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, KV_OPTS)]
 
-TESTS += [("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", COMMON_JAVA_OPTS, KV_OPTS)]
+# Scale the input for this test by an additional 0.10.
+TESTS += [("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", SCALE_FACTOR * 0.1,
+    COMMON_JAVA_OPTS, KV_OPTS)]
 
-TESTS += [("scala-count", "spark.perf.TestRunner count", COMMON_JAVA_OPTS, KV_OPTS)]
+TESTS += [("scala-count", "spark.perf.TestRunner count", SCALE_FACTOR, COMMON_JAVA_OPTS, KV_OPTS)]
 
-TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter",
+TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter", SCALE_FACTOR,
     COMMON_JAVA_OPTS, KV_OPTS)]
 
 
@@ -118,7 +134,7 @@ TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter",
 # Skip downloading and building Spark (requires Spark already be built in the spark directory).
 SKIP_SPARK_PREP = False
 
-# Skip building and packaging tests (requires perf-tests already be packaged in the target 
+# Skip building and packaging tests (requires perf-tests already be packaged in the target
 # directory).
 SKIP_TEST_PREP = False
 
