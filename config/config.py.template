@@ -115,3 +115,11 @@ SKIP_TEST_PREP = False
 
 # Skip warming up local disks
 SKIP_DISK_WARMUP = False
+
+# Total number of bytes used to warm up each local directory.
+DISK_WARMUP_BYTES = 200 * 1024 * 1024
+
+# Number of files to create when warming up each local directory. Bytes will be evenly divided 
+# across files.
+DISK_WARMUP_FILES = 200
+
