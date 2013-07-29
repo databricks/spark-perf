@@ -61,9 +61,11 @@ def run_cmd_on_slaves(cmd_name, slaves):
 
 # Delete all files in the given directory
 def clear_dir (dir_name):
-  print("Clearing dir %s." % dir_name)
-  assert dir_name != "" and dir_name != "/", ("clear_dir was called with directory '%s', halting "
-      "rather than deleting entire file system" % dir_name)
+  if config.PROMPT_FOR_DELETES:
+    response = raw_input("\nAbout to remove all files and directories under %s, is this ok? "
+      "[y, n] " % dir_name)
+    if response != "y":
+      return
   run_cmd("rm -r %s/*" % dir_name, False)
 
 # Try shutting down the cluster started by the Spark EC2 scripts,

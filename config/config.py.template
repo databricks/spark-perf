@@ -126,7 +126,7 @@ SKIP_SPARK_PREP = False
 # directory).
 SKIP_TEST_PREP = False
 
-# Skip warming up local disks
+# Skip warming up local disks.
 SKIP_DISK_WARMUP = False
 
 # Total number of bytes used to warm up each local directory.
@@ -136,3 +136,5 @@ DISK_WARMUP_BYTES = 200 * 1024 * 1024
 # across files.
 DISK_WARMUP_FILES = 200
 
+# Prompt for confirmation when deleting temporary files.
+PROMPT_FOR_DELETES = True
