@@ -60,7 +60,7 @@ def run_cmd_on_slaves(cmd_name, slaves):
     run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (slave, cmd_name))
 
 # Delete all files in the given directory
-def clear_dir (dir_name):
+def clear_dir(dir_name):
   if config.PROMPT_FOR_DELETES:
     response = raw_input("\nAbout to remove all files and directories under %s, is this ok? "
       "[y, n] " % dir_name)
