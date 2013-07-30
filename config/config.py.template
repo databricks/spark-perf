@@ -12,6 +12,10 @@ import time
 # request, give a string of the format origin/pr/N to checkout pull request N.
 COMMIT_ID = ""
 
+# Whether to merge this commit into master before testing. If the commit cannot be merged into
+# master, the script will exit with a failure.
+MERGE_INTO_MASTER = False
+
 # File to write results to
 OUTPUT_FILENAME = "spark_perf_output_%s" % time.strftime("%Y-%m-%d_%H-%M-%S") 
 
