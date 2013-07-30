@@ -32,7 +32,7 @@ SCALA_CMD = "scala"
 # Use this variable to scale the values if you are running the tests with more or fewer nodes.
 SCALE_FACTOR = 1.0
 
-assert SCALE_FACTOR > 0 , "SCALE_FACTOR must be > 0."
+assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
 
 
 # Test Configuration
@@ -145,7 +145,6 @@ SKIP_DISK_WARMUP = False
 # Total number of bytes used to warm up each local directory.
 DISK_WARMUP_BYTES = 200 * 1024 * 1024
 
-# Number of files to create when warming up each local directory. Bytes will be evenly divided 
+# Number of files to create when warming up each local directory. Bytes will be evenly divided
 # across files.
 DISK_WARMUP_FILES = 200
-
