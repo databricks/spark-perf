@@ -59,6 +59,17 @@ def run_cmd_on_slaves(cmd_name, slaves):
     print("Running command on slave %s." % slave)
     run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (slave, cmd_name))
 
+# Delete all files in the given directory
+def clear_dir(dir_name):
+  assert dir_name != "" and dir_name != "/", ("Attempted to delete directory '%s/*', halting "
+    "rather than deleting entire file system.") % dir_name
+  if config.PROMPT_FOR_DELETES:
+    response = raw_input("\nAbout to remove all files and directories under %s, is this ok? "
+      "[y, n] " % dir_name)
+    if response != "y":
+      return
+  run_cmd("rm -r %s/*" % dir_name, False)
+
 # Try shutting down the cluster started by the Spark EC2 scripts,
 # just in case it (exists and) is still running.
 if os.path.exists("/root/spark/bin/stop-all.sh"):
@@ -109,12 +120,13 @@ else:
 
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building perf-tests...")
+clear_dir("%s/spark/work" % proj_dir)
 if config.SKIP_TEST_PREP:
   test_jar = "%s/target/perf-tests-assembly.jar" % proj_dir
   assert os.path.exists(test_jar), ("You tried to skip packaging the perf tests, but %s was not "
       "already present") % test_jar
 else:
-  run_cmd("cd %s; %s assembly" % (proj_dir, sbt_cmd))
+  run_cmd("cd %s; %s clean assembly" % (proj_dir, sbt_cmd))
 
 # Sync the whole directory to the slaves. 
 print("Syncing the test directory to the slaves.")
@@ -133,12 +145,6 @@ time.sleep(5) # Starting the cluster takes a little time so give it a second.
 new_env = os.environ.copy()
 
 new_env["SPARK_HOME"] = "%s/spark" % proj_dir
-
-# Clear the Spark local directories.
-def clear_dir (dir_name):
-  print("Clearing spark local dir %s." % dir_name)
-  run_cmd("rm -r %s/*" % dir_name, False)
-  copy_dir_to_slaves("%s/" % dir_name, slaves_list)
 
 spark_local_dirs = "" 
 spark_env = open("%s/spark-env.sh" % config.SPARK_CONF_DIR, 'r').read()
@@ -167,6 +173,8 @@ if not config.SKIP_DISK_WARMUP:
     run_cmd_on_slaves(gen_command, slaves_list)
 
 map(clear_dir, spark_local_dirs)
+for d in spark_local_dirs:
+  copy_dir_to_slaves(d, slaves_list)
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
