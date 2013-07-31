@@ -1,14 +1,12 @@
+"""Configuration options for running the Spark performance tests (perf-tests)."""
+
 import time
 
-# Variables in ALL_CAPS are used by the testing framework,
-# while variables in lower_case are used locally to set up
-# other variables.
-
 # Standard Configuration Options
-# --------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
-# Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO is 
-# named "origin". Other than a hash code, you can also provide a branch name, or to test a pull 
+# Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO is
+# named "origin". Other than a hash code, you can also provide a branch name, or to test a pull
 # request, give a string of the format origin/pr/N to checkout pull request N.
 COMMIT_ID = ""
 
@@ -16,44 +14,63 @@ COMMIT_ID = ""
 # master, the script will exit with a failure.
 MERGE_INTO_MASTER = False
 
-# File to write results to
-OUTPUT_FILENAME = "spark_perf_output_%s" % time.strftime("%Y-%m-%d_%H-%M-%S") 
+# File to write results to.
+OUTPUT_FILENAME = "spark_perf_output_%s" % time.strftime("%Y-%m-%d_%H-%M-%S")
 
 SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
 
-# The test framework clones its own clean copy of Spark, and then
-# the files in this dir (e.g. spark-env.sh and slaves file)
-# are copied from this directory to that Spark's conf dir
-# before we start the Spark. To test on your local machine,
-# create a spark-env.sh and a slaves file with a single slave set
-# as your local machine.
+# The test framework clones its own clean copy of Spark, and then the files in this dir (e.g.
+# spark-env.sh and slaves file) are copied from this directory to that Spark's conf dir before we
+# start the Spark. To test on your local machine, create a spark-env.sh and a slaves file with a
+# single slave set as your local machine.
 SPARK_CONF_DIR = "/root/spark/conf"
 
 # This default setting assumes we are running on the Spark EC2 AMI. Developers will probably want
 # to change this to SPARK_CLUSTER_URL = "spark://localhost:7077" for testing.
 SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
 
-# Command used to launch Scala
+# Command used to launch Scala.
 SCALA_CMD = "scala"
 
+# The default values configured below are appropriate for approximately 20 m1.xlarge nodes.
+# Use this variable to scale the values if you are running the tests with more or fewer nodes.
+SCALE_FACTOR = 1.0
+
+assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
+
+
 # Test Configuration
-# --------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
-# Represents a Java option and a set of values for it that we will sweep over in a test run.
-class JavaOptionSet:
-  def __init__(self, name, vals):
+class OptionSet(object):
+  """Represents an option and a set of values for it to sweep over."""
+  def __init__(self, name, vals, can_scale=False):
     self.name = name
     self.vals = vals
-  def to_array(self):
-    return ["-D%s=%s" % (self.name, val) for val in self.vals]
+    self.can_scale = can_scale
 
-# Represents an option and a set of values for that option that we will sweep over in a test run.
-class OptionSet:
-  def __init__(self, name, vals):
-    self.name = name
-    self.vals = vals
-  def to_array(self):
-    return ["--%s=%s" % (self.name, val) for val in self.vals]
+  def scaled_vals(self, scale_factor):
+    """If this class can_scale, then return scaled vals. Else return values as-is."""
+    if self.can_scale:
+      return [max(1, int(val * scale_factor)) for val in self.vals]
+    else:
+      return [val for val in self.vals]
+
+  def to_array(self, scale_factor = 1.0):
+    """
+    Return array of strings each representing a command line option name/value pair.
+    If can_scale is True, all values will be multipled by scale_factor before being returned.
+    """
+    return ["--%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
+
+
+class JavaOptionSet(OptionSet):
+  def __init__(self, name, vals, can_scale=False):
+    OptionSet.__init__(self, name, vals, can_scale)
+
+  def to_array(self, scale_factor = 1.0):
+    """Return array of strings each representing a Java option name/value pair."""
+    return ["-D%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
 
 # Represents a flag-style option and a set of values that
 # we will sweep over in a test run. Values can be True or False.
@@ -67,29 +84,27 @@ class FlagSet:
     return ["--%s" % self.name if val is True else "" for val in self.vals]
 
 
-# Set up OptionSets.
-# Note that giant cross product is done over all JavaOptionsSets + OptionSets passed to each test
-# which may be combinations of those set up here.
-# --------------------------------------------------------
+# Set up OptionSets. Note that giant cross product is done over all JavaOptionsSets + OptionSets
+# passed to each test which may be combinations of those set up here.
 
 # Java options.
-common_java_opts = [
-  # Fraction of JVM memory used for caching RDDs
+COMMON_JAVA_OPTS = {
+  # Fraction of JVM memory used for caching RDDs.
   JavaOptionSet("spark.storage.memoryFraction", [0.66]),
-  # Type of serialization used: spark.JavaSerializer, spark.KryoSerializer
-  JavaOptionSet("spark.serializer", ["spark.JavaSerializer"])
-]
+  JavaOptionSet("spark.serializer", ["spark.JavaSerializer"]),
+  JavaOptionSet("spark.executor.memory", ["9g"])
+}
 
 # The following options value sets are shared among all tests.
-common_opts = [
+COMMON_OPTS = [
   # How many times to run each experiment - used to warm up system caches.
   # This OptionSet should probably only have a single value (i.e., length 1)
   # since it doesn't make sense to have multiple values here.
-  OptionSet("num-trials", [2]),
+  OptionSet("num-trials", [5]),
   # The number of input partitions.
-  OptionSet("num-partitions", [3]),
+  OptionSet("num-partitions", [400], True),
   # The number of reduce tasks.
-  OptionSet("reduce-tasks", [4]),
+  OptionSet("reduce-tasks", [400], True),
   # A random seed to make tests reproducable.
   OptionSet("random-seed", [5]),
   # Input persistence strategy (can be "memory" or "disk").
@@ -100,33 +115,44 @@ common_opts = [
 
 # The following options value sets are shared among all tests of
 # operations on key-value data.
-key_val_test_opts = [
-  OptionSet("num-records",   [100]),
-  OptionSet("unique-keys",   [7]),
-  OptionSet("key-length",    [8]),
-  OptionSet("unique-values", [9]),
-  OptionSet("value-length",  [10])
+KEY_VAL_TEST_OPTS = [
+  OptionSet("num-records", [200 * 1000 * 1000], True),
+  OptionSet("unique-keys",[20 * 1000], True),
+  OptionSet("key-length", [10]),
+  OptionSet("unique-values", [1000 * 1000], True),
+  OptionSet("value-length", [10])
 ]
 
-# Set up the actual tests. Each test is represtented by a key val pair
-# where key = short_name, test_cmd, and val = list<OptionSet>.
-# @param option_space is a list with elements of type OptionSet or list of args
-# --------------------------------------------------
-kv_opts = common_opts + key_val_test_opts
-TESTS = [
-  ("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", common_java_opts, kv_opts),
-  ("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", common_java_opts, kv_opts),
-  ("scala-count", "spark.perf.TestRunner count", common_java_opts, kv_opts),
-  ("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter", common_java_opts, kv_opts)
-]
+
+# Test setup
+# ----------------------------------------------------------------------------------------
+# Set up the actual tests. Each test is represtented by a tuple: (short_name, test_cmd,
+# scale_factor, list<JavaOptionSet>, list<OptionSet>).
+
+KV_OPTS = COMMON_OPTS + KEY_VAL_TEST_OPTS
+
+TESTS = []
+
+TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, KV_OPTS)]
+
+# Scale the input for this test by an additional 0.10.
+TESTS += [("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", SCALE_FACTOR * 0.1,
+    COMMON_JAVA_OPTS, KV_OPTS)]
+
+TESTS += [("scala-count", "spark.perf.TestRunner count", SCALE_FACTOR, COMMON_JAVA_OPTS, KV_OPTS)]
+
+TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, KV_OPTS)]
+
 
 # Advanced Configuration Options
-# --------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
 # Skip downloading and building Spark (requires Spark already be built in the spark directory).
 SKIP_SPARK_PREP = False
 
-# Skip building and packaging tests (requires perf-tests already be packaged in the target 
+# Skip building and packaging tests (requires perf-tests already be packaged in the target
 # directory).
 SKIP_TEST_PREP = False
 
@@ -136,7 +162,7 @@ SKIP_DISK_WARMUP = False
 # Total number of bytes used to warm up each local directory.
 DISK_WARMUP_BYTES = 200 * 1024 * 1024
 
-# Number of files to create when warming up each local directory. Bytes will be evenly divided 
+# Number of files to create when warming up each local directory. Bytes will be evenly divided
 # across files.
 DISK_WARMUP_FILES = 200
 
