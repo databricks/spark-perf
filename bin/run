@@ -105,7 +105,13 @@ else:
   # Build Spark.
   print("Cleaning Spark and building branch %s. This may take a while...\n" % config.COMMIT_ID)
   run_cmd("git clean -f -d -x")
-  run_cmd("git reset --hard %s" % config.COMMIT_ID)
+  
+  if config.MERGE_INTO_MASTER:
+    run_cmd("git reset --hard master")
+    run_cmd("git merge %s -m ='Merging %s into master.'" % (config.COMMIT_ID, config.COMMIT_ID))
+  else:
+    run_cmd("git reset --hard %s" % config.COMMIT_ID)
+
   run_cmd("%s clean package" % sbt_cmd)
 
   # Copy Spark configuration files to new directory.
