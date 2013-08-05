@@ -78,7 +78,7 @@ class FlagSet:
   def __init__(self, name, vals):
     self.name = name
     self.vals = vals
-  def to_array(self):
+  def to_array(self, scale_factor = 1.0):
     for val in self.vals:
       assert val == True or val == False, "FlagSet value for %s is not True or False" % self.name
     return ["--%s" % self.name if val is True else "" for val in self.vals]
