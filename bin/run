@@ -46,7 +46,8 @@ def run_cmd(cmd, exit_on_fail=True, print_cmd=True):
         " %s") % (return_code, cmd)
   return return_code
 
-# Ensures that no executors are running on Spark slavs
+# Ensures that no executors are running on Spark slaves. Executors can continue to run for some
+# time after a shutdown signal is given due to cleaning up temporary files.
 def ensure_spark_stopped_on_slaves(slaves):
   stop = False
   while not stop:
