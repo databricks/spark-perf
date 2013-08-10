@@ -15,7 +15,8 @@ COMMIT_ID = ""
 MERGE_INTO_MASTER = False
 
 # File to write results to.
-OUTPUT_FILENAME = "spark_perf_output_%s" % time.strftime("%Y-%m-%d_%H-%M-%S")
+OUTPUT_FILENAME = "spark_perf_output_%s_%s" % (
+    COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 
 SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
 
