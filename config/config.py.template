@@ -6,8 +6,10 @@ import time
 # ----------------------------------------------------------------------------------------
 
 # Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO is
-# named "origin". Other than a hash code, you can also provide a branch name, or to test a pull
-# request, give a string of the format origin/pr/N to checkout pull request N.
+# named "origin". This ID can specify any of the following:
+#   1. A git commit hash   e.g. "4af93ff3"
+#   2. A branch name       e.g. "origin/branch-0.7"
+#   3. A pull request      e.g. "origin/pr/675"
 COMMIT_ID = ""
 
 # Whether to merge this commit into master before testing. If the commit cannot be merged into
