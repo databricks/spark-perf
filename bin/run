@@ -44,8 +44,10 @@ def run_cmd(cmd, exit_on_fail=True, print_cmd=True):
     print(cmd)
   return_code = Popen(cmd, stdout=sys.stderr, shell=True).wait()
   if exit_on_fail:
-    assert return_code == 0, ("The following shell command finished with a non-zero returnode (%s):"
-        " %s") % (return_code, cmd)
+    if return_code != 0:
+      print "The following shell command finished with a non-zero returncode (%s): %s") % 
+          (return_code, cmd)
+      sys.exit(-1)
   return return_code
 
 # Run several commands in parallel, waiting for them all to finish.
