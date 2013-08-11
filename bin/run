@@ -65,7 +65,7 @@ def make_ssh_cmd(cmd_name, host):
 
 # Return a command which copies the supplied directory to the given host
 def make_rsync_cmd(dir_name, host):
-  return ('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s" '
+  return ('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s/" '
       '"%s:%s"') % (dir_name, host, os.path.abspath(dir_name))
 
 # Delete all files in the given directory on the specified host
