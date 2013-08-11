@@ -7,6 +7,7 @@ import os.path
 import re
 from subprocess import Popen, PIPE
 import sys
+import threading
 import time
 
 proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
@@ -69,12 +70,20 @@ def copy_dir_to_slaves(dir_name, slaves):
   time.sleep(5)
 
 
-# Run the supplied command on each host
-def run_remote_cmd(cmd_name, hosts, exit_on_fail=True):
+def run_remote_cmd_parallel(cmd_name, hosts, exit_on_fail=True):
+  threads = []
   for host in hosts:
-    print("Running command on host %s." % host)
-    run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (host, cmd_name), 
-        exit_on_fail)
+    thread = threading.Thread(target=run_remote_cmd, args=(cmd_name, host, exit_on_fail))
+    thread.start()
+    threads = threads + [thread]
+  for thread in threads:
+    thread.join()
+
+# Run the supplied command on the given host
+def run_remote_cmd(cmd_name, host, exit_on_fail=True):
+  print("Running command on host %s." % host)
+  run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (host, cmd_name), 
+      exit_on_fail)
 
 # Delete all files in the given directory on the specified host
 def clear_dir(dir_name, hosts):
@@ -85,7 +94,7 @@ def clear_dir(dir_name, hosts):
       "[y, n] " % (dir_name, hosts))
     if response != "y":
       return
-  run_remote_cmd("rm -r %s/*" % dir_name, hosts, False)
+  run_remote_cmd_parallel("rm -r %s/*" % dir_name, hosts, False)
 
 slaves_file_raw = open("%s/slaves" % config.SPARK_CONF_DIR, 'r').read().split("\n")
 slaves_list = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
@@ -196,8 +205,8 @@ if not config.SKIP_DISK_WARMUP:
 
     print("Generating test data for %s, this may take some time" % d)
     slaves_and_master = slaves_list + ["localhost"]
-    run_remote_cmd(dir_command, slaves_and_master)
-    run_remote_cmd(gen_command, slaves_and_master)
+    run_remote_cmd_parallel(dir_command, slaves_and_master)
+    run_remote_cmd_parallel(gen_command, slaves_and_master)
     clear_dir(d, slaves_and_master)    
 
 # Some utility functions to calculate useful stats on test output.
