@@ -10,7 +10,7 @@ import sys
 import threading
 import time
 
-proj_dir = os.path.dirname(os.path.abspath(__file__)) + "/.." 
+proj_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..")) 
 sbt_cmd = "sbt/sbt"
 
 parser = argparse.ArgumentParser(description='Run Spark peformance tests. Before running, edit the supplied configuration file.')
@@ -26,6 +26,7 @@ assert os.path.isfile(args.config_file), ("Please create a config file called %s
     "just want to copy and then modify %s/config/config.py.template)" % 
     (args.config_file, proj_dir))
 
+print "Detected project directory: %s" % proj_dir
 # Import the configuration settings from the config file.
 print("Adding %s to path" % os.path.dirname(args.config_file))
 sys.path.append(os.path.dirname(args.config_file))
@@ -47,6 +48,37 @@ def run_cmd(cmd, exit_on_fail=True, print_cmd=True):
         " %s") % (return_code, cmd)
   return return_code
 
+# Run several commands in parallel, waiting for them all to finish.
+# Expects an array of tuples, where each tuple consists of (command_name, exit_on_fail)
+def run_cmds_parallel(commands):
+  threads = []
+  for (cmd_name, exit_on_fail) in commands:
+    thread = threading.Thread(target=run_cmd, args=(cmd_name, exit_on_fail))
+    thread.start()
+    threads = threads + [thread]
+  for thread in threads:
+    thread.join()
+
+# Return a command running cmd_name on host with proper SSH configs
+def make_ssh_cmd(cmd_name, host):
+  return "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (host, cmd_name)
+
+# Return a command which copies the supplied directory to the given host
+def make_rsync_cmd(dir_name, host):
+  return ('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s" '
+      '"%s:%s"') % (dir_name, host, os.path.abspath(dir_name))
+
+# Delete all files in the given directory on the specified host
+def clear_dir(dir_name, hosts):
+  assert dir_name != "" and dir_name != "/", ("Attempted to delete directory '%s/*', halting "
+    "rather than deleting entire file system.") % dir_name
+  if config.PROMPT_FOR_DELETES:
+    response = raw_input("\nAbout to remove all files and directories under %s on %s, is this ok? "
+      "[y, n] " % (dir_name, hosts))
+    if response != "y":
+      return
+  run_cmds_parallel([(make_ssh_cmd("rm -r %s/*" % dir_name, host), False) for host in hosts])
+
 # Ensures that no executors are running on Spark slaves. Executors can continue to run for some
 # time after a shutdown signal is given due to cleaning up temporary files.
 def ensure_spark_stopped_on_slaves(slaves):
@@ -59,42 +91,6 @@ def ensure_spark_stopped_on_slaves(slaves):
       time.sleep(10)
     else:
       stop = True
-
-# Copy a directory to a list of slaves. Provides similar functionality to
-# spark-ec2/copy-dir (this is a port of that actually).
-def copy_dir_to_slaves(dir_name, slaves):
-  for slave in slaves:
-    print("rsync'ing %s to slave %s" % (dir_name, slave))
-    run_cmd('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s" '
-        '"%s:%s"' % (dir_name, slave.strip(), os.path.abspath(dir_name)))
-  time.sleep(5)
-
-
-def run_remote_cmd_parallel(cmd_name, hosts, exit_on_fail=True):
-  threads = []
-  for host in hosts:
-    thread = threading.Thread(target=run_remote_cmd, args=(cmd_name, host, exit_on_fail))
-    thread.start()
-    threads = threads + [thread]
-  for thread in threads:
-    thread.join()
-
-# Run the supplied command on the given host
-def run_remote_cmd(cmd_name, host, exit_on_fail=True):
-  print("Running command on host %s." % host)
-  run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (host, cmd_name), 
-      exit_on_fail)
-
-# Delete all files in the given directory on the specified host
-def clear_dir(dir_name, hosts):
-  assert dir_name != "" and dir_name != "/", ("Attempted to delete directory '%s/*', halting "
-    "rather than deleting entire file system.") % dir_name
-  if config.PROMPT_FOR_DELETES:
-    response = raw_input("\nAbout to remove all files and directories under %s on %s, is this ok? "
-      "[y, n] " % (dir_name, hosts))
-    if response != "y":
-      return
-  run_remote_cmd_parallel("rm -r %s/*" % dir_name, hosts, False)
 
 slaves_file_raw = open("%s/slaves" % config.SPARK_CONF_DIR, 'r').read().split("\n")
 slaves_list = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
@@ -168,7 +164,7 @@ else:
 
 # Sync the whole directory to the slaves. 
 print("Syncing the test directory to the slaves.")
-copy_dir_to_slaves(proj_dir, slaves_list)
+run_cmds_parallel([(make_rsync_cmd(proj_dir, slave), True) for slave in slaves_list])
 
 # Start our Spark cluster.
 print("Starting a Spark standalone cluster to use for testing...")
@@ -204,10 +200,10 @@ if not config.SKIP_DISK_WARMUP:
     clear_command = "rm -f %s/*" % d
 
     print("Generating test data for %s, this may take some time" % d)
-    slaves_and_master = slaves_list + ["localhost"]
-    run_remote_cmd_parallel(dir_command, slaves_and_master)
-    run_remote_cmd_parallel(gen_command, slaves_and_master)
-    clear_dir(d, slaves_and_master)    
+    all_hosts = slaves_list + ["localhost"]
+    run_cmds_parallel([(make_ssh_cmd(dir_command, host), True) for host in all_hosts])
+    run_cmds_parallel([(make_ssh_cmd(gen_command, host), True) for host in all_hosts])
+    clear_dir(d, all_hosts)    
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
