@@ -69,22 +69,23 @@ def copy_dir_to_slaves(dir_name, slaves):
   time.sleep(5)
 
 
-# Run the supplied command on each slave.
-def run_cmd_on_slaves(cmd_name, slaves):
-  for slave in slaves:
-    print("Running command on slave %s." % slave)
-    run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (slave, cmd_name))
+# Run the supplied command on each host
+def run_remote_cmd(cmd_name, hosts, exit_on_fail=True):
+  for host in hosts:
+    print("Running command on host %s." % host)
+    run_cmd("ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (host, cmd_name), 
+        exit_on_fail)
 
-# Delete all files in the given directory
-def clear_dir(dir_name):
+# Delete all files in the given directory on the specified host
+def clear_dir(dir_name, hosts):
   assert dir_name != "" and dir_name != "/", ("Attempted to delete directory '%s/*', halting "
     "rather than deleting entire file system.") % dir_name
   if config.PROMPT_FOR_DELETES:
-    response = raw_input("\nAbout to remove all files and directories under %s, is this ok? "
-      "[y, n] " % dir_name)
+    response = raw_input("\nAbout to remove all files and directories under %s on %s, is this ok? "
+      "[y, n] " % (dir_name, hosts))
     if response != "y":
       return
-  run_cmd("rm -r %s/*" % dir_name, False)
+  run_remote_cmd("rm -r %s/*" % dir_name, hosts, False)
 
 slaves_file_raw = open("%s/slaves" % config.SPARK_CONF_DIR, 'r').read().split("\n")
 slaves_list = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
@@ -148,7 +149,7 @@ else:
 
 # Building the perf-tests code against the downloaded version of Spark.
 print("Building perf-tests...")
-clear_dir("%s/spark/work" % proj_dir)
+clear_dir("%s/spark/work" % proj_dir, ["localhost"])
 if config.SKIP_TEST_PREP:
   test_jar = "%s/target/perf-tests-assembly.jar" % proj_dir
   assert os.path.exists(test_jar), ("You tried to skip packaging the perf tests, but %s was not "
@@ -191,16 +192,13 @@ if not config.SKIP_DISK_WARMUP:
         bytes_to_write, bytes_per_file, d)
     # Ensures the directory exists
     dir_command = "mkdir -p %s" % d
+    clear_command = "rm -f %s/*" % d
 
     print("Generating test data for %s, this may take some time" % d)
-    run_cmd(dir_command)
-    run_cmd(gen_command)
-    run_cmd_on_slaves(dir_command, slaves_list)
-    run_cmd_on_slaves(gen_command, slaves_list)
-
-map(clear_dir, spark_local_dirs)
-for d in spark_local_dirs:
-  copy_dir_to_slaves(d, slaves_list)
+    slaves_and_master = slaves_list + ["localhost"]
+    run_remote_cmd(dir_command, slaves_and_master)
+    run_remote_cmd(gen_command, slaves_and_master)
+    clear_dir(d, slaves_and_master)    
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
