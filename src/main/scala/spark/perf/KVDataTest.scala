@@ -71,8 +71,6 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
       valueLength, numPartitions, randomSeed, persistenceType)
   }
 
-  override def getParams = options.map(_._1).map(o => (o, optionSet.valueOf(o).toString))
-
   override def run(): Seq[Double] = {
     val numTrials = optionSet.valueOf(NUM_TRIALS._1).asInstanceOf[Int]
     val reduceTasks = optionSet.valueOf(REDUCE_TASKS._1).asInstanceOf[Int]

@@ -104,7 +104,12 @@ COMMON_OPTS = [
     # How many times to run each experiment - used to warm up system caches.
     # This OptionSet should probably only have a single value (i.e., length 1)
     # since it doesn't make sense to have multiple values here.
-    OptionSet("num-trials", [5]),
+    OptionSet("num-trials", [5])
+]
+
+# The following options value sets are shared among all tests of
+# operations on key-value data.
+KEY_VAL_TEST_OPTS = [
     # The number of input partitions.
     OptionSet("num-partitions", [400], True),
     # The number of reduce tasks.
@@ -114,16 +119,16 @@ COMMON_OPTS = [
     # Input persistence strategy (can be "memory" or "disk").
     OptionSet("persistent-type", ["memory"]),
     # Whether to wait for input in order to exit the JVM.
-    FlagSet("wait-for-exit", [False])
-]
-
-# The following options value sets are shared among all tests of
-# operations on key-value data.
-KEY_VAL_TEST_OPTS = [
+    FlagSet("wait-for-exit", [False]),
+  
     OptionSet("num-records", [200 * 1000 * 1000], True),
+  
     OptionSet("unique-keys",[20 * 1000], True),
+  
     OptionSet("key-length", [10]),
+  
     OptionSet("unique-values", [1000 * 1000], True),
+  
     OptionSet("value-length", [10])
 ]
 
@@ -136,6 +141,9 @@ KEY_VAL_TEST_OPTS = [
 KV_OPTS = COMMON_OPTS + KEY_VAL_TEST_OPTS
 
 TESTS = []
+
+TESTS += [("scheduling-tput", "spark.perf.TestRunner scheduling-throughput", SCALE_FACTOR,
+  COMMON_JAVA_OPTS, [OptionSet("num-tasks", [10 * 1000])] + COMMON_OPTS)]
 
 TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", SCALE_FACTOR,
     COMMON_JAVA_OPTS, KV_OPTS)]

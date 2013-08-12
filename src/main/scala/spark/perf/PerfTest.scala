@@ -4,9 +4,6 @@ trait PerfTest {
   /** Initialize internal state based on arguments */
   def initialize(args: Array[String])
 
-  /** Get parameters used in during the trials. */
-  def getParams: Seq[(String, String)]
-
   /** Create stored or otherwise materialized input data */
   def createInputData()
 
