@@ -50,7 +50,7 @@ def run_cmd(cmd, exit_on_fail=True):
   return return_code
 
 # Run several commands in parallel, waiting for them all to finish.
-# Expects an array of tuples, where each tuple consists of (command_name, exit_on_fail)
+# Expects an array of tuples, where each tuple consists of (command_name, exit_on_fail).
 def run_cmds_parallel(commands):
   threads = []
   for (cmd_name, exit_on_fail) in commands:
@@ -60,16 +60,16 @@ def run_cmds_parallel(commands):
   for thread in threads:
     thread.join()
 
-# Return a command running cmd_name on host with proper SSH configs
+# Return a command running cmd_name on host with proper SSH configs.
 def make_ssh_cmd(cmd_name, host):
   return "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 %s '%s'" % (host, cmd_name)
 
-# Return a command which copies the supplied directory to the given host
+# Return a command which copies the supplied directory to the given host.
 def make_rsync_cmd(dir_name, host):
   return ('rsync --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5" -az "%s/" '
       '"%s:%s"') % (dir_name, host, os.path.abspath(dir_name))
 
-# Delete all files in the given directory on the specified hosts
+# Delete all files in the given directory on the specified hosts.
 def clear_dir(dir_name, hosts):
   assert dir_name != "" and dir_name != "/", ("Attempted to delete directory '%s/*', halting "
     "rather than deleting entire file system.") % dir_name
@@ -85,8 +85,8 @@ def clear_dir(dir_name, hosts):
 def ensure_spark_stopped_on_slaves(slaves):
   stop = False
   while not stop:
-    cmd = "ssh %s 'ps -ef |grep -v grep |grep ExecutorBackend'"
-    ret_vals = map(lambda s: run_cmd(cmd % s, False), slaves)
+    cmd = "ps -ef |grep -v grep |grep ExecutorBackend"
+    ret_vals = map(lambda s: run_cmd(make_ssh_cmd(cmd, s), False), slaves)
     if 0 in ret_vals:
       print "Spark is still running on some slaves... sleeping"
       time.sleep(10)
@@ -105,9 +105,9 @@ if os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir):
   print("Stopping Spark standalone cluster...")
   run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
 
-# Ensure all shutdowns have completed (no executors are running)
+# Ensure all shutdowns have completed (no executors are running).
 ensure_spark_stopped_on_slaves(slaves_list)
-# Allow some extra time for slaves to fully terminate
+# Allow some extra time for slaves to fully terminate.
 time.sleep(5) 
 
 # Prep Spark (unless arg was passed that causes this to be skipped).
@@ -196,7 +196,7 @@ if not config.SKIP_DISK_WARMUP:
     bytes_per_file = bytes_to_write / config.DISK_WARMUP_FILES
     gen_command = "dd if=/dev/urandom bs=%s count=1 | split -a 5 -b %s - %s/random" % (
         bytes_to_write, bytes_per_file, d)
-    # Ensures the directory exists
+    # Ensures the directory exists.
     dir_command = "mkdir -p %s" % d
     clear_command = "rm -f %s/*" % d
 
