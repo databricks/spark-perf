@@ -7,9 +7,9 @@ import time
 
 # Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO is
 # named "origin". This ID can specify any of the following:
-#   1. A git commit hash   e.g. "4af93ff3"
-#   2. A branch name       e.g. "origin/branch-0.7"
-#   3. A pull request      e.g. "origin/pr/675"
+#     1. A git commit hash     e.g. "4af93ff3"
+#     2. A branch name             e.g. "origin/branch-0.7"
+#     3. A pull request            e.g. "origin/pr/675"
 COMMIT_ID = ""
 
 # Whether to merge this commit into master before testing. If the commit cannot be merged into
@@ -46,45 +46,46 @@ assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
 # ----------------------------------------------------------------------------------------
 
 class OptionSet(object):
-  """Represents an option and a set of values for it to sweep over."""
-  def __init__(self, name, vals, can_scale=False):
-    self.name = name
-    self.vals = vals
-    self.can_scale = can_scale
+    """Represents an option and a set of values for it to sweep over."""
+    def __init__(self, name, vals, can_scale=False):
+        self.name = name
+        self.vals = vals
+        self.can_scale = can_scale
 
-  def scaled_vals(self, scale_factor):
-    """If this class can_scale, then return scaled vals. Else return values as-is."""
-    if self.can_scale:
-      return [max(1, int(val * scale_factor)) for val in self.vals]
-    else:
-      return [val for val in self.vals]
+    def scaled_vals(self, scale_factor):
+        """If this class can_scale, then return scaled vals. Else return values as-is."""
+        if self.can_scale:
+            return [max(1, int(val * scale_factor)) for val in self.vals]
+        else:
+            return [val for val in self.vals]
 
-  def to_array(self, scale_factor = 1.0):
-    """
-    Return array of strings each representing a command line option name/value pair.
-    If can_scale is True, all values will be multipled by scale_factor before being returned.
-    """
-    return ["--%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
+    def to_array(self, scale_factor = 1.0):
+        """
+        Return array of strings each representing a command line option name/value pair.
+        If can_scale is True, all values will be multipled by scale_factor before being returned.
+        """
+        return ["--%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
 
 
 class JavaOptionSet(OptionSet):
-  def __init__(self, name, vals, can_scale=False):
-    OptionSet.__init__(self, name, vals, can_scale)
+    def __init__(self, name, vals, can_scale=False):
+        OptionSet.__init__(self, name, vals, can_scale)
 
-  def to_array(self, scale_factor = 1.0):
-    """Return array of strings each representing a Java option name/value pair."""
-    return ["-D%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
+    def to_array(self, scale_factor = 1.0):
+        """Return array of strings each representing a Java option name/value pair."""
+        return ["-D%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
 
 # Represents a flag-style option and a set of values that
 # we will sweep over in a test run. Values can be True or False.
 class FlagSet:
-  def __init__(self, name, vals):
-    self.name = name
-    self.vals = vals
-  def to_array(self, scale_factor = 1.0):
-    for val in self.vals:
-      assert val == True or val == False, "FlagSet value for %s is not True or False" % self.name
-    return ["--%s" % self.name if val is True else "" for val in self.vals]
+    def __init__(self, name, vals):
+        self.name = name
+        self.vals = vals
+    def to_array(self, scale_factor = 1.0):
+        for val in self.vals:
+            assert val == True or val == False, ("FlagSet value for %s is not True or False" % 
+                self.name)
+        return ["--%s" % self.name if val is True else "" for val in self.vals]
 
 
 # Set up OptionSets. Note that giant cross product is done over all JavaOptionsSets + OptionSets
@@ -92,38 +93,38 @@ class FlagSet:
 
 # Java options.
 COMMON_JAVA_OPTS = [
-  # Fraction of JVM memory used for caching RDDs.
-  JavaOptionSet("spark.storage.memoryFraction", [0.66]),
-  JavaOptionSet("spark.serializer", ["spark.JavaSerializer"]),
-  JavaOptionSet("spark.executor.memory", ["9g"])
+    # Fraction of JVM memory used for caching RDDs.
+    JavaOptionSet("spark.storage.memoryFraction", [0.66]),
+    JavaOptionSet("spark.serializer", ["spark.JavaSerializer"]),
+    JavaOptionSet("spark.executor.memory", ["9g"])
 ]
 
 # The following options value sets are shared among all tests.
 COMMON_OPTS = [
-  # How many times to run each experiment - used to warm up system caches.
-  # This OptionSet should probably only have a single value (i.e., length 1)
-  # since it doesn't make sense to have multiple values here.
-  OptionSet("num-trials", [5]),
-  # The number of input partitions.
-  OptionSet("num-partitions", [400], True),
-  # The number of reduce tasks.
-  OptionSet("reduce-tasks", [400], True),
-  # A random seed to make tests reproducable.
-  OptionSet("random-seed", [5]),
-  # Input persistence strategy (can be "memory" or "disk").
-  OptionSet("persistent-type", ["memory"]),
-  # Whether to wait for input in order to exit the JVM.
-  FlagSet("wait-for-exit", [False])
+    # How many times to run each experiment - used to warm up system caches.
+    # This OptionSet should probably only have a single value (i.e., length 1)
+    # since it doesn't make sense to have multiple values here.
+    OptionSet("num-trials", [5]),
+    # The number of input partitions.
+    OptionSet("num-partitions", [400], True),
+    # The number of reduce tasks.
+    OptionSet("reduce-tasks", [400], True),
+    # A random seed to make tests reproducable.
+    OptionSet("random-seed", [5]),
+    # Input persistence strategy (can be "memory" or "disk").
+    OptionSet("persistent-type", ["memory"]),
+    # Whether to wait for input in order to exit the JVM.
+    FlagSet("wait-for-exit", [False])
 ]
 
 # The following options value sets are shared among all tests of
 # operations on key-value data.
 KEY_VAL_TEST_OPTS = [
-  OptionSet("num-records", [200 * 1000 * 1000], True),
-  OptionSet("unique-keys",[20 * 1000], True),
-  OptionSet("key-length", [10]),
-  OptionSet("unique-values", [1000 * 1000], True),
-  OptionSet("value-length", [10])
+    OptionSet("num-records", [200 * 1000 * 1000], True),
+    OptionSet("unique-keys",[20 * 1000], True),
+    OptionSet("key-length", [10]),
+    OptionSet("unique-values", [1000 * 1000], True),
+    OptionSet("value-length", [10])
 ]
 
 
