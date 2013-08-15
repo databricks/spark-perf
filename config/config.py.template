@@ -57,6 +57,8 @@ COMMON_JAVA_OPTS = [
     JavaOptionSet("spark.storage.memoryFraction", [0.66]),
     JavaOptionSet("spark.serializer", ["spark.JavaSerializer"]),
     JavaOptionSet("spark.executor.memory", ["9g"])
+    # To ensure consistency across runs, we disable delay scheduling
+    JavaOptionSet("spark.locality.wait", [str(60 * 1000 * 1000)])
 ]
 
 # The following options value sets are shared among all tests.
@@ -80,15 +82,15 @@ KEY_VAL_TEST_OPTS = [
     OptionSet("persistent-type", ["memory"]),
     # Whether to wait for input in order to exit the JVM.
     FlagSet("wait-for-exit", [False]),
-  
+    # Total number of records to create.  
     OptionSet("num-records", [200 * 1000 * 1000], True),
-  
+    # Number of unique keys to sample from.
     OptionSet("unique-keys",[20 * 1000], True),
-  
+    # Length in characters of each key.
     OptionSet("key-length", [10]),
-  
+    # Number of unique values to sample from.
     OptionSet("unique-values", [1000 * 1000], True),
-  
+    # Length in characters of each value.
     OptionSet("value-length", [10])
 ]
 
