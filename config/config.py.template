@@ -1,8 +1,9 @@
 """Configuration options for running the Spark performance tests (perf-tests)."""
 
+import time
+
 from config_utils import FlagSet
 from config_utils import JavaOptionSet
-import time
 from config_utils import OptionSet
 
 # Standard Configuration Options
