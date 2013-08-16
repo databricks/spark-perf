@@ -20,6 +20,7 @@ object TestRunner {
         case "sort-by-key" => new SortByKey(sc)
         case "count" => new Count(sc)
         case "count-with-filter" => new CountWithFilter(sc)
+        case "scheduling-throughput" => new SchedulerThroughputTest(sc)
     }
     test.initialize(otherArgs)
     test.createInputData()

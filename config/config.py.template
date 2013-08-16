@@ -2,6 +2,10 @@
 
 import time
 
+from config_utils import FlagSet
+from config_utils import JavaOptionSet
+from config_utils import OptionSet
+
 # Standard Configuration Options
 # ----------------------------------------------------------------------------------------
 
@@ -45,49 +49,6 @@ assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
 # Test Configuration
 # ----------------------------------------------------------------------------------------
 
-class OptionSet(object):
-    """Represents an option and a set of values for it to sweep over."""
-    def __init__(self, name, vals, can_scale=False):
-        self.name = name
-        self.vals = vals
-        self.can_scale = can_scale
-
-    def scaled_vals(self, scale_factor):
-        """If this class can_scale, then return scaled vals. Else return values as-is."""
-        if self.can_scale:
-            return [max(1, int(val * scale_factor)) for val in self.vals]
-        else:
-            return [val for val in self.vals]
-
-    def to_array(self, scale_factor = 1.0):
-        """
-        Return array of strings each representing a command line option name/value pair.
-        If can_scale is True, all values will be multipled by scale_factor before being returned.
-        """
-        return ["--%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
-
-
-class JavaOptionSet(OptionSet):
-    def __init__(self, name, vals, can_scale=False):
-        OptionSet.__init__(self, name, vals, can_scale)
-
-    def to_array(self, scale_factor = 1.0):
-        """Return array of strings each representing a Java option name/value pair."""
-        return ["-D%s=%s" % (self.name, val) for val in self.scaled_vals(scale_factor)]
-
-# Represents a flag-style option and a set of values that
-# we will sweep over in a test run. Values can be True or False.
-class FlagSet:
-    def __init__(self, name, vals):
-        self.name = name
-        self.vals = vals
-    def to_array(self, scale_factor = 1.0):
-        for val in self.vals:
-            assert val == True or val == False, ("FlagSet value for %s is not True or False" % 
-                self.name)
-        return ["--%s" % self.name if val is True else "" for val in self.vals]
-
-
 # Set up OptionSets. Note that giant cross product is done over all JavaOptionsSets + OptionSets
 # passed to each test which may be combinations of those set up here.
 
@@ -96,7 +57,9 @@ COMMON_JAVA_OPTS = [
     # Fraction of JVM memory used for caching RDDs.
     JavaOptionSet("spark.storage.memoryFraction", [0.66]),
     JavaOptionSet("spark.serializer", ["spark.JavaSerializer"]),
-    JavaOptionSet("spark.executor.memory", ["9g"])
+    JavaOptionSet("spark.executor.memory", ["9g"]),
+    # To ensure consistency across runs, we disable delay scheduling
+    JavaOptionSet("spark.locality.wait", [str(60 * 1000 * 1000)])
 ]
 
 # The following options value sets are shared among all tests.
@@ -104,7 +67,12 @@ COMMON_OPTS = [
     # How many times to run each experiment - used to warm up system caches.
     # This OptionSet should probably only have a single value (i.e., length 1)
     # since it doesn't make sense to have multiple values here.
-    OptionSet("num-trials", [5]),
+    OptionSet("num-trials", [5])
+]
+
+# The following options value sets are shared among all tests of
+# operations on key-value data.
+KEY_VAL_TEST_OPTS = [
     # The number of input partitions.
     OptionSet("num-partitions", [400], True),
     # The number of reduce tasks.
@@ -114,16 +82,16 @@ COMMON_OPTS = [
     # Input persistence strategy (can be "memory" or "disk").
     OptionSet("persistent-type", ["memory"]),
     # Whether to wait for input in order to exit the JVM.
-    FlagSet("wait-for-exit", [False])
-]
-
-# The following options value sets are shared among all tests of
-# operations on key-value data.
-KEY_VAL_TEST_OPTS = [
+    FlagSet("wait-for-exit", [False]),
+    # Total number of records to create.  
     OptionSet("num-records", [200 * 1000 * 1000], True),
+    # Number of unique keys to sample from.
     OptionSet("unique-keys",[20 * 1000], True),
+    # Length in characters of each key.
     OptionSet("key-length", [10]),
+    # Number of unique values to sample from.
     OptionSet("unique-values", [1000 * 1000], True),
+    # Length in characters of each value.
     OptionSet("value-length", [10])
 ]
 
@@ -136,6 +104,9 @@ KEY_VAL_TEST_OPTS = [
 KV_OPTS = COMMON_OPTS + KEY_VAL_TEST_OPTS
 
 TESTS = []
+
+TESTS += [("scheduling-tput", "spark.perf.TestRunner scheduling-throughput", SCALE_FACTOR,
+  COMMON_JAVA_OPTS, [OptionSet("num-tasks", [10 * 1000])] + COMMON_OPTS)]
 
 TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", SCALE_FACTOR,
     COMMON_JAVA_OPTS, KV_OPTS)]
