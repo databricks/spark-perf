@@ -26,5 +26,6 @@ object TestRunner {
     test.createInputData()
     val results = test.run()
     println("results: " + results.map(r => "%.3f".format(r)).mkString(","))
-  }
+  }                                 ls
+
 }

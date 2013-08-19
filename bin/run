@@ -242,13 +242,13 @@ for short_name, test_cmd, scale_factor, java_opt_sets, opt_sets in config.TESTS:
                 sys.exit(1)
             result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
             result_list = result_line.replace(results_token, "").split(",")
+            result_first = result_list[0]
+            result_last = result_list[len(result_list) - 1]
             # TODO(andy): For even cardinality lists, return average of middle two elts.
             result_list = sorted([float(x) for x in result_list])
             result_med = result_list[len(result_list)/2]
             result_std = sqrt(variance(result_list))
             result_min = min(result_list)
-            result_first = result_list[0]
-            result_last = result_list[len(result_list) - 1]
             result_string = "%s, %s, %s, %.3f, %s, %s, %s" % (short_name, " ".join(opt_list), 
                 result_med, result_std, result_min, result_first, result_last)
             print(result_string)
