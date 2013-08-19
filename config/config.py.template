@@ -45,6 +45,11 @@ SCALE_FACTOR = 1.0
 
 assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
 
+# If set, removes the first N trials for each test from all reported statistics. Useful for
+# tests which have outlier behavior due to JIT and other system cache warm-ups. If any test
+# returns fewer N + 1 results, an exception is thrown.
+IGNORED_TRIALS = 0
+
 
 # Test Configuration
 # ----------------------------------------------------------------------------------------
