@@ -67,7 +67,9 @@ COMMON_OPTS = [
     # How many times to run each experiment - used to warm up system caches.
     # This OptionSet should probably only have a single value (i.e., length 1)
     # since it doesn't make sense to have multiple values here.
-    OptionSet("num-trials", [5])
+    OptionSet("num-trials", [5]),
+    # Extra pause added between trials, in seconds
+    OptionSet("inter-trial-wait", [30])
 ]
 
 # The following options value sets are shared among all tests of
