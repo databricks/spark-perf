@@ -4,9 +4,10 @@ This is a framework for repeatedly running a suite of performance tests for the 
 
 ## Running the Tests
 1. Start a spark cluster for the tests using the [Spark EC2 scripts](http://spark-project.org/docs/latest/ec2-scripts.html)
-2. SSH into the Spark master and git clone perf-tests
-3. cd perfs-tests
+2. SSH into the Spark master and git clone spark-perf
+3. cd spark-perf
 4. copy config/config.py.template to config/config.py and modify as necessary. Specifically, you must set COMMIT_ID.
+5. execute bin/run (requires argparse which comes with Python 2.7, can be installed by running easy_install argparse)
 
 ## Developing and Running on a Non-EC2 Cluster
 The default configuration settings aim to make it easy to run on Amazon using the Spark EC2
