@@ -7,7 +7,7 @@ This is a framework for repeatedly running a suite of performance tests for the 
 2. SSH into the Spark master and git clone spark-perf
 3. cd spark-perf
 4. copy config/config.py.template to config/config.py and modify as necessary. Specifically, you must set COMMIT_ID.
-5. execute bin/run (requires argparse which comes with Python 2.7, can be installed by running easy_install argparse)
+5. execute bin/run
 
 ## Developing and Running on a Non-EC2 Cluster
 The default configuration settings aim to make it easy to run on Amazon using the Spark EC2
@@ -17,6 +17,11 @@ testing this framework, we recommend running a master and slave daemon on your d
 This exercises production code paths and avoids the need for extra code to support testing
 locally. See DEVELOPER-NOTES.txt for a list of the variables you probably want to update and
 possible suggestions for values to use.
+
+## Requirements
+The script requires Python 2.7. For earlier versions of Python, argparse might need to be installed, 
+which can be done using easy_install argparse.
+
 
 ## Acknowledgements
 Questions or comments, contact @pwendell or @andyk.
