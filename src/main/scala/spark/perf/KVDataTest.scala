@@ -12,9 +12,10 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
 
   def runTest(rdd: RDD[(String, String)], reduceTasks: Int)
 
-  val NUM_TRIALS =    ("num-trials",    "number of trials to run")
-  val REDUCE_TASKS =  ("reduce-tasks",  "number of reduce tasks")
-  val NUM_RECORDS =   ("num-records",   "number of input pairs")
+  val NUM_TRIALS =       ("num-trials",    "number of trials to run")
+  val REDUCE_TASKS =     ("reduce-tasks",  "number of reduce tasks")
+  val NUM_RECORDS =      ("num-records",   "number of input pairs")
+  val INTER_TRIAL_WAIT = ("inter-trial-wait",   "seconds to sleep between trials")
   val UNIQUE_KEYS =   ("unique-keys",   "(approx) number of unique keys")
   val KEY_LENGTH =    ("key-length",    "lenth of keys in characters")
   val UNIQUE_VALUES = ("unique-values", "(approx) number of unique values per key")
@@ -24,7 +25,7 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
   val PERSISTENCE_TYPE = ("persistent-type", "input persistence (memory, disk)")
   val WAIT_FOR_EXIT =    ("wait-for-exit", "JVM will not exit until input is received from stdin")
 
-  val intOptions = Seq(NUM_TRIALS, REDUCE_TASKS, KEY_LENGTH, VALUE_LENGTH, UNIQUE_KEYS,
+  val intOptions = Seq(NUM_TRIALS, INTER_TRIAL_WAIT, REDUCE_TASKS, KEY_LENGTH, VALUE_LENGTH, UNIQUE_KEYS,
     UNIQUE_VALUES, NUM_RECORDS, NUM_PARTITIONS, RANDOM_SEED)
   val stringOptions = Seq(PERSISTENCE_TYPE)
   val booleanOptions = Seq(WAIT_FOR_EXIT)
@@ -73,13 +74,17 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
 
   override def run(): Seq[Double] = {
     val numTrials = optionSet.valueOf(NUM_TRIALS._1).asInstanceOf[Int]
+    val interTrialWait: Int = optionSet.valueOf(INTER_TRIAL_WAIT._1).asInstanceOf[Int]
     val reduceTasks = optionSet.valueOf(REDUCE_TASKS._1).asInstanceOf[Int]
 
     val result = (1 to numTrials).map { t =>
       val start = System.currentTimeMillis()
       runTest(rdd, reduceTasks)
       val end = System.currentTimeMillis()
-      (end - start).toDouble / 1000.0
+      val time = (end - start).toDouble / 1000.0
+      System.gc()
+      Thread.sleep(interTrialWait * 1000)
+      time
     }
 
     if (waitForExit) {
