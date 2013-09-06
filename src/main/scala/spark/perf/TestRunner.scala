@@ -16,10 +16,13 @@ object TestRunner {
 
     val test =
       testName match {
+        // Spark tests.
         case "aggregate-by-key" => new AggregateByKey(sc)
         case "sort-by-key" => new SortByKey(sc)
         case "count" => new Count(sc)
         case "count-with-filter" => new CountWithFilter(sc)
+        // Shark tests.
+        // TODO(harvey): Add some tests here...
     }
     test.initialize(otherArgs)
     test.createInputData()
