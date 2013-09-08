@@ -1,6 +1,9 @@
 spark_perf_output_*
+shark_perf_output_*
 /config/config.py
 /spark
+/shark
+/hive
 target
 *.iml
 *.pyc
