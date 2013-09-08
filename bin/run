@@ -120,25 +120,25 @@ ensure_spark_stopped_on_slaves(slaves_list)
 # Allow some extra time for slaves to fully terminate.
 time.sleep(5) 
 
-# Prep Spark (unless arg was passed that causes this to be skipped).
+# Prepare Spark (unless arg was passed that causes this to be skipped).
 if config.SKIP_SPARK_PREP:
     # TODO(andy): Make this check for the jar we will be including on the
     #             classpath (as part of work Patrick is doing), instead of
     #             just looking for spark/target.
     assert os.path.exists("%s/spark/target" % proj_dir), ("You chose to skip Spark prep, but we "
         "can't since %s/spark does not exist, so Spark needs to be rebuilt/packaged.") % proj_dir
-    print("Skipping prepartion tasks for Spark (i.e, git clone or update, checkout, build, copy "
+    print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, copy "
         "conf files)")
 else:
-    # Clone or fetch updates for the Spark repository.
+    # Assumes that the preexisting 'spark' directory is valid.
     if not os.path.isdir("spark"):
-        # TODO(harvey): It might be dangerous to assume that the preexisting 'spark' directory is
-        #               valid.
+        # Clone Spark.
         print("Git cloning Spark...")
         run_cmd("git clone %s spark" % config.SPARK_GIT_REPO)
         run_cmd("cd spark; git config --add remote.origin.fetch "
             "'+refs/pull/*/head:refs/remotes/origin/pr/*'")
 
+    # Fetch updates.
     os.chdir("spark")
     print("Updating Spark repo...")
     run_cmd("git fetch")
@@ -169,13 +169,12 @@ else:
 
 # Prepare Hive (unless an arg was passed that causes this to be skipped).
 if config.SKIP_HIVE_PREP:
-    assert os.path.exists("%s/spark/target" % proj_dir), ("")
+    assert os.path.exists(
+        "%s/hive/build/dist/lib" % proj_dir), ("You chose to skip Hive prep, but we can't since " +
+        "%s/hive does not exist, so Hive needs to be rebuilt/packaged.") % proj_dir
+    print("Skipping preparation tasks for Hive (i.e, git clone, build")
 else:
-    if os.path.isdir("hive-warehouse"):
-        # Clear the Hive warehouse directory, if it already exists.
-        clear_dir("hive-warehouse", ["localhost"])
-    else:
-        os.mkdir("hive-warehouse")
+    # Assumes that the preexisting 'hive' directory is valid.
     if not os.path.isdir("hive"):
         # Clone the Hive repository.
         print("Git cloning Hive...")
@@ -190,7 +189,9 @@ else:
 
 # Prepare Shark (unless arg was passed that caues this to be skipped).
 if config.SKIP_SHARK_PREP:
-    assert os.path.exists("%s/shark/target" % proj_dir), ("")
+    assert os.path.exists("%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we "
+        "can't since %s/shark does not exist, so Shark needs to be rebuilt/packaged.") % proj_dir
+    print("Skipping preparation tasks for Shark (i.e, git clone or update, checkout, build, copy ")
 else:
     if not os.path.isdir("shark"):
         # Clone the Shark repository.
@@ -199,6 +200,7 @@ else:
         run_cmd("cd shark; git config --add remote.origin.fetch "
             "'+refs/pull/*/head:refs/remotes/origin/pr/*'")
 
+    # Fetch updates.
     os.chdir("shark")
     print("Updating Shark repo...")
     run_cmd("git fetch")
@@ -217,8 +219,7 @@ else:
 
     run_cmd("%s clean package" % sbt_cmd)
 
-    # Copy Shark configuration files to the perf-tests/shark/conf directory from the SHARK_CONF_DIR
-    # specified in config.py.
+    # Copy Shark configuration files from the SHARK_CONF_DIR specified in config.py.
     print("Copying all files from %s to %s/shark/conf/" % (config.SHARK_CONF_DIR, proj_dir))
     assert os.path.exists("%s/shark-env.sh" % config.SHARK_CONF_DIR), \
         "Could not find required file %s/shark-env.sh" % config.SHARK_CONF_DIR
@@ -230,9 +231,6 @@ else:
 
 # Build the perf-tests code against the downloaded versions of Spark and Shark/Hive.
 print("Building perf-tests...")
-# Clear the 'perf-tests/spark/work' directory, since that may contain scheduler logs from previous
-# jobs.
-clear_dir("%s/spark/work" % proj_dir, ["localhost"])
 if config.SKIP_TEST_PREP:
     test_jar = "%s/target/perf-tests-assembly.jar" % proj_dir
     assert os.path.exists(test_jar), ("You tried to skip packaging the perf tests, but %s was not "
@@ -255,6 +253,9 @@ time.sleep(5) # Starting the cluster takes a little time so give it a second.
 new_env = os.environ.copy()
 
 new_env["SPARK_HOME"] = "%s/spark" % proj_dir
+# Store Hive metastore and warehouse subdirectories created by each Shark PerfTest.
+perf_test_warehouses_dir = "%s/test-warehouses" % proj_dir
+new_env["PERF_TEST_WAREHOUSES"] = perf_test_warehouses_dir
 
 # Search for 'spark.local.dir' in spark-env.sh, or shark-env.sh if Shark is also being built. Note
 # that for the latter case, 'spark.local.dir' in shark-env.sh takes precedence.
@@ -309,10 +310,11 @@ def variance(in_list):
 # section in config.py.template for more info.
 # Results are written as CSVs to 'output_filename'.
 def run_tests(tests_to_run, test_group_name, output_filename):
+    output_divider_string = "\n--------------------------------------------------------------------"
     out_file = open(output_filename, 'w')
     for short_name, test_cmd, scale_factor, java_opt_sets, opt_sets in config.SPARK_TESTS:
-        print("\n---------------------------------------------")
-        print("Running all tests for %s.\n" % test_cmd)
+        print(output_divider_string)
+        print("Running all tests for '%s'.\n" % test_cmd)
         # Run a test for all combinations of the OptionSets given, then capture
         # and print the output.
         java_opt_set_arrays = [i.to_array(scale_factor) for i in java_opt_sets]
@@ -346,16 +348,26 @@ def run_tests(tests_to_run, test_group_name, output_filename):
                 sys.stdout.flush()
                 out_file.flush()
 
-    print("Finished running all tests in %s. See CSV output in %s" %
+    print("\nFinished running all tests in %s.\nSee CSV output in %s" %
         (test_group_name, output_filename))
+    print(output_divider_string)
 
 # Run all Spark and/or Shark tests specified in the Config file.
 # TODO(harvey): If more Spark/Shark tests will be added, it might be useful to have SPARK_TESTS be
 #               a list of 3-element tuples, each representing arguments to pass to run_tests().
+
+# Clear the 'perf-tests/spark/work' directory, since that may contain scheduler logs from previous
+# jobs.
+clear_dir("%s/spark/work" % proj_dir, ["localhost"])
 if not config.SKIP_SPARK_TESTS:
-    run_tests(config.SPARK_TESTS, "Spark Tests", config.SPARK_OUTPUT_FILENAME)
+    run_tests(config.SPARK_TESTS, "Spark-Tests", config.SPARK_OUTPUT_FILENAME)
 if not config.SKIP_SHARK_TESTS:
-    run_tests(config.SHARK_TESTS, "Shark Tests", config.SHARK_OUTPUT_FILENAME)
+    # Set up 'perf_test_warehouse'.
+    if os.path.isdir(perf_test_warehouses_dir):
+        clear_dir(perf_test_warehouses_dir, ["localhost"])
+    else:
+        os.mkdir(perf_test_warehouses_dir)
+    run_tests(config.SHARK_TESTS, "Shark-Tests", config.SHARK_OUTPUT_FILENAME)
 
 print("All tests have finished running. Stopping Spark standalone cluster ...")
 run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
