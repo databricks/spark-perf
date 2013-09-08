@@ -18,6 +18,23 @@ libraryDependencies += "com.google.guava" % "guava" % "14.0.1"
 
 unmanagedJars in Compile <++= baseDirectory map  { base =>
   val finder: PathFinder = (file("spark")) ** "*.jar"
+  println ("base: " + base)
+  finder.get
+}
+
+unmanagedJars in Compile <++= baseDirectory map  { base =>
+  val hiveFile = file("hive/build/dist") / "lib"
+  val baseDirectories = (base / "lib") +++ (hiveFile)
+  val customJars = (baseDirectories ** "*.jar")
+  // Hive uses an old version of guava that doesn't have what we want.
+  customJars.classpath
+    .filter(!_.toString.contains("guava"))
+    .filter(!_.toString.contains("log4j"))
+    .filter(!_.toString.contains("servlet"))
+}
+
+unmanagedJars in Compile <++= baseDirectory map  { base =>
+  val finder: PathFinder = (file("shark")) ** "*.jar"
   finder.get
 }
 
