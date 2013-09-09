@@ -156,15 +156,15 @@ SHARK_TABLE_GEN_OPTS = [
 # TODO(harvey): Selectivity factor could measure the performance of stitching rows back together
 #               when scanning columnar stores.
 # The following option applies to scans over tables generated using SHARK_TABLE_GEN_OPTs.
-# SHARK_TABLE_SCAN_OPTS = [
-#    OptionSet("selectivity-factor", [0.5])
-# ]
+SHARK_TABLE_SCAN_OPTS = [
+   OptionSet("selectivity-factor", [0.5])
+]
 
 # The following option controls storage formats for cached tables. Currently, the only in-memory
 # storage format for cached tables in Shark is columnar.
 SHARK_TABLE_STORAGE_OPTS = [
     # Supported compression types: "rle", "dictionary", "rle-variant", and "default".
-    # "default" means that the data will be uncompressed.
+    # Tables are uncompressed by default.
     OptionSet("column-compression-type", ["default"])
 ]
 
@@ -196,6 +196,13 @@ SHARK_TABLE_OPTS = COMMON_OPTS + SHARK_TABLE_GEN_OPTS + SHARK_TABLE_STORAGE_OPTS
 
 SHARK_TESTS = []
 
+SHARK_TABLE_SCAN_OPTS = SHARK_TABLE_OPTS + SHARK_TABLE_SCAN_OPTS
+SHARK_TESTS += [("scan-query", "shark.perf.TestRunner scan-query", SCALE_FACTOR, COMMON_JAVA_OPTS,
+    SHARK_TABLE_OPTS)]
+
+'''
+TODO(harvey): Uncomment once these tests are supported.
+
 SHARK_TESTS += [("sort-query", "shark.perf.TestRunner sort-query", SCALE_FACTOR, COMMON_JAVA_OPTS,
     SHARK_TABLE_OPTS)]
 
@@ -207,10 +214,7 @@ SHARK_TESTS += [("join-query", "shark.perf.TestRunner join-query", SCALE_FACTOR,
 
 SHARK_TESTS += [("UDF-query", "shark.perf.TestRunner udf-query", SCALE_FACTOR, COMMON_JAVA_OPTS,
     SHARK_TABLE_OPTS)]
-
-SHARK_TABLE_SCAN_OPTS = SHARK_TABLE_OPTS + SHARK_TABLE_SCAN_OPTS
-SHARK_TESTS += [("scan-query", "shark.perf.TestRunner scan-query", SCALE_FACTOR, COMMON_JAVA_OPTS,
-    SHARK_TABLE_OPTS)]
+'''
 
 # Advanced Configuration Options
 # ----------------------------------------------------------------------------------------
