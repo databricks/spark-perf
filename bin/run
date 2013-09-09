@@ -125,10 +125,10 @@ if config.SKIP_SPARK_PREP:
     # TODO(andy): Make this check for the jar we will be including on the
     #             classpath (as part of work Patrick is doing), instead of
     #             just looking for spark/target.
-    assert os.path.exists("%s/spark/target" % proj_dir), ("You chose to skip Spark prep, but we "
+    assert os.path.exists("%s/spark/target" % proj_dir), ("You chose to skip Spark prep, but we " +
         "can't since %s/spark does not exist, so Spark needs to be rebuilt/packaged.") % proj_dir
-    print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, copy "
-        "conf files)")
+    print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, " +
+        "copy conf files).")
 else:
     # Assumes that the preexisting 'spark' directory is valid.
     if not os.path.isdir("spark"):
@@ -172,7 +172,7 @@ if config.SKIP_HIVE_PREP:
     assert os.path.exists(
         "%s/hive/build/dist/lib" % proj_dir), ("You chose to skip Hive prep, but we can't since " +
         "%s/hive does not exist, so Hive needs to be rebuilt/packaged.") % proj_dir
-    print("Skipping preparation tasks for Hive (i.e, git clone, build")
+    print("Skipping preparation tasks for Hive (i.e, git clone, build).")
 else:
     # Assumes that the preexisting 'hive' directory is valid.
     if not os.path.isdir("hive"):
@@ -189,9 +189,9 @@ else:
 
 # Prepare Shark (unless arg was passed that caues this to be skipped).
 if config.SKIP_SHARK_PREP:
-    assert os.path.exists("%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we "
+    assert os.path.exists("%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we " +
         "can't since %s/shark does not exist, so Shark needs to be rebuilt/packaged.") % proj_dir
-    print("Skipping preparation tasks for Shark (i.e, git clone or update, checkout, build, copy ")
+    print("Skipping preparation tasks for Shark (i.e, git clone or update, checkout, build, copy).")
 else:
     if not os.path.isdir("shark"):
         # Clone the Shark repository.
@@ -309,7 +309,7 @@ def variance(in_list):
 # Run all tests specified in 'tests_to_run', a list of 5-element tuples. See the 'Test Setup'
 # section in config.py.template for more info.
 # Results are written as CSVs to 'output_filename'.
-def run_tests(tests_to_run, test_group_name, output_filename):
+def run_tests(scala_cmd_classpath, tests_to_run, test_group_name, output_filename):
     out_file = open(output_filename, 'w')
     num_tests_to_run = len(tests_to_run)
 
@@ -319,7 +319,7 @@ def run_tests(tests_to_run, test_group_name, output_filename):
 
     for short_name, test_cmd, scale_factor, java_opt_sets, opt_sets in tests_to_run:
         print(output_divider_string)
-        print("Running test from command: '%s' ..." % test_cmd)
+        print("Running test command: '%s' ..." % test_cmd)
         # Run a test for all combinations of the OptionSets given, then capture
         # and print the output.
         java_opt_set_arrays = [i.to_array(scale_factor) for i in java_opt_sets]
@@ -329,9 +329,8 @@ def run_tests(tests_to_run, test_group_name, output_filename):
                 ensure_spark_stopped_on_slaves(slaves_list)
                 results_token = "results: "
                 # TODO(andy): Add a timout on the subprocess.
-                classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
                 cmd = "%s %s -cp %s %s %s %s" % (config.SCALA_CMD, " ".join(java_opt_list),
-                    classpath, test_cmd, config.SPARK_CLUSTER_URL, " ".join(opt_list))
+                    scala_cmd_classpath, test_cmd, config.SPARK_CLUSTER_URL, " ".join(opt_list))
                 print("\nrunning command: %s\n" % cmd)
                 output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
                 if results_token not in output:
@@ -358,19 +357,27 @@ def run_tests(tests_to_run, test_group_name, output_filename):
     print(output_divider_string)
 
 # Run all Spark and/or Shark tests specified in the Config file.
-
+scala_cmd_classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
 # Clear the 'perf-tests/spark/work' directory, since that may contain scheduler logs from previous
 # jobs.
 clear_dir("%s/spark/work" % proj_dir, ["localhost"])
 if not config.SKIP_SPARK_TESTS:
-    run_tests(config.SPARK_TESTS, "Spark-Tests", config.SPARK_OUTPUT_FILENAME)
+    run_tests(scala_cmd_classpath, config.SPARK_TESTS, "Spark-Tests", config.SPARK_OUTPUT_FILENAME)
 if not config.SKIP_SHARK_TESTS:
     # Set up 'perf_test_warehouse'.
     if os.path.isdir(perf_test_warehouses_dir):
         clear_dir(perf_test_warehouses_dir, ["localhost"])
     else:
         os.mkdir(perf_test_warehouses_dir)
-    run_tests(config.SHARK_TESTS, "Shark-Tests", config.SHARK_OUTPUT_FILENAME)
+
+    # Prepend the path to the jar for Hive builtin functions to the classpath that will be passed to
+    # config.SCALA_CMD in run_tests(). This is necessary because Hive's SessionState uses metadata
+    # from that jar's META-INF/class-info.xml to register the builtin functions.
+    # For more context, see org.apache.hadoop.hive.ql.session.SessionState's constructor and
+    # org.apache.hadoop.hive.ql.exec.FunctionRegistry#registerFunctionsFromPluginJar().
+    scala_cmd_classpath = ("hive/build/dist/lib/" +
+        "hive-builtins-0.9.0-amplab-4.jar:" + scala_cmd_classpath)
+    run_tests(scala_cmd_classpath, config.SHARK_TESTS, "Shark-Tests", config.SHARK_OUTPUT_FILENAME)
 
 print("All tests have finished running. Stopping Spark standalone cluster ...")
 run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
