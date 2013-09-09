@@ -17,7 +17,6 @@ object TestRunner {
 
     val test: PerfTest =
       testName match {
-        // Spark tests.
         case "aggregate-by-key" => new AggregateByKey(sc)
         case "sort-by-key" => new SortByKey(sc)
         case "count" => new Count(sc)

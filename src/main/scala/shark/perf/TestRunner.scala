@@ -14,17 +14,27 @@ object TestRunner {
     val master = args(1)
     val perfTestArgs = args.slice(2, args.length)
 
-    val sc: SharkContext = SharkEnv.initWithSharkContext("TestRunner: " + testName, master)
-    sc.addJar(System.getProperty("user.dir") + "/target/perf-tests-assembly.jar")
+    val sharkContext = SharkEnv.initWithSharkContext("TestRunner: " + testName, master)
+    sharkContext.addJar(System.getProperty("user.dir") + "/target/perf-tests-assembly.jar")
 
-    // Initialize Shark/Hive metastore and warehouse directories using values passed to
-    // config.COMMON_JAVA_OPTS.
+    // Initialize Shark/Hive metastore and warehouse directories.
     val testWarehousesDir = System.getenv("PERF_TEST_WAREHOUSES")
     val metastoreDir = testWarehousesDir + testName + "-metastore"
     val setMetastoreSQLStmt = "set javax.jdo.option.ConnectionURL=jdbc:derby:; " +
       ("databaseName=%s;".format(metastoreDir)) + "create=true"
-    sc.sql(setMetastoreSQLStmt)
+    sharkContext.sql(setMetastoreSQLStmt)
     val warehouseDir = testWarehousesDir + testName + "-warehouse"
-    sc.sql("set hive.metastore.warehouse.dir=" + warehouseDir)
+    sharkContext.sql("set hive.metastore.warehouse.dir=" + warehouseDir)
+
+/*
+    val test: PerfTest =
+      testName match {
+        case "table-scan-query" => new TableScan(sharkContext)
+    }
+    test.initialize(perfTestArgs)
+    test.createInputData()
+    val results: Seq[Double] = test.run()
+    println("results: " + results.map(r => "%.3f".format(r)).mkString(","))
+*/
   }
 }
