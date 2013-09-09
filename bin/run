@@ -310,11 +310,16 @@ def variance(in_list):
 # section in config.py.template for more info.
 # Results are written as CSVs to 'output_filename'.
 def run_tests(tests_to_run, test_group_name, output_filename):
-    output_divider_string = "\n--------------------------------------------------------------------"
     out_file = open(output_filename, 'w')
+    num_tests_to_run = len(tests_to_run)
+
+    output_divider_string = "\n--------------------------------------------------------------------"
+    print(output_divider_string)
+    print("Running %d tests in %s.\n" % (num_tests_to_run, test_group_name))
+
     for short_name, test_cmd, scale_factor, java_opt_sets, opt_sets in config.SPARK_TESTS:
         print(output_divider_string)
-        print("Running all tests for '%s'.\n" % test_cmd)
+        print("Running test specified by the command '%s'.\n" % test_cmd)
         # Run a test for all combinations of the OptionSets given, then capture
         # and print the output.
         java_opt_set_arrays = [i.to_array(scale_factor) for i in java_opt_sets]
@@ -348,13 +353,11 @@ def run_tests(tests_to_run, test_group_name, output_filename):
                 sys.stdout.flush()
                 out_file.flush()
 
-    print("\nFinished running all tests in %s.\nSee CSV output in %s" %
-        (test_group_name, output_filename))
+    print("\nFinished running %d tests in %s.\nSee CSV output in %s" %
+        (num_tests_to_run, test_group_name, output_filename))
     print(output_divider_string)
 
 # Run all Spark and/or Shark tests specified in the Config file.
-# TODO(harvey): If more Spark/Shark tests will be added, it might be useful to have SPARK_TESTS be
-#               a list of 3-element tuples, each representing arguments to pass to run_tests().
 
 # Clear the 'perf-tests/spark/work' directory, since that may contain scheduler logs from previous
 # jobs.
