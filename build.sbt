@@ -46,9 +46,14 @@ jarName in assembly := "perf-tests-assembly.jar"
 
 mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) => 
   {
-   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-   case PathList("reference.conf", xs @ _*) => MergeStrategy.concat
-   case PathList("application.conf", xs @ _*) => MergeStrategy.concat
-   case _ => MergeStrategy.first
+    case PathList("META-INF", xs @ _*) =>
+      (xs.map(_.toLowerCase)) match {
+        case ("manifest.mf" :: Nil) => MergeStrategy.discard
+        case ps @ (x :: xs) if ps.last.endsWith(".sf") => MergeStrategy.discard
+        case _ => MergeStrategy.first
+      }
+    case PathList("reference.conf", xs @ _*) => MergeStrategy.concat
+    case PathList("application.conf", xs @ _*) => MergeStrategy.concat
+    case _ => MergeStrategy.first
   }
 }

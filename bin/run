@@ -375,8 +375,6 @@ if not config.SKIP_SHARK_TESTS:
     # from that jar's META-INF/class-info.xml to register the builtin functions.
     # For more context, see org.apache.hadoop.hive.ql.session.SessionState's constructor and
     # org.apache.hadoop.hive.ql.exec.FunctionRegistry#registerFunctionsFromPluginJar().
-    scala_cmd_classpath = ("hive/build/dist/lib/" +
-        "hive-builtins-0.9.0-amplab-4.jar:" + scala_cmd_classpath)
     run_tests(scala_cmd_classpath, config.SHARK_TESTS, "Shark-Tests", config.SHARK_OUTPUT_FILENAME)
 
 print("All tests have finished running. Stopping Spark standalone cluster ...")
