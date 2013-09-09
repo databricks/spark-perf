@@ -317,9 +317,9 @@ def run_tests(tests_to_run, test_group_name, output_filename):
     print(output_divider_string)
     print("Running %d tests in %s.\n" % (num_tests_to_run, test_group_name))
 
-    for short_name, test_cmd, scale_factor, java_opt_sets, opt_sets in config.SPARK_TESTS:
+    for short_name, test_cmd, scale_factor, java_opt_sets, opt_sets in tests_to_run:
         print(output_divider_string)
-        print("Running test specified by the command '%s'.\n" % test_cmd)
+        print("Running test from command: '%s' ..." % test_cmd)
         # Run a test for all combinations of the OptionSets given, then capture
         # and print the output.
         java_opt_set_arrays = [i.to_array(scale_factor) for i in java_opt_sets]
