@@ -125,8 +125,9 @@ if config.SKIP_SPARK_PREP:
     # TODO(andy): Make this check for the jar we will be including on the
     #             classpath (as part of work Patrick is doing), instead of
     #             just looking for spark/target.
-    assert os.path.exists("%s/spark/target" % proj_dir), ("You chose to skip Spark prep, but we " +
-        "can't since %s/spark does not exist, so Spark needs to be rebuilt/packaged.") % proj_dir
+    assert os.path.exists(
+        "%s/spark/target" % proj_dir), ("You chose to skip Spark prep, but we can't since " +
+        "%s/spark/target does not exist, so Spark needs to be rebuilt/packaged." % proj_dir)
     print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, " +
         "copy conf files).")
 else:
@@ -171,7 +172,7 @@ else:
 if config.SKIP_HIVE_PREP:
     assert os.path.exists(
         "%s/hive/build/dist/lib" % proj_dir), ("You chose to skip Hive prep, but we can't since " +
-        "%s/hive does not exist, so Hive needs to be rebuilt/packaged.") % proj_dir
+        "%s/hive/build/dist/lib does not exist, so Hive needs to be rebuilt/packaged." % proj_dir)
     print("Skipping preparation tasks for Hive (i.e, git clone, build).")
 else:
     # Assumes that the preexisting 'hive' directory is valid.
@@ -189,8 +190,9 @@ else:
 
 # Prepare Shark (unless arg was passed that caues this to be skipped).
 if config.SKIP_SHARK_PREP:
-    assert os.path.exists("%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we " +
-        "can't since %s/shark does not exist, so Shark needs to be rebuilt/packaged.") % proj_dir
+    assert os.path.exists(
+        "%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we can't since "
+        "%s/shark/target does not exist, so Shark needs to be rebuilt/packaged." % proj_dir)
     print("Skipping preparation tasks for Shark (i.e, git clone or update, checkout, build, copy).")
 else:
     if not os.path.isdir("shark"):
@@ -227,7 +229,6 @@ else:
 
     # Change from 'perf-tests/shark' back to the 'proj_dir' directory.
     os.chdir("..")
-
 
 # Build the perf-tests code against the downloaded versions of Spark and Shark/Hive.
 print("Building perf-tests...")
