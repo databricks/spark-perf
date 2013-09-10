@@ -7,14 +7,25 @@ from config_utils import JavaOptionSet
 from config_utils import OptionSet
 
 # Standard Configuration Options
-# ----------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
+
+# Git repos used to clone clean copies of Spark and Shark to path/to/perf-tests/spark and
+# path/to/perf-tests/shark, respectively.
+SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
+SHARK_GIT_REPO = "git://github.com/amplab/shark.git"
+
+# Git repo for a patched, Shark-compatible version of Hive 0.9.
+HIVE_GIT_REPO = "git://github.com/amplab/hive.git -b shark-0.9"
 
 # Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO and/or
 # SHARK_GIT_REPO is named "origin". This ID can specify any of the following:
 #     1. A git commit hash     e.g. "4af93ff3"
 #     2. A branch name         e.g. "origin/branch-0.7"
 #     3. A pull request        e.g. "origin/pr/675"
+#
+# Required for running Spark and Shark tests.
 SPARK_COMMIT_ID = ""
+# Required for running Shark tests.
 SHARK_COMMIT_ID = ""
 
 # Whether to merge this commit into master before testing. If the commit cannot be merged into
@@ -31,14 +42,6 @@ SHARK_OUTPUT_FILENAME = "shark_perf_output_%s_%s" % (
 # Existing directories for Spark and Shark.
 SPARK_HOME_DIR = "/root/spark"
 SHARK_HOME_DIR = "/root/shark"
-
-# Git repos used to clone clean copies of Spark and Shark to path/to/perf-tests/spark and
-# path/to/perf-tests/shark, respectively.
-SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
-SHARK_GIT_REPO = "git://github.com/amplab/shark.git"
-
-# Git repo for a patched, Shark-compatible version of Hive 0.9.
-HIVE_GIT_REPO = "git://github.com/amplab/hive.git -b shark-0.9"
 
 # Before we start Spark, the files contained in the SPARK_CONF_DIR directory, such as spark-env.sh
 # and the slaves file, are copied to the conf directory of the clean Spark copy cloned from
@@ -70,9 +73,8 @@ assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
 # returns fewer N + 1 results, an exception is thrown.
 IGNORED_TRIALS = 2
 
-
 # Test Configuration
-# ----------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
 # Set up OptionSets. Note that giant cross product is done over all JavaOptionsSets + OptionSets
 # passed to each test which may be combinations of those set up here.
@@ -145,7 +147,7 @@ SHARK_TABLE_STORAGE_OPTS = [
 ]
 
 # Test setup
-# ----------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 # Set up the actual tests. Each test is represtented by a tuple: (short_name, test_cmd,
 # scale_factor, list<JavaOptionSet>, list<OptionSet>).
 
@@ -196,17 +198,18 @@ SHARK_TESTS += [("UDF-query", "shark.perf.TestRunner udf-query", SCALE_FACTOR, C
 '''
 
 # Advanced Configuration Options
-# ----------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
 # Skip downloading and building Spark, Hive and/or Shark components. Requires project to be already
 # built in its respective directory.
-SKIP_SPARK_PREP = False
-SKIP_SHARK_PREP = False
-SKIP_HIVE_PREP = False
+SPARK_SKIP_PREP = False
+SHARK_SKIP_PREP = False
+HIVE_SKIP_PREP = False
 
-# Skip building and packaging tests (requires perf-tests already be packaged in the target
-# directory).
-SKIP_TEST_PREP = False
+# Skip building and packaging project tests (requires respective perf tests to already be packaged
+# in the project's target directory).
+SPARK_SKIP_TEST_PREP = False
+SHARK_SKIP_TEST_PREP = False
 
 # Skip warming up local disks.
 SKIP_DISK_WARMUP = False
