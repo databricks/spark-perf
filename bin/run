@@ -35,11 +35,29 @@ sys.path.append(os.path.dirname(args.config_file))
 print("running 'import %s'" % os.path.basename(args.config_file).split(".")[0])
 exec("import %s" % os.path.basename(args.config_file).split(".")[0])
 
+# Determine which projects and tests to build based on user-specified tests and boolean flags from
+# the config file.
+# Hive and Shark won't be built if there are no tests for it.
+has_shark_tests = (len(config.SHARK_TESTS) > 0)
+should_prep_shark = has_shark_tests and not config.SHARK_SKIP_PREP
+should_prep_hive = should_prep_shark and not config.HIVE_SKIP_PREP
+
+# Spark won't be built only if there are neither Spark nor Shark tests.
+has_spark_tests = (len(config.SPARK_TESTS) > 0)
+should_prep_spark = (has_shark_tests or has_spark_tests) and not config.SPARK_SKIP_PREP
+
+# Only build the perf test sources that will be used.
+should_prep_shark_tests = has_shark_tests and not config.SHARK_SKIP_TEST_PREP
+should_prep_spark_tests = has_spark_tests and not config.SPARK_SKIP_TEST_PREP
+
+# Do disk warmup only if there are tests to run.
+should_warmup_disk = (has_shark_tests or has_spark_tests) and not config.SKIP_DISK_WARMUP
+
 # Check that commit ID's are specified in config_file.
-if not config.SKIP_SPARK_PREP:
+if should_prep_spark:
     assert config.SPARK_COMMIT_ID is not "", \
         ("Please specify SPARK_COMMIT_ID in %s" % args.config_file)
-if not config.SKIP_SHARK_PREP:
+if should_prep_spark:
     assert config.SHARK_COMMIT_ID is not "", \
         ("Please specifiy SHARK_COMMIT_ID in %s" % args.config_file)
 
@@ -110,7 +128,7 @@ slaves_list = filter(lambda x: not x.startswith("#") and not x is "", slaves_fil
 if os.path.exists("%s/bin/stop-all.sh" % config.SPARK_HOME_DIR):
     run_cmd("%s/bin/stop-all.sh" % config.SPARK_HOME_DIR)
 
-# If a cluster is running from an earlier test, try shutting it down.
+# If a cluster is already running from an earlier test, try shutting it down.
 if os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir):
     print("Stopping Spark standalone cluster...")
     run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
@@ -121,16 +139,7 @@ ensure_spark_stopped_on_slaves(slaves_list)
 time.sleep(5) 
 
 # Prepare Spark (unless arg was passed that causes this to be skipped).
-if config.SKIP_SPARK_PREP:
-    # TODO(andy): Make this check for the jar we will be including on the
-    #             classpath (as part of work Patrick is doing), instead of
-    #             just looking for spark/target.
-    assert os.path.exists(
-        "%s/spark/target" % proj_dir), ("You chose to skip Spark prep, but we can't since " +
-        "%s/spark/target does not exist, so Spark needs to be rebuilt/packaged." % proj_dir)
-    print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, " +
-        "copy conf files).")
-else:
+if should_prep_spark:
     # Assumes that the preexisting 'spark' directory is valid.
     if not os.path.isdir("spark"):
         # Clone Spark.
@@ -166,15 +175,20 @@ else:
         "Could not find required file %s/slaves" % config.SPARK_CONF_DIR
     run_cmd("cp %s/* %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
 
+    # Change back to 'proj_dir' directory.
     os.chdir("..")
+else:
+    # TODO(andy): Make this check for the jar we will be including on the
+    #             classpath (as part of work Patrick is doing), instead of
+    #             just looking for spark/target.
+    assert os.path.exists(
+        "%s/spark/target" % proj_dir), ("You chose to skip Spark prep, but we can't since " +
+        "%s/spark/target does not exist, so Spark needs to be rebuilt/packaged." % proj_dir)
+    print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, " +
+        "copy conf files).")
 
 # Prepare Hive (unless an arg was passed that causes this to be skipped).
-if config.SKIP_HIVE_PREP:
-    assert os.path.exists(
-        "%s/hive/build/dist/lib" % proj_dir), ("You chose to skip Hive prep, but we can't since " +
-        "%s/hive/build/dist/lib does not exist, so Hive needs to be rebuilt/packaged." % proj_dir)
-    print("Skipping preparation tasks for Hive (i.e, git clone, build).")
-else:
+if should_prep_hive:
     # Assumes that the preexisting 'hive' directory is valid.
     if not os.path.isdir("hive"):
         # Clone the Hive repository.
@@ -187,14 +201,14 @@ else:
 
     # Change back to 'proj_dir' directory.
     os.chdir("..")
+else:
+    assert os.path.exists(
+        "%s/hive/build/dist/lib" % proj_dir), ("You chose to skip Hive prep, but we can't since " +
+        "%s/hive/build/dist/lib does not exist, so Hive needs to be rebuilt/packaged." % proj_dir)
+    print("Skipping preparation tasks for Hive (i.e, git clone, build).")
 
 # Prepare Shark (unless arg was passed that caues this to be skipped).
-if config.SKIP_SHARK_PREP:
-    assert os.path.exists(
-        "%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we can't since "
-        "%s/shark/target does not exist, so Shark needs to be rebuilt/packaged." % proj_dir)
-    print("Skipping preparation tasks for Shark (i.e, git clone or update, checkout, build, copy).")
-else:
+if should_prep_shark:
     if not os.path.isdir("shark"):
         # Clone the Shark repository.
         print("Git cloning Shark...")
@@ -229,17 +243,25 @@ else:
 
     # Change from 'perf-tests/shark' back to the 'proj_dir' directory.
     os.chdir("..")
+else:
+    assert os.path.exists(
+        "%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we can't since "
+        "%s/shark/target does not exist, so Shark needs to be rebuilt/packaged." % proj_dir)
+    print("Skipping preparation tasks for Shark (i.e, git clone or update, checkout, build, copy).")
 
-# Build the perf-tests code against the downloaded versions of Spark and Shark/Hive.
-print("Building perf-tests...")
-if config.SKIP_TEST_PREP:
+# Build the tests for each project based on copies cloned to the 'proj_dir'.
+# Clear the 'perf-tests/spark/work' directory, since that may contain scheduler logs from previous
+# jobs. The directory could also contain a perf-tests-assembly.jar.
+clear_dir("%s/spark/work" % proj_dir, ["localhost"])
+print("Building perf tests...")
+if should_prep_shark_tests or should_prep_spark_tests:
+    run_cmd("cd %s; %s clean assembly" % (proj_dir, sbt_cmd))
+else:
     test_jar = "%s/target/perf-tests-assembly.jar" % proj_dir
     assert os.path.exists(test_jar), ("You tried to skip packaging the perf tests, but %s was not "
         "already present") % test_jar
-else:
-    run_cmd("cd %s; %s clean assembly" % (proj_dir, sbt_cmd))
 
-# Sync the whole directory to the slaves. 
+# Sync the whole directory to the slaves.
 print("Syncing the test directory to the slaves.")
 run_cmds_parallel([(make_rsync_cmd(proj_dir, slave), True) for slave in slaves_list])
 
@@ -262,10 +284,10 @@ new_env["PERF_TEST_WAREHOUSES"] = perf_test_warehouses_dir
 # that for the latter case, 'spark.local.dir' in shark-env.sh takes precedence.
 spark_local_dirs = "" 
 path_to_env_file = ""
-if config.SKIP_SHARK_TESTS:
-    path_to_env_file = "%s/spark-env.sh" % config.SPARK_CONF_DIR
-else:
+if has_shark_tests:
     path_to_env_file = "%s/shark-env.sh" % config.SHARK_CONF_DIR
+else:
+    path_to_env_file = "%s/spark-env.sh" % config.SPARK_CONF_DIR
 
 env_file_content = open(path_to_env_file, 'r').read()
 re_result = re.search(r'spark.local.dir=([^"]*)"', env_file_content)
@@ -278,7 +300,7 @@ else:
         "spark.local.dir=ONE_OR_MORE_DIRNAMES\" so you will want a line like this: "
         "SPARK_JAVA_OPTS+=\" -Dspark.local.dir=/tmp\"")
 
-if not config.SKIP_DISK_WARMUP:
+if should_warmup_disk:
     for local_dir in spark_local_dirs:
         # Strip off any trailing whitespace(s) so that the clear commands below can work properly.
         local_dir = local_dir.rstrip()
@@ -364,14 +386,12 @@ def run_tests(scala_cmd_classpath, tests_to_run, test_group_name, output_filenam
     print(output_divider_string)
 
 # Run all Spark and/or Shark tests specified in the Config file.
-scala_cmd_classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
-# Clear the 'perf-tests/spark/work' directory, since that may contain scheduler logs from previous
-# jobs.
-clear_dir("%s/spark/work" % proj_dir, ["localhost"])
-if not config.SKIP_SPARK_TESTS:
+if has_spark_tests:
+    scala_cmd_classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
     run_tests(scala_cmd_classpath, config.SPARK_TESTS, "Spark-Tests", config.SPARK_OUTPUT_FILENAME)
-if not config.SKIP_SHARK_TESTS:
-    # Set up 'perf_test_warehouse'.
+if has_shark_tests:
+    scala_cmd_classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
+    # Set up the 'perf_test_warehouses'.
     if os.path.isdir(perf_test_warehouses_dir):
         clear_dir(perf_test_warehouses_dir, ["localhost"])
     else:
