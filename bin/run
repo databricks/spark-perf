@@ -250,16 +250,26 @@ else:
     print("Skipping preparation tasks for Shark (i.e, git clone or update, checkout, build, copy).")
 
 # Build the tests for each project based on copies cloned to the 'proj_dir'.
-# Clear the 'perf-tests/spark/work' directory, since that may contain scheduler logs from previous
-# jobs. The directory could also contain a perf-tests-assembly.jar.
-clear_dir("%s/spark/work" % proj_dir, ["localhost"])
+spark_work_dir = "%s/spark/work" % proj_dir
+if os.path.exists(spark_work_dir):
+    # Clear the 'perf-tests/spark/work' directory beforehand, since that may contain scheduler logs
+    # from previous jobs. The directory could also contain a spark-perf-tests-assembly.jar that may
+    # interfere with subsequent 'sbt assembly' for Spark perf.
+    clear_dir(spark_work_dir, ["localhost"])
+
 print("Building perf tests...")
-if should_prep_shark_tests or should_prep_spark_tests:
-    run_cmd("cd %s; %s clean assembly" % (proj_dir, sbt_cmd))
+if should_prep_spark_tests:
+    run_cmd("cd %s/spark-tests; %s clean assembly" % (proj_dir, sbt_cmd))
 else:
-    test_jar = "%s/target/perf-tests-assembly.jar" % proj_dir
-    assert os.path.exists(test_jar), ("You tried to skip packaging the perf tests, but %s was not "
-        "already present") % test_jar
+    spark_test_jar_path = "%s/spark-tests/target/spark-perf-tests-assembly.jar" % proj_dir
+    assert os.path.exists(spark_test_jar_path), ("You tried to skip packaging the Spark perf " +
+        "tests, but %s was not already present") % spark_test_jar_path
+if should_prep_shark_tests:
+    run_cmd("cd %s/shark-tests; %s clean assembly" % (proj_dir, sbt_cmd))
+else:
+    shark_test_jar_path = "%s/shark-tests/target/shark-perf-tests-assembly.jar" % proj_dir
+    assert os.path.exists(shark_test_jar_path), ("You tried to skip packaging the Shark perf " +
+        "tests, but %s was not already present") % shark_test_jar_path
 
 # Sync the whole directory to the slaves.
 print("Syncing the test directory to the slaves.")
@@ -276,15 +286,15 @@ time.sleep(5) # Starting the cluster takes a little time so give it a second.
 new_env = os.environ.copy()
 
 new_env["SPARK_HOME"] = "%s/spark" % proj_dir
-# Store Hive metastore and warehouse subdirectories created by each Shark PerfTest.
-perf_test_warehouses_dir = "%s/test-warehouses" % proj_dir
-new_env["PERF_TEST_WAREHOUSES"] = perf_test_warehouses_dir
 
 # Search for 'spark.local.dir' in spark-env.sh, or shark-env.sh if Shark is also being built. Note
 # that for the latter case, 'spark.local.dir' in shark-env.sh takes precedence.
 spark_local_dirs = "" 
 path_to_env_file = ""
 if has_shark_tests:
+    # Store Hive metastore and warehouse subdirectories created by each Shark PerfTest.
+    perf_test_warehouses_dir = "%s/test-warehouses" % proj_dir
+    new_env["PERF_TEST_WAREHOUSES"] = perf_test_warehouses_dir
     path_to_env_file = "%s/shark-env.sh" % config.SHARK_CONF_DIR
 else:
     path_to_env_file = "%s/spark-env.sh" % config.SPARK_CONF_DIR
@@ -386,11 +396,12 @@ def run_tests(scala_cmd_classpath, tests_to_run, test_group_name, output_filenam
     print(output_divider_string)
 
 # Run all Spark and/or Shark tests specified in the Config file.
+scala_cmd_classpath = "%s/spark-tests/target/spark-perf-tests-assembly.jar" % proj_dir
 if has_spark_tests:
-    scala_cmd_classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
     run_tests(scala_cmd_classpath, config.SPARK_TESTS, "Spark-Tests", config.SPARK_OUTPUT_FILENAME)
 if has_shark_tests:
-    scala_cmd_classpath = "%s/target/perf-tests-assembly.jar" % proj_dir
+    scala_cmd_classpath = (scala_cmd_classpath +
+        ":%s/shark-tests/target/shark-perf-tests-assembly.jar" % proj_dir)
     # Set up the 'perf_test_warehouses'.
     if os.path.isdir(perf_test_warehouses_dir):
         clear_dir(perf_test_warehouses_dir, ["localhost"])

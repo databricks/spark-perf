@@ -16,25 +16,10 @@ libraryDependencies += "org.scalatest" % "scalatest_2.9.2" % "1.8" % "test"
 
 libraryDependencies += "com.google.guava" % "guava" % "14.0.1"
 
+// Assumes that the 'base' directory is 'perf-tests/spark-tests' and that the Spark repo is cloned
+// to 'perf-tests/spark'.
 unmanagedJars in Compile <++= baseDirectory map  { base =>
-  val finder: PathFinder = (file("spark")) ** "*.jar"
-  println ("base: " + base)
-  finder.get
-}
-
-unmanagedJars in Compile <++= baseDirectory map  { base =>
-  val hiveFile = file("hive/build/dist") / "lib"
-  val baseDirectories = (base / "lib") +++ (hiveFile)
-  val customJars = (baseDirectories ** "*.jar")
-  // Hive uses an old version of guava that doesn't have what we want.
-  customJars.classpath
-    .filter(!_.toString.contains("guava"))
-    .filter(!_.toString.contains("log4j"))
-    .filter(!_.toString.contains("servlet"))
-}
-
-unmanagedJars in Compile <++= baseDirectory map  { base =>
-  val finder: PathFinder = (file("shark")) ** "*.jar"
+  val finder: PathFinder = (file("../spark")) ** "*.jar"
   finder.get
 }
 
@@ -42,13 +27,15 @@ assemblySettings
 
 test in assembly := {}
 
-jarName in assembly := "perf-tests-assembly.jar"
+jarName in assembly := "spark-perf-tests-assembly.jar"
 
 mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) => 
   {
     case PathList("META-INF", xs @ _*) =>
       (xs.map(_.toLowerCase)) match {
         case ("manifest.mf" :: Nil) => MergeStrategy.discard
+        // Note(harvey): this to get Shark perf test assembly working.
+        case ("license" :: Nil) => MergeStrategy.discard
         case ps @ (x :: xs) if ps.last.endsWith(".sf") => MergeStrategy.discard
         case _ => MergeStrategy.first
       }
