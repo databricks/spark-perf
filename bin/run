@@ -37,12 +37,12 @@ exec("import %s" % os.path.basename(args.config_file).split(".")[0])
 
 # Determine which projects and tests to build based on user-specified tests and boolean flags from
 # the config file.
-# Hive and Shark won't be built if there are no tests for it.
+# Build Hive and Shark if there are Shark tests specified.
 has_shark_tests = (len(config.SHARK_TESTS) > 0)
 should_prep_shark = has_shark_tests and not config.SHARK_SKIP_PREP
 should_prep_hive = should_prep_shark and not config.HIVE_SKIP_PREP
 
-# Spark won't be built only if there are neither Spark nor Shark tests.
+# Spark will be built if there are Spark or Shark tests.
 has_spark_tests = (len(config.SPARK_TESTS) > 0)
 should_prep_spark = (has_shark_tests or has_spark_tests) and not config.SPARK_SKIP_PREP
 
