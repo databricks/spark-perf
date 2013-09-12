@@ -408,12 +408,6 @@ if has_shark_tests:
         clear_dir(perf_test_warehouses_dir, ["localhost"])
     else:
         os.mkdir(perf_test_warehouses_dir)
-
-    # Prepend the path to the jar for Hive builtin functions to the classpath that will be passed to
-    # config.SCALA_CMD in run_tests(). This is necessary because Hive's SessionState uses metadata
-    # from that jar's META-INF/class-info.xml to register the builtin functions.
-    # For more context, see org.apache.hadoop.hive.ql.session.SessionState's constructor and
-    # org.apache.hadoop.hive.ql.exec.FunctionRegistry#registerFunctionsFromPluginJar().
     run_tests(scala_cmd_classpath, config.SHARK_TESTS, "Shark-Tests", config.SHARK_OUTPUT_FILENAME)
 
 print("All tests have finished running. Stopping Spark standalone cluster ...")
