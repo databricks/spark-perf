@@ -48,7 +48,8 @@ should_prep_spark = (has_shark_tests or has_spark_tests) and not config.SPARK_SK
 
 # Only build the perf test sources that will be used.
 should_prep_shark_tests = has_shark_tests and not config.SHARK_SKIP_TEST_PREP
-should_prep_spark_tests = has_spark_tests and not config.SPARK_SKIP_TEST_PREP
+# Shark perf tests depend on Spark perf test code (e.g. uses spark.perf.PerfTest trait).
+should_prep_spark_tests = (has_spark_tests or has_shark_tests) and not config.SPARK_SKIP_TEST_PREP
 
 # Do disk warmup only if there are tests to run.
 should_warmup_disk = (has_shark_tests or has_spark_tests) and not config.SKIP_DISK_WARMUP
