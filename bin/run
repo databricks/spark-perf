@@ -42,9 +42,10 @@ has_shark_tests = (len(config.SHARK_TESTS) > 0)
 should_prep_shark = has_shark_tests and not config.SHARK_SKIP_PREP
 should_prep_hive = should_prep_shark and not config.HIVE_SKIP_PREP
 
-# Spark will be built if there are Spark or Shark tests.
+# Spark will always be built, assuming that any possible test run of this program is going to depend
+# on Spark.
 has_spark_tests = (len(config.SPARK_TESTS) > 0)
-should_prep_spark = (has_shark_tests or has_spark_tests) and not config.SPARK_SKIP_PREP
+should_prep_spark = not config.SPARK_SKIP_PREP
 
 # Only build the perf test sources that will be used.
 should_prep_shark_tests = has_shark_tests and not config.SHARK_SKIP_TEST_PREP
@@ -58,7 +59,7 @@ should_warmup_disk = (has_shark_tests or has_spark_tests) and not config.SKIP_DI
 if should_prep_spark:
     assert config.SPARK_COMMIT_ID is not "", \
         ("Please specify SPARK_COMMIT_ID in %s" % args.config_file)
-if should_prep_spark:
+if should_prep_shark:
     assert config.SHARK_COMMIT_ID is not "", \
         ("Please specifiy SHARK_COMMIT_ID in %s" % args.config_file)
 
@@ -203,9 +204,11 @@ if should_prep_hive:
     # Change back to 'proj_dir' directory.
     os.chdir("..")
 else:
-    assert os.path.exists(
-        "%s/hive/build/dist/lib" % proj_dir), ("You chose to skip Hive prep, but we can't since " +
-        "%s/hive/build/dist/lib does not exist, so Hive needs to be rebuilt/packaged." % proj_dir)
+    if has_shark_tests:
+        assert os.path.exists(
+            "%s/hive/build/dist/lib" % proj_dir), ("You chose to skip Hive prep, but we can't " +
+            "since %s/hive/build/dist/lib does not exist, so Hive needs to be rebuilt/packaged." %
+            proj_dir)
     print("Skipping preparation tasks for Hive (i.e, git clone, build).")
 
 # Prepare Shark (unless arg was passed that caues this to be skipped).
@@ -245,9 +248,10 @@ if should_prep_shark:
     # Change from 'perf-tests/shark' back to the 'proj_dir' directory.
     os.chdir("..")
 else:
-    assert os.path.exists(
-        "%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we can't since "
-        "%s/shark/target does not exist, so Shark needs to be rebuilt/packaged." % proj_dir)
+    if has_shark_tests:
+        assert os.path.exists(
+            "%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we can't since "
+            "%s/shark/target does not exist, so Shark needs to be rebuilt/packaged." % proj_dir)
     print("Skipping preparation tasks for Shark (i.e, git clone or update, checkout, build, copy).")
 
 # Build the tests for each project based on copies cloned to the 'proj_dir'.
@@ -267,7 +271,7 @@ else:
         "tests, but %s was not already present") % spark_test_jar_path
 if should_prep_shark_tests:
     run_cmd("cd %s/shark-tests; %s clean assembly" % (proj_dir, sbt_cmd))
-else:
+elif has_shark_tests:
     shark_test_jar_path = "%s/shark-tests/target/shark-perf-tests-assembly.jar" % proj_dir
     assert os.path.exists(shark_test_jar_path), ("You tried to skip packaging the Shark perf " +
         "tests, but %s was not already present") % shark_test_jar_path
