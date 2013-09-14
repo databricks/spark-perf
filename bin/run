@@ -140,7 +140,7 @@ ensure_spark_stopped_on_slaves(slaves_list)
 # Allow some extra time for slaves to fully terminate.
 time.sleep(5) 
 
-# Prepare Spark (unless arg was passed that causes this to be skipped).
+# Prepare Spark.
 if should_prep_spark:
     # Assumes that the preexisting 'spark' directory is valid.
     if not os.path.isdir("spark"):
@@ -189,7 +189,7 @@ else:
     print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, " +
         "copy conf files).")
 
-# Prepare Hive (unless an arg was passed that causes this to be skipped).
+# Prepare Hive.
 if should_prep_hive:
     # Assumes that the preexisting 'hive' directory is valid.
     if not os.path.isdir("hive"):
@@ -211,7 +211,7 @@ else:
             proj_dir)
     print("Skipping preparation tasks for Hive (i.e, git clone, build).")
 
-# Prepare Shark (unless arg was passed that caues this to be skipped).
+# Prepare Shark.
 if should_prep_shark:
     if not os.path.isdir("shark"):
         # Clone the Shark repository.
