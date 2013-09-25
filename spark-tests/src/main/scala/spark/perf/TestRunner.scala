@@ -1,6 +1,6 @@
 package spark.perf
 
-import spark.SparkContext
+import org.apache.spark.SparkContext
 
 object TestRunner {
   def main(args: Array[String]) {

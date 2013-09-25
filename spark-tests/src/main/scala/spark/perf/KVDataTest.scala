@@ -2,8 +2,9 @@ package spark.perf
 
 import joptsimple.{OptionSet, OptionParser}
 
-import spark.{SparkContext, RDD}
-import spark.SparkContext._
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext._
 
 /** Parent class for tests which run on a large (key, value) dataset. */
 abstract class KVDataTest(sc: SparkContext) extends PerfTest {

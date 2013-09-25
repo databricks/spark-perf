@@ -2,7 +2,7 @@ package spark.perf
 
 import joptsimple.{OptionSet, OptionParser}
 
-import spark.SparkContext
+import org.apache.spark.SparkContext
 
 /** Schedule a large number of null tasks to test scheduler/task launching throughput. */
 class SchedulerThroughputTest(sc: SparkContext) extends PerfTest {

@@ -1,6 +1,7 @@
 package spark.perf
 
-import spark.{RDD, SparkContext}
-import spark.SparkContext._
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext._
 
 

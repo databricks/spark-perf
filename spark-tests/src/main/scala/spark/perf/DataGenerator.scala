@@ -1,7 +1,8 @@
 package spark.perf
 
-import spark.{SparkContext, RDD}
-import spark.storage.StorageLevel
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 import java.util.Random
 
