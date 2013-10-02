@@ -112,7 +112,7 @@ SPARK_KEY_VAL_TEST_OPTS = [
     OptionSet("persistent-type", ["memory"]),
     # Whether to wait for input in order to exit the JVM.
     FlagSet("wait-for-exit", [False]),
-    # Total number of records to create.  
+    # Total number of records to create.
     OptionSet("num-records", [200 * 1000 * 1000], True),
     # Number of unique keys to sample from.
     OptionSet("unique-keys",[20 * 1000], True),
