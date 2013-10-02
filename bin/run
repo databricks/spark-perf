@@ -11,7 +11,7 @@ import threading
 import time
 
 # The perf-tests project directory.
-proj_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..")) 
+proj_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sbt_cmd = "sbt/sbt"
 
 parser = argparse.ArgumentParser(description='Run Spark or Shark peformance tests. Before running, '
@@ -25,7 +25,7 @@ assert args.config_file.endswith(".py"), "config filename must end with .py"
 
 # Check if the config file exists.
 assert os.path.isfile(args.config_file), ("Please create a config file called %s (you probably "
-    "just want to copy and then modify %s/config/config.py.template)" % 
+    "just want to copy and then modify %s/config/config.py.template)" %
     (args.config_file, proj_dir))
 
 print "Detected project directory: %s" % proj_dir
@@ -138,7 +138,7 @@ if os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir):
 # Ensure all shutdowns have completed (no executors are running).
 ensure_spark_stopped_on_slaves(slaves_list)
 # Allow some extra time for slaves to fully terminate.
-time.sleep(5) 
+time.sleep(5)
 
 # Prepare Spark.
 if should_prep_spark:
@@ -159,7 +159,7 @@ if should_prep_spark:
     print("Cleaning Spark and building branch %s. This may take a while...\n" %
         config.SPARK_COMMIT_ID)
     run_cmd("git clean -f -d -x")
-    
+
     if config.SPARK_MERGE_COMMIT_INTO_MASTER:
         run_cmd("git reset --hard master")
         run_cmd("git merge %s -m ='Merging %s into master.'" %
@@ -167,7 +167,7 @@ if should_prep_spark:
     else:
         run_cmd("git reset --hard %s" % config.SPARK_COMMIT_ID)
 
-    run_cmd("%s clean package" % sbt_cmd)
+    run_cmd("%s clean assembly" % sbt_cmd)
 
     # Copy Spark configuration files to new directory.
     print("Copying all files from %s to %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
@@ -294,7 +294,7 @@ new_env["SPARK_HOME"] = "%s/spark" % proj_dir
 
 # Search for 'spark.local.dir' in spark-env.sh, or shark-env.sh if Shark is also being built. Note
 # that for the latter case, 'spark.local.dir' in shark-env.sh takes precedence.
-spark_local_dirs = "" 
+spark_local_dirs = ""
 path_to_env_file = ""
 if has_shark_tests:
     # Store Hive metastore and warehouse subdirectories created by each Shark PerfTest.
@@ -332,7 +332,7 @@ if should_warmup_disk:
         all_hosts = slaves_list + ["localhost"]
         run_cmds_parallel([(make_ssh_cmd(dir_command, host), True) for host in all_hosts])
         run_cmds_parallel([(make_ssh_cmd(gen_command, host), True) for host in all_hosts])
-        clear_dir(local_dir, all_hosts)        
+        clear_dir(local_dir, all_hosts)
 
 # Some utility functions to calculate useful stats on test output.
 def average(in_list):
@@ -389,7 +389,7 @@ def run_tests(scala_cmd_classpath, tests_to_run, test_group_name, output_filenam
                 result_med = result_list[len(result_list)/2]
                 result_std = sqrt(variance(result_list))
                 result_min = min(result_list)
-                result_string = "%s, %s, %s, %.3f, %s, %s, %s" % (short_name, " ".join(opt_list), 
+                result_string = "%s, %s, %s, %.3f, %s, %s, %s" % (short_name, " ".join(opt_list),
                     result_med, result_std, result_min, result_first, result_last)
                 print(result_string)
                 out_file.write(result_string + "\n")
