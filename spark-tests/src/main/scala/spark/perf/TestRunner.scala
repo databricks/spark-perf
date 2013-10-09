@@ -13,12 +13,14 @@ object TestRunner {
     val master = args(1)
     val perfTestArgs = args.slice(2, args.length)
     val sc = new SparkContext(master, "TestRunner: " + testName, System.getenv("SPARK_HOME"),
-      Seq(System.getProperty("user.dir") + "/spark-tests/target/spark-perf-tests-assembly.jar"))
+      Seq(System.getProperty("user.dir") + "/spark-tests/target/scala-2.9.3/spark-perf-tests-assembly.jar"))
 
     val test: PerfTest =
       testName match {
         case "aggregate-by-key" => new AggregateByKey(sc)
+        case "aggregate-by-key-int" => new AggregateByKeyInt(sc)
         case "sort-by-key" => new SortByKey(sc)
+        case "sort-by-key-int" => new SortByKeyInt(sc)
         case "count" => new Count(sc)
         case "count-with-filter" => new CountWithFilter(sc)
         case "scheduling-throughput" => new SchedulerThroughputTest(sc)

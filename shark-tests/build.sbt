@@ -52,11 +52,12 @@ test in assembly := {}
 
 jarName in assembly := "shark-perf-tests-assembly.jar"
 
-mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) => 
+mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
   {
     case PathList("META-INF", xs @ _*) =>
       (xs.map(_.toLowerCase)) match {
         case ("manifest.mf" :: Nil) => MergeStrategy.discard
+        case ("license" :: _) => MergeStrategy.discard
         case ps @ (x :: xs) if ps.last.endsWith(".sf") => MergeStrategy.discard
         case _ => MergeStrategy.first
       }
