@@ -16,8 +16,8 @@ object TestRunner {
 
     val sharkContext = SharkEnv.initWithSharkContext("TestRunner: " + testName, master)
     val userDirectory = System.getProperty("user.dir")
-    sharkContext.addJar(userDirectory + "/spark-tests/target/scala-2.9.3/spark-perf-tests-assembly.jar")
-    sharkContext.addJar(userDirectory + "/shark-tests/target/scala-2.9.3/shark-perf-tests-assembly.jar")
+    sharkContext.addJar(userDirectory + "/spark-tests/target/spark-perf-tests-assembly.jar")
+    sharkContext.addJar(userDirectory + "/shark-tests/target/shark-perf-tests-assembly.jar")
 
     // Initialize Shark/Hive metastore and warehouse directories.
     val testWarehousesDir = System.getenv("PERF_TEST_WAREHOUSES")
