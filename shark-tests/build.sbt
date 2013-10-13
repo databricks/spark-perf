@@ -26,7 +26,7 @@ unmanagedJars in Compile <++= baseDirectory map  { base =>
 unmanagedJars in Compile <++= baseDirectory map  { base =>
   // Assume that 'sbt' is called from 'perf-tests/shark-tests' and that Spark
   // is cloned to perf-tests/spark.
-  val finder: PathFinder = (file("../spark")) ** "*.jar"
+  val finder: PathFinder = (file("../spark/assembly/target")) ** "*assembly*hadoop*.jar"
   finder.get
 }
 
@@ -50,13 +50,14 @@ assemblySettings
 
 test in assembly := {}
 
-jarName in assembly := "shark-perf-tests-assembly.jar"
+outputPath in assembly := file("target/shark-perf-tests-assembly.jar")
 
-mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) => 
+mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
   {
     case PathList("META-INF", xs @ _*) =>
       (xs.map(_.toLowerCase)) match {
         case ("manifest.mf" :: Nil) => MergeStrategy.discard
+        case ("license" :: _) => MergeStrategy.discard
         case ps @ (x :: xs) if ps.last.endsWith(".sf") => MergeStrategy.discard
         case _ => MergeStrategy.first
       }

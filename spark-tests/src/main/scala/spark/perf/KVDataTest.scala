@@ -7,11 +7,11 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 
 /** Parent class for tests which run on a large (key, value) dataset. */
-abstract class KVDataTest(sc: SparkContext) extends PerfTest {
+abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends PerfTest {
   // TODO (pwendell):
   //   - Support skewed distribution of groups
 
-  def runTest(rdd: RDD[(String, String)], reduceTasks: Int)
+  def runTest(rdd: RDD[_], reduceTasks: Int)
 
   val NUM_TRIALS =       ("num-trials",    "number of trials to run")
   val REDUCE_TASKS =     ("reduce-tasks",  "number of reduce tasks")
@@ -34,7 +34,7 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
 
   val parser = new OptionParser()
   var optionSet: OptionSet = _
-  var rdd: RDD[(String, String)] = _
+  var rdd: RDD[_] = _
 
   intOptions.map{case (opt, desc) =>
     parser.accepts(opt, desc).withRequiredArg().ofType(classOf[Int]).required()
@@ -69,8 +69,16 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
     if (uniqueValues.toString.length > valueLength) throw new Exception(
       "Can't pack %s unique values into %s digits".format(uniqueValues, valueLength))
 
-    rdd = DataGenerator.createKVDataSet(sc, numRecords, uniqueKeys, keyLength, uniqueValues,
-      valueLength, numPartitions, randomSeed, persistenceType)
+    rdd = dataType match {
+      case "string" =>
+        DataGenerator.createKVStringDataSet(sc, numRecords, uniqueKeys, keyLength, uniqueValues,
+          valueLength, numPartitions, randomSeed, persistenceType)
+      case "int" =>
+        DataGenerator.createKVIntDataSet(sc, numRecords, uniqueKeys, uniqueValues,
+          numPartitions, randomSeed, persistenceType)
+      case _ =>
+        throw new IllegalArgumentException("Unknown data type: " + dataType)
+    }
   }
 
   override def run(): Seq[Double] = {
@@ -97,25 +105,43 @@ abstract class KVDataTest(sc: SparkContext) extends PerfTest {
 }
 
 class AggregateByKey(sc: SparkContext) extends KVDataTest(sc) {
-  override def runTest(rdd: RDD[(String, String)], reduceTasks: Int) {
-    rdd.map{case (k, v) => (k, v.toInt)}.reduceByKey(_ + _, reduceTasks).collect
+  override def runTest(rdd: RDD[_], reduceTasks: Int) {
+    rdd.asInstanceOf[RDD[(String, String)]]
+      .map{case (k, v) => (k, v.toInt)}.reduceByKey(_ + _, reduceTasks).count()
+  }
+}
+
+class AggregateByKeyInt(sc: SparkContext) extends KVDataTest(sc, "int") {
+  override def runTest(rdd: RDD[_], reduceTasks: Int) {
+    rdd.asInstanceOf[RDD[(Int, Int)]]
+      .reduceByKey(_ + _, reduceTasks).count()
   }
 }
 
 class SortByKey(sc: SparkContext) extends KVDataTest(sc) {
-  override def runTest(rdd: RDD[(String, String)], reduceTasks: Int) {
-    rdd.sortByKey(numPartitions=reduceTasks).count
+  override def runTest(rdd: RDD[_], reduceTasks: Int) {
+    rdd.asInstanceOf[RDD[(String, String)]]
+      .sortByKey(numPartitions=reduceTasks).count()
+  }
+}
+
+class SortByKeyInt(sc: SparkContext) extends KVDataTest(sc, "int") {
+  override def runTest(rdd: RDD[_], reduceTasks: Int) {
+    rdd.asInstanceOf[RDD[(Int, Int)]]
+      .sortByKey(numPartitions=reduceTasks).count()
   }
 }
 
 class Count(sc: SparkContext) extends KVDataTest(sc) {
-  override def runTest(rdd: RDD[(String, String)], reduceTasks: Int) {
-    rdd.count
+  override def runTest(rdd: RDD[_], reduceTasks: Int) {
+    rdd.asInstanceOf[RDD[(String, String)]]
+      .count()
   }
 }
 
 class CountWithFilter(sc: SparkContext) extends KVDataTest(sc) {
-  override def runTest(rdd: RDD[(String, String)], reduceTasks: Int) {
-    rdd.filter{case (k, v) => k.toInt % 2 == 1}.count
+  override def runTest(rdd: RDD[_], reduceTasks: Int) {
+    rdd.asInstanceOf[RDD[(String, String)]]
+      .filter{case (k, v) => k.toInt % 2 == 1}.count()
   }
 }

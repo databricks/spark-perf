@@ -4,7 +4,7 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 import org.scalatest.matchers.ShouldMatchers._
 import org.scalatest.matchers.ShouldMatchers
 import com.google.common.io.Files
-import spark.SparkContext
+import org.apache.spark.SparkContext
 
 class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMatchers {
   private var _sc: SparkContext = _
@@ -28,7 +28,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
   }
 
   test("creates correct number of records") {
-    val data = DataGenerator.createKVDataSet(sc,
+    val data = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -42,7 +42,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
   }
 
   test("creates correct key and value length") {
-    val data = DataGenerator.createKVDataSet(sc,
+    val data = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -65,7 +65,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
   }
 
   test("partitions use different random generators") {
-    val data = DataGenerator.createKVDataSet(sc,
+    val data = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -87,7 +87,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
   }
 
   test("datasets are identical for disk, memory, and HDFS") {
-    val memData = DataGenerator.createKVDataSet(sc,
+    val memData = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -97,7 +97,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
       randomSeed = 5555,
       persistenceType = "memory").collect()
 
-    val diskData = DataGenerator.createKVDataSet(sc,
+    val diskData = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -107,7 +107,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
       randomSeed = 5555,
       persistenceType = "disk").collect()
 
-    val hdfsData = DataGenerator.createKVDataSet(sc,
+    val hdfsData = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -148,7 +148,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
   }
 
   test("random seeds produce different but consistent results") {
-    val data1 = DataGenerator.createKVDataSet(sc,
+    val data1 = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -158,7 +158,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
       randomSeed = 3333,
       persistenceType = "memory")
 
-    val data2 = DataGenerator.createKVDataSet(sc,
+    val data2 = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -170,7 +170,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
 
     data1.collect() should equal (data2.collect())
 
-    val data3 = DataGenerator.createKVDataSet(sc,
+    val data3 = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -180,7 +180,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
       randomSeed = 4444,
       persistenceType = "memory")
 
-    val data4 = DataGenerator.createKVDataSet(sc,
+    val data4 = DataGenerator.createKVStringDataSet(sc,
       numRecords = 1000,
       uniqueKeys = 10,
       keyLength = 30,
@@ -197,7 +197,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
 
   test("cardinality of keys and values are as expected") {
     def run(_uniqueKeys: Int, _uniqueValues: Int) = {
-      val data = DataGenerator.createKVDataSet(sc,
+      val data = DataGenerator.createKVStringDataSet(sc,
         numRecords = 10000,
         uniqueKeys = _uniqueKeys,
         keyLength = 30,
@@ -208,6 +208,31 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
         persistenceType = "memory").collect()
 
       val records: Seq[(Int, Int)] = data.map{case (k, v) => (k.toInt, v.toInt)}
+
+      val uniqueKeys = records.map(_._1).distinct
+      val uniqueValues = records.map(_._2).distinct
+      val uniquePairs = records.distinct
+
+      uniqueKeys.toSet should equal ((0 to _uniqueKeys - 1).toSet)
+      uniqueValues.toSet should equal ((0 to _uniqueValues - 1).toSet)
+      uniquePairs.size should equal (_uniqueKeys * _uniqueValues)
+    }
+    run(5, 5)
+    run(2, 10)
+    run(10, 2)
+  }
+
+  test("integer datasets") {
+    def run(_uniqueKeys: Int, _uniqueValues: Int) = {
+      val records: Seq[(Int, Int)] = DataGenerator.createKVIntDataSet(sc,
+        numRecords = 10000,
+        uniqueKeys = _uniqueKeys,
+        uniqueValues = _uniqueValues,
+        numPartitions = 10,
+        randomSeed = 3333,
+        persistenceType = "memory").collect()
+
+      records.length should equal (10000)
 
       val uniqueKeys = records.map(_._1).distinct
       val uniqueValues = records.map(_._2).distinct

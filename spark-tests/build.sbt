@@ -19,7 +19,7 @@ libraryDependencies += "com.google.guava" % "guava" % "14.0.1"
 // Assumes that the 'base' directory is 'perf-tests/spark-tests' and that the Spark repo is cloned
 // to 'perf-tests/spark'.
 unmanagedJars in Compile <++= baseDirectory map  { base =>
-  val finder: PathFinder = (file("../spark")) ** "*.jar"
+  val finder: PathFinder = (file("../spark/assembly/target")) ** "*assembly*hadoop*.jar"
   finder.get
 }
 
@@ -27,15 +27,15 @@ assemblySettings
 
 test in assembly := {}
 
-jarName in assembly := "spark-perf-tests-assembly.jar"
+outputPath in assembly := file("target/spark-perf-tests-assembly.jar")
 
-mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) => 
+mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
   {
     case PathList("META-INF", xs @ _*) =>
       (xs.map(_.toLowerCase)) match {
         case ("manifest.mf" :: Nil) => MergeStrategy.discard
         // Note(harvey): this to get Shark perf test assembly working.
-        case ("license" :: Nil) => MergeStrategy.discard
+        case ("license" :: _) => MergeStrategy.discard
         case ps @ (x :: xs) if ps.last.endsWith(".sf") => MergeStrategy.discard
         case _ => MergeStrategy.first
       }

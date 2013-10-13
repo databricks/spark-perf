@@ -163,9 +163,16 @@ SPARK_TESTS += [("scheduling-throughput", "spark.perf.TestRunner scheduling-thro
 SPARK_TESTS += [("scala-agg-by-key", "spark.perf.TestRunner aggregate-by-key", SCALE_FACTOR,
     COMMON_JAVA_OPTS, SPARK_KV_OPTS)]
 
-# Scale the input for this test by an additional 0.10.
+# Scale the input for this test by 2x since ints are smaller.
+SPARK_TESTS += [("scala-agg-by-key-int", "spark.perf.TestRunner aggregate-by-key-int",
+    SCALE_FACTOR * 2, COMMON_JAVA_OPTS, SPARK_KV_OPTS)]
+
+# Scale the input for this test by 0.10.
 SPARK_TESTS += [("scala-sort-by-key", "spark.perf.TestRunner sort-by-key", SCALE_FACTOR * 0.1,
     COMMON_JAVA_OPTS, SPARK_KV_OPTS)]
+
+SPARK_TESTS += [("scala-sort-by-key-int", "spark.perf.TestRunner sort-by-key-int",
+    SCALE_FACTOR * 0.2, COMMON_JAVA_OPTS, SPARK_KV_OPTS)]
 
 SPARK_TESTS += [("scala-count", "spark.perf.TestRunner count", SCALE_FACTOR, COMMON_JAVA_OPTS,
     SPARK_KV_OPTS)]

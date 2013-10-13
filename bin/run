@@ -167,7 +167,7 @@ if should_prep_spark:
     else:
         run_cmd("git reset --hard %s" % config.SPARK_COMMIT_ID)
 
-    run_cmd("%s clean assembly" % sbt_cmd)
+    run_cmd("%s clean assembly/assembly" % sbt_cmd)
 
     # Copy Spark configuration files to new directory.
     print("Copying all files from %s to %s/spark/conf/" % (config.SPARK_CONF_DIR, proj_dir))
@@ -184,7 +184,7 @@ else:
     #             classpath (as part of work Patrick is doing), instead of
     #             just looking for spark/target.
     assert os.path.exists(
-        "%s/spark/target" % proj_dir), ("You chose to skip Spark prep, but we can't since " +
+        "%s/spark/core/target" % proj_dir), ("You chose to skip Spark prep, but we can't since " +
         "%s/spark/target does not exist, so Spark needs to be rebuilt/packaged." % proj_dir)
     print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, " +
         "copy conf files).")

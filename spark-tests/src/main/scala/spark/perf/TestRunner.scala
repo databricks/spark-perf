@@ -18,7 +18,9 @@ object TestRunner {
     val test: PerfTest =
       testName match {
         case "aggregate-by-key" => new AggregateByKey(sc)
+        case "aggregate-by-key-int" => new AggregateByKeyInt(sc)
         case "sort-by-key" => new SortByKey(sc)
+        case "sort-by-key-int" => new SortByKeyInt(sc)
         case "count" => new Count(sc)
         case "count-with-filter" => new CountWithFilter(sc)
         case "scheduling-throughput" => new SchedulerThroughputTest(sc)
