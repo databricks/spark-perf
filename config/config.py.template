@@ -11,7 +11,7 @@ from config_utils import OptionSet
 
 # Git repos used to clone clean copies of Spark and Shark to path/to/perf-tests/spark and
 # path/to/perf-tests/shark, respectively.
-SPARK_GIT_REPO = "git://github.com/mesos/spark.git"
+SPARK_GIT_REPO = "git://git.apache.org/incubator-spark.git"
 SHARK_GIT_REPO = "git://github.com/amplab/shark.git"
 
 # Git repo for a patched, Shark-compatible version of Hive 0.9.
