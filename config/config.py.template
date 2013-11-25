@@ -19,9 +19,10 @@ HIVE_GIT_REPO = "git://github.com/amplab/hive.git -b shark-0.9"
 
 # Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO and/or
 # SHARK_GIT_REPO is named "origin". This ID can specify any of the following:
-#     1. A git commit hash     e.g. "4af93ff3"
-#     2. A branch name         e.g. "origin/branch-0.7"
-#     3. A pull request        e.g. "origin/pr/675"
+#     1. A git commit hash         e.g. "4af93ff3"
+#     2. A branch name             e.g. "origin/branch-0.7"
+#     3. A tag name                e.g. "origin/tag/v0.8.0-incubating"
+#     4. A pull request            e.g. "origin/pr/675"
 #
 # Required for running Spark and Shark tests.
 SPARK_COMMIT_ID = ""

@@ -149,6 +149,8 @@ if should_prep_spark:
         run_cmd("git clone %s spark" % config.SPARK_GIT_REPO)
         run_cmd("cd spark; git config --add remote.origin.fetch "
             "'+refs/pull/*/head:refs/remotes/origin/pr/*'")
+        run_cmd("cd spark; git config --add remote.origin.fetch "
+            "'+refs/tags/*:refs/remotes/origin/tag/*'")
 
     # Fetch updates.
     os.chdir("spark")
@@ -219,6 +221,8 @@ if should_prep_shark:
         run_cmd("git clone %s shark" % config.SHARK_GIT_REPO)
         run_cmd("cd shark; git config --add remote.origin.fetch "
             "'+refs/pull/*/head:refs/remotes/origin/pr/*'")
+        run_cmd("cd shark; git config --add remote.origin.fetch "
+            "'+refs/tags/*:refs/remotes/origin/tag/*'")
 
     # Fetch updates.
     os.chdir("shark")
