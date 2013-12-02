@@ -22,5 +22,6 @@ target
 # Test files
 shark_perf_output_*
 spark_perf_output_*
+streaming_perf_output_*
 *.xml
 test-warehouses

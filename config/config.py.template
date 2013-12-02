@@ -37,6 +37,8 @@ SHARK_MERGE_COMMIT_INTO_MASTER = False
 # File to write results to.
 SPARK_OUTPUT_FILENAME = "spark_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
+STREAMING_OUTPUT_FILENAME = "streaming_perf_output_%s_%s" % (
+    SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 SHARK_OUTPUT_FILENAME = "shark_perf_output_%s_%s" % (
     SHARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 
@@ -181,6 +183,19 @@ SPARK_TESTS += [("scala-count", "spark.perf.TestRunner count", SCALE_FACTOR, COM
 SPARK_TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter", SCALE_FACTOR,
     COMMON_JAVA_OPTS, SPARK_KV_OPTS)]
 
+
+# Set up Spark Streaming tests
+STREAMING_TESTS = []
+
+STREAMING_BATCH_DURATION_OPTS = [ OptionSet("batch-duration", [1000]) ]
+
+STREAMING_COMMON_OPTS = STREAMING_BATCH_DURATION_OPTS 
+
+STREAMING_COMMON_JAVA_OPTS = COMMON_JAVA_OPTS
+
+STREAMING_TESTS += [("basic", "streaming.perf.TestRunner basic",
+    SCALE_FACTOR, STREAMING_COMMON_JAVA_OPTS, STREAMING_COMMON_OPTS)]
+
 # Set up Shark tests
 SHARK_TABLE_OPTS = COMMON_OPTS + SHARK_TABLE_GEN_OPTS + SHARK_TABLE_STORAGE_OPTS
 
@@ -218,6 +233,7 @@ HIVE_SKIP_PREP = False
 # Skip building and packaging project tests (requires respective perf tests to already be packaged
 # in the project's target directory).
 SPARK_SKIP_TEST_PREP = False
+STREAMING_SKIP_TEST_PREP = False 
 SHARK_SKIP_TEST_PREP = False
 
 # Skip warming up local disks.
