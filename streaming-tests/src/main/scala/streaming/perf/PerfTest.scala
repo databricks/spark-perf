@@ -1,9 +1,10 @@
 package streaming.perf
 
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
+import org.apache.spark.Logging
 import joptsimple.{OptionSet, OptionParser}
 
-abstract class PerfTest {
+abstract class PerfTest extends Logging {
 
   /** Int-type command line options expected for this test */
   def intOptions: Seq[(String, String, Boolean)] = Seq(PerfTest.BATCH_DURATION)
@@ -24,7 +25,7 @@ abstract class PerfTest {
   }
 
   /** Runs the test and returns a series of results, along with values of any parameters */
-  def run(): Seq[String]
+  def run(): String
 
   val parser = new OptionParser()
   var optionSet: OptionSet = _
@@ -48,10 +49,18 @@ abstract class PerfTest {
   }
 
   protected def createContext() = {
-    new StreamingContext(master, "TestRunner: " + testName, Milliseconds(batchDuration),
-      System.getenv("SPARK_HOME"), Seq(System.getProperty("user.dir") +
-        "/streaming-tests/target/streaming-perf-tests-assembly.jar"))
+    val jarFile = System.getProperty("user.dir", "..") + "/streaming-tests/target/streaming-perf-tests-assembly.jar"
+    val sparkDir = Option(System.getenv("SPARK_HOME")).getOrElse("../spark/")
+    println("Creating streaming context with spark directory = " + sparkDir + " and jar file  = " + jarFile)
+    new StreamingContext(master, "TestRunner: " + testName,
+      Milliseconds(batchDuration), sparkDir, Seq(jarFile))
   }
+
+  def intOptionValue(option: (String, String, Boolean)) = optionSet.valueOf(option._1).asInstanceOf[Int]
+
+  def stringOptionValue(option: (String, String, Boolean)) = optionSet.valueOf(option._1).asInstanceOf[String]
+
+  def booleanOptionValue(option: (String, String, Boolean)) = optionSet.valueOf(option._1).asInstanceOf[Boolean]
 }
 
 object PerfTest {
