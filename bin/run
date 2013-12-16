@@ -362,6 +362,9 @@ def run_tests(scala_cmd_classpath, tests_to_run, test_group_name, output_filenam
     for short_name, test_cmd, scale_factor, java_opt_sets, opt_sets in tests_to_run:
         print(output_divider_string)
         print("Running test command: '%s' ..." % test_cmd)
+        # Generate stderr file name
+        f_stderr_name = short_name + "-" + output_filename + "-driver.log"
+        f_stderr = open(f_stderr_name, "a")
         # Run a test for all combinations of the OptionSets given, then capture
         # and print the output.
         java_opt_set_arrays = [i.to_array(scale_factor) for i in java_opt_sets]
@@ -374,7 +377,10 @@ def run_tests(scala_cmd_classpath, tests_to_run, test_group_name, output_filenam
                 cmd = "%s %s -cp %s %s %s %s" % (config.SCALA_CMD, " ".join(java_opt_list),
                     scala_cmd_classpath, test_cmd, config.SPARK_CLUSTER_URL, " ".join(opt_list))
                 print("\nrunning command: %s\n" % cmd)
-                output = Popen(cmd, stdout=PIPE, shell=True, env=new_env).stdout.read()
+                print >>f_stderr, ("\nrunning command: %s\n" % cmd)
+                f_stderr.flush()
+                output = Popen(
+                    cmd, stdout=PIPE, stderr=f_stderr, shell=True, env=new_env).stdout.read()
                 if results_token not in output:
                     print("Test did not produce expected results. Output was:")
                     print(output)
