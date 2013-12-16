@@ -364,6 +364,7 @@ def run_tests(scala_cmd_classpath, tests_to_run, test_group_name, output_filenam
         print("Running test command: '%s' ..." % test_cmd)
         # Generate stderr file name
         f_stderr_name = short_name + "-" + output_filename + "-driver.log"
+        print("\nAppending log output to %s\n" % f_stderr_name)
         f_stderr = open(f_stderr_name, "a")
         # Run a test for all combinations of the OptionSets given, then capture
         # and print the output.
