@@ -38,7 +38,7 @@ class HdfsRecoveryTest extends PerfTest {
     }
     val wordStream = fileStream.flatMap(_.split(" ")).map(x => (x, 1L))
     val runningCountStream = wordStream.updateStateByKey[Long](updateFunc).persist(StorageLevel.MEMORY_AND_DISK_SER)
-    runningCountStream.checkpoint(Milliseconds(batchDuration * 5)
+    runningCountStream.checkpoint(Milliseconds(batchDuration * 5))
 
     // Verify the running counts. For any key the running count should be in the sequence
     // 1, 3, 6, 10, 15, 21, ... (i.e., nth number is sum of 1..n)
