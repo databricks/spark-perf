@@ -2,12 +2,9 @@ package streaming.perf
 
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.{Milliseconds, Time}
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-
 import streaming.perf.util.FileGenerator
-
 
 class HdfsRecoveryTest extends PerfTest {
   import HdfsRecoveryTest._
@@ -29,7 +26,6 @@ class HdfsRecoveryTest extends PerfTest {
     // Create the file generator
     val fileGenerator = new FileGenerator(ssc.sparkContext, dataDirectory, maxRecordsPerFile, cleanerDelay)
     fileGenerator.initialize()
-    Thread.sleep(batchDuration * 2) // ensures mod time of this file is such that file stream never finds it
 
     // Setup computation
     val fileStream = ssc.textFileStream(dataDirectory)

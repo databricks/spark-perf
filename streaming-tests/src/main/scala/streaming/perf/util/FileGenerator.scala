@@ -91,14 +91,11 @@ class FileGenerator(sc: SparkContext, testDir: String, maxRecordsPerFile: Int, c
   /** Copies a local file to a HDFS path */
   private def copyFile(localFile: File, finalFile: Path): Boolean = {
     var done = false
-    val tempFile = new Path(testDir, ".tmp_" + Random.nextInt())
     var tries = 0
     while (!done && tries < MAX_TRIES) {
       tries += 1
       try {
-        //FileUtil.copy(fs, initFile, fs, finalFile, false, conf)
         fs.copyFromLocalFile(new Path(localFile.toString), finalFile)
-        //fs.rename(tempFile, finalFile)
         done = true
       } catch {
         case ioe: IOException =>
