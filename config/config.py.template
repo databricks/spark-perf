@@ -152,11 +152,11 @@ SHARK_TABLE_STORAGE_OPTS = [
 
 # The following function generates options for setting batch duration in streaming tests
 def STREAMING_BATCH_DURATION_OPTS(duration):
-    return [ OptionSet("batch-duration", [ duration ]) ]
+    return [OptionSet("batch-duration", [duration])]
 
 # The following Java options apply to the streaming tests
 STREAMING_COMMON_JAVA_OPTS = COMMON_JAVA_OPTS + [
-    JavaOptionSet("spark.cleaner.ttl", [ 1800 ])
+    JavaOptionSet("spark.cleaner.ttl", [1800])
 ]
 
 STREAMING_COMMON_OPTS = STREAMING_BATCH_DURATION_OPTS(1000) 
@@ -198,7 +198,7 @@ SPARK_TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter"
 # Set up Spark Streaming tests
 STREAMING_TESTS = []
 
-STREAMING_BATCH_DURATION_OPTS = [ OptionSet("batch-duration", [1000]) ]
+STREAMING_BATCH_DURATION_OPTS = [OptionSet("batch-duration", [1000])]
 
 STREAMING_COMMON_OPTS = STREAMING_BATCH_DURATION_OPTS 
 
@@ -208,7 +208,7 @@ STREAMING_TESTS += [("basic", "streaming.perf.TestRunner basic",
     SCALE_FACTOR, STREAMING_COMMON_JAVA_OPTS, STREAMING_COMMON_OPTS)]
 
 HDFS_RECOVERY_TEST_OPTS = STREAMING_BATCH_DURATION_OPTS(5000) + [
-    OptionSet("hdfs-url", [ "%s/test/" % os.getcwd() ]),
+    OptionSet("hdfs-url", ["%s/test/" % os.getcwd()]),
     OptionSet("total-duration", [3600 * 5]),
     OptionSet("records-per-file", [10000]),
     OptionSet("file-cleaner-delay", [300])
