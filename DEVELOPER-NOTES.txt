@@ -2,19 +2,27 @@
 # config.py file by copying an updated config.py.template. These are the lines to paste into
 # config.py replacing the default lines that exist.
 
-COMMIT_ID = "master"
+# Required for running Spark and Shark tests.
+SPARK_COMMIT_ID = ""
+SHARK_COMMIT_ID = ""
 
-SPARK_CONF_DIR = "YOUR LOCAL DIR HERE"
+# Existing directories for Spark and Shark.
+SPARK_HOME_DIR = "YOUR LOCAL SPARK DIR"
+SHARK_HOME_DIR = "YOUR LOCAL SHARK DIR"
 
 # The following trick might not work for you depending on your dev station network config.
 import socket; SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname()
 
 scale_factor = 0.000001
 
-Remove this line (unless you actually have 9gb of memory and want to use it):
+# Update or remove this line (unless you actually have 9gb of memory and want to use it):
 JavaOptionSet("spark.executor.memory", ["9g"])',
 
-Might want to update these:
-SKIP_SPARK_PREP = True
-SKIP_TEST_PREP = True
-SKIP_DISK_WARMUP = True
+# Might want to update these:
+SPARK_SKIP_PREP = True
+SHARK_SKIP_PREP = True
+HIVE_SKIP_PREP = True
+
+SPARK_SKIP_TEST_PREP = True
+STREAMING_SKIP_TEST_PREP = True
+SHARK_SKIP_TEST_PREP = True
