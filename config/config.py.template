@@ -1,6 +1,8 @@
 """Configuration options for running Spark and Shark performance tests (perf-tests)."""
 
 import time
+import os
+import os.path
 
 from config_utils import FlagSet
 from config_utils import JavaOptionSet
@@ -150,17 +152,6 @@ SHARK_TABLE_STORAGE_OPTS = [
     OptionSet("column-compression-type", ["default"])
 ]
 
-# The following function generates options for setting batch duration in streaming tests
-def STREAMING_BATCH_DURATION_OPTS(duration):
-    return [OptionSet("batch-duration", [duration])]
-
-# The following Java options apply to the streaming tests
-STREAMING_COMMON_JAVA_OPTS = COMMON_JAVA_OPTS + [
-    JavaOptionSet("spark.cleaner.ttl", [1800])
-]
-
-STREAMING_COMMON_OPTS = STREAMING_BATCH_DURATION_OPTS(1000) 
-
 # Test setup
 # --------------------------------------------------------------------------------------------------
 # Set up the actual tests. Each test is represtented by a tuple: (short_name, test_cmd,
@@ -198,16 +189,24 @@ SPARK_TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner count-with-filter"
 # Set up Spark Streaming tests
 STREAMING_TESTS = []
 
-STREAMING_BATCH_DURATION_OPTS = [OptionSet("batch-duration", [1000])]
+# The following function generates options for setting batch duration in streaming tests
+def streaming_batch_duration_opts(duration):
+    return [OptionSet("batch-duration", [duration])]
 
-STREAMING_COMMON_OPTS = STREAMING_BATCH_DURATION_OPTS 
+# The following Java options apply to the streaming tests
+STREAMING_COMMON_JAVA_OPTS = COMMON_JAVA_OPTS + [
+    JavaOptionSet("spark.cleaner.ttl", [1800])
+]
 
-STREAMING_COMMON_JAVA_OPTS = COMMON_JAVA_OPTS
+STREAMING_COMMON_OPTS = streaming_batch_duration_opts(1000) 
+
+
+
 
 STREAMING_TESTS += [("basic", "streaming.perf.TestRunner basic",
     SCALE_FACTOR, STREAMING_COMMON_JAVA_OPTS, STREAMING_COMMON_OPTS)]
 
-HDFS_RECOVERY_TEST_OPTS = STREAMING_BATCH_DURATION_OPTS(5000) + [
+STREAMING_HDFS_RECOVERY_TEST_OPTS = streaming_batch_duration_opts(5000) + [
     OptionSet("hdfs-url", ["%s/test/" % os.getcwd()]),
     OptionSet("total-duration", [3600 * 5]),
     OptionSet("records-per-file", [10000]),
@@ -215,7 +214,7 @@ HDFS_RECOVERY_TEST_OPTS = STREAMING_BATCH_DURATION_OPTS(5000) + [
 ]
 
 STREAMING_TESTS += [("hdfs-recovery", "streaming.perf.TestRunner hdfs-recovery",
-    SCALE_FACTOR, STREAMING_COMMON_JAVA_OPTS + [ JavaOptionSet("sun.io.serialization.extendedDebugInfo", ["true"]) ], HDFS_RECOVERY_TEST_OPTS)]
+    SCALE_FACTOR, STREAMING_COMMON_JAVA_OPTS, STREAMING_HDFS_RECOVERY_TEST_OPTS)]
 
 
 # Set up Shark tests
