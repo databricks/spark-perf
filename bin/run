@@ -130,13 +130,13 @@ slaves_file_raw = open("%s/slaves" % config.SPARK_CONF_DIR, 'r').read().split("\
 slaves_list = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
 
 # If a cluster is already running from the Spark EC2 scripts, try shutting it down.
-if os.path.exists("%s/bin/stop-all.sh" % config.SPARK_HOME_DIR):
-    run_cmd("%s/bin/stop-all.sh" % config.SPARK_HOME_DIR)
+if os.path.exists("%s/sbin/stop-all.sh" % config.SPARK_HOME_DIR):
+    run_cmd("%s/sbin/stop-all.sh" % config.SPARK_HOME_DIR)
 
 # If a cluster is already running from an earlier test, try shutting it down.
-if os.path.exists("%s/spark/bin/stop-all.sh" % proj_dir):
+if os.path.exists("%s/spark/sbin/stop-all.sh" % proj_dir):
     print("Stopping Spark standalone cluster...")
-    run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
+    run_cmd("%s/spark/sbin/stop-all.sh" % proj_dir)
 
 # Ensure all shutdowns have completed (no executors are running).
 ensure_spark_stopped_on_slaves(slaves_list)
@@ -297,9 +297,9 @@ run_cmds_parallel([(make_rsync_cmd(proj_dir, slave), True) for slave in slaves_l
 
 # Start our Spark cluster.
 print("Starting a Spark standalone cluster to use for testing...")
-assert os.path.exists("%s/spark/bin/start-all.sh" % proj_dir), ("%s/spark/bin/start-all.sh must "
+assert os.path.exists("%s/spark/sbin/start-all.sh" % proj_dir), ("%s/spark/sbin/start-all.sh must "
     "exist") % proj_dir
-run_cmd("%s/spark/bin/start-all.sh" % proj_dir)
+run_cmd("%s/spark/sbin/start-all.sh" % proj_dir)
 time.sleep(5) # Starting the cluster takes a little time so give it a second.
 
 # Set Spark Java Options (from config.py)
@@ -491,6 +491,6 @@ if has_shark_tests:
         process_trials_output, config.SHARK_OUTPUT_FILENAME)
 
 print("All tests have finished running. Stopping Spark standalone cluster ...")
-run_cmd("%s/spark/bin/stop-all.sh" % proj_dir)
+run_cmd("%s/spark/sbin/stop-all.sh" % proj_dir)
 
 print("Finished running all tests.")
