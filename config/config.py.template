@@ -58,8 +58,8 @@ SHARK_CONF_DIR = SHARK_HOME_DIR + "/conf"
 # to change this to SPARK_CLUSTER_URL = "spark://localhost:7077" for testing.
 SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
 
-# Command used to launch Scala.
-SCALA_CMD = "scala"
+# Command used to launch Scala or Java.
+SCALA_CMD = "java"
 
 # The default values configured below are appropriate for approximately 20 m1.xlarge nodes, in which
 # each node has 15 GB of memory.

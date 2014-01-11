@@ -6,7 +6,7 @@ version := "0.1"
 
 organization := "org.spark-project"
 
-scalaVersion := "2.9.3"
+scalaVersion := "2.10.3"
 
 libraryDependencies += "org.clapper" % "argot_2.9.2" % "0.4"
 

@@ -35,7 +35,7 @@ object DataGenerator {
       }.iterator
     }
 
-    sc.parallelize(Seq(), numPartitions).mapPartitionsWithIndex{case (index, n) => {
+    sc.parallelize(Seq[Int](), numPartitions).mapPartitionsWithIndex{case (index, n) => {
       generatePartition(index)
     }}
   }
