@@ -114,7 +114,10 @@ SPARK_KEY_VAL_TEST_OPTS = [
     OptionSet("reduce-tasks", [400], can_scale=True),
     # A random seed to make tests reproducable.
     OptionSet("random-seed", [5]),
-    # Input persistence strategy (can be "memory" or "disk").
+    # Input persistence strategy (can be "memory", "disk", or "hdfs").
+    # NOTE: If "hdfs" is selected, datasets will be re-used across runs of
+    #       this script. This means parameters here are effectively ignored if
+    #       an existing input dataset is present.
     OptionSet("persistent-type", ["memory"]),
     # Whether to wait for input in order to exit the JVM.
     FlagSet("wait-for-exit", [False]),
@@ -127,7 +130,10 @@ SPARK_KEY_VAL_TEST_OPTS = [
     # Number of unique values to sample from.
     OptionSet("unique-values", [1000 * 1000], True),
     # Length in characters of each value.
-    OptionSet("value-length", [10])
+    OptionSet("value-length", [10]),
+    # Storage location if HDFS persistence is used
+    OptionSet("storage-location", [
+        os.getenv("HDFS_URL", "") + "/spark-perf-kv-data"])
 ]
 
 # The following options apply to generation of table data shared by all Shark tests.
