@@ -1,10 +1,13 @@
 package spark.perf
 
+import java.util.Random
+
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.io.compress.DefaultCodec
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-
-import java.util.Random
 
 object DataGenerator {
   def paddedString(i: Int, length: Int): String = {
@@ -49,7 +52,7 @@ object DataGenerator {
       numPartitions: Int,
       randomSeed: Int,
       persistenceType: String,
-      storageLocation: Option[String] = None)
+      storageLocation: String)
     : RDD[(Int, Int)] =
   {
     val inputRDD = generateIntData(
@@ -66,12 +69,20 @@ object DataGenerator {
         tmp.count()
         tmp
       }
-      case _ => {
-        // TODO(pwendell) Throw exception if option not recognized
-        val filename = storageLocation.getOrElse(
-          "/tmp/spark-perf-%s".format(System.currentTimeMillis()))
-        inputRDD.map{case (k, v) => "%s\t%s".format(k, v)}.saveAsTextFile(filename)
-        sc.textFile(filename).map(s => (s.split("\t")(0).toInt, s.split("\t")(1).toInt))
+      case "hdfs" => {
+        val storagePath = new Path(storageLocation)
+        val fileSystem = storagePath.getFileSystem(new Configuration())
+        if (!fileSystem.exists(storagePath)) {
+          inputRDD.map{case (k, v) => "%s\t%s".format(k, v)}
+                  .saveAsTextFile(storageLocation, classOf[DefaultCodec])
+        } else {
+          println(s"ATTENTION: Using input data already stored in $storageLocation. " +
+            s"It is not guaranteed to be consistent with provided parameters.")
+        }
+        sc.textFile(storageLocation).map(_.split("\t")).map(x => (x(0).toInt, x(1).toInt))
+      }
+      case unknown => {
+        throw new Exception(s"Unrecognized persistence option: $unknown")
       }
     }
     rdd
@@ -88,7 +99,7 @@ object DataGenerator {
       numPartitions: Int,
       randomSeed: Int,
       persistenceType: String,
-      storageLocation: Option[String] = None)
+      storageLocation: String)
     : RDD[(String, String)] =
   {
     val ints = generateIntData(
@@ -108,12 +119,20 @@ object DataGenerator {
         tmp.count()
         tmp
       }
-      case _ => {
-        // TODO(pwendell) Throw exception if option not recognized
-        val filename = storageLocation.getOrElse(
-          "/tmp/spark-perf-%s".format(System.currentTimeMillis()))
-        inputRDD.map{case (k, v) => "%s\t%s".format(k, v)}.saveAsTextFile(filename)
-        sc.textFile(filename).map(s => (s.split("\t")(0), s.split("\t")(1)))
+      case "hdfs" => {
+        val storagePath = new Path(storageLocation)
+        val fileSystem = storagePath.getFileSystem(new Configuration())
+        if (!fileSystem.exists(storagePath)) {
+          inputRDD.map{case (k, v) => "%s\t%s".format(k, v)}
+            .saveAsTextFile(storageLocation, classOf[DefaultCodec])
+        } else {
+          println(s"ATTENTION: Using input data already stored in $storageLocation. " +
+            s"It is not guaranteed to be consistent with provided parameters.")
+        }
+        sc.textFile(storageLocation).map(_.split("\t")).map(x => (x(0), x(1)))
+      }
+      case unknown => {
+        throw new Exception(s"Unrecognized persistence option: $unknown")
       }
     }
     rdd

@@ -23,12 +23,13 @@ abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends
   val VALUE_LENGTH =  ("value-length",  "length of values in characters")
   val NUM_PARTITIONS =   ("num-partitions", "number of input partitions")
   val RANDOM_SEED =      ("random-seed", "seed for random number generator")
-  val PERSISTENCE_TYPE = ("persistent-type", "input persistence (memory, disk)")
+  val PERSISTENCE_TYPE = ("persistent-type", "input persistence (memory, disk, hdfs)")
+  val STORAGE_LOCATION = ("storage-location", "directory used for storage with 'hdfs' persistence type")
   val WAIT_FOR_EXIT =    ("wait-for-exit", "JVM will not exit until input is received from stdin")
 
   val intOptions = Seq(NUM_TRIALS, INTER_TRIAL_WAIT, REDUCE_TASKS, KEY_LENGTH, VALUE_LENGTH, UNIQUE_KEYS,
     UNIQUE_VALUES, NUM_RECORDS, NUM_PARTITIONS, RANDOM_SEED)
-  val stringOptions = Seq(PERSISTENCE_TYPE)
+  val stringOptions = Seq(PERSISTENCE_TYPE, STORAGE_LOCATION)
   val booleanOptions = Seq(WAIT_FOR_EXIT)
   val options = intOptions ++ stringOptions  ++ booleanOptions
 
@@ -62,6 +63,7 @@ abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends
     val numPartitions: Int = optionSet.valueOf(NUM_PARTITIONS._1).asInstanceOf[Int]
     val randomSeed: Int = optionSet.valueOf(RANDOM_SEED._1).asInstanceOf[Int]
     val persistenceType: String = optionSet.valueOf(PERSISTENCE_TYPE._1).asInstanceOf[String]
+    val storageLocation: String = optionSet.valueOf(STORAGE_LOCATION._1).asInstanceOf[String]
 
     if (uniqueKeys.toString.length > keyLength) throw new Exception(
       "Can't pack %s unique keys into %s digits".format(uniqueKeys, keyLength))
@@ -72,10 +74,10 @@ abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends
     rdd = dataType match {
       case "string" =>
         DataGenerator.createKVStringDataSet(sc, numRecords, uniqueKeys, keyLength, uniqueValues,
-          valueLength, numPartitions, randomSeed, persistenceType)
+          valueLength, numPartitions, randomSeed, persistenceType, storageLocation)
       case "int" =>
         DataGenerator.createKVIntDataSet(sc, numRecords, uniqueKeys, uniqueValues,
-          numPartitions, randomSeed, persistenceType)
+          numPartitions, randomSeed, persistenceType, storageLocation)
       case _ =>
         throw new IllegalArgumentException("Unknown data type: " + dataType)
     }
