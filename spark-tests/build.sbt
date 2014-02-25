@@ -8,11 +8,9 @@ organization := "org.spark-project"
 
 scalaVersion := "2.10.3"
 
-libraryDependencies += "org.clapper" % "argot_2.9.2" % "0.4"
-
 libraryDependencies += "net.sf.jopt-simple" % "jopt-simple" % "4.5"
 
-libraryDependencies += "org.scalatest" % "scalatest_2.9.2" % "1.8" % "test"
+libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test"
 
 libraryDependencies += "com.google.guava" % "guava" % "14.0.1"
 

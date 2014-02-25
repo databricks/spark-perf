@@ -2,6 +2,7 @@ package spark.perf
 
 import java.util.Random
 
+import com.google.common.hash.HashFunction
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.compress.DefaultCodec
@@ -10,9 +11,19 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 object DataGenerator {
-  def paddedString(i: Int, length: Int): String = {
-    val fmtString = "%%0%sd".format(length)
-    fmtString.format(i)
+
+  /** Encode the provided integer as a fixed-length string. If a hash function is provided,
+    * the integer is hashed then encoded. */
+  def paddedString(i: Int, length: Int, hashFunction: Option[HashFunction] = None): String = {
+    hashFunction match {
+      case Some(hash) =>
+        val out = hash.hashInt(i).toString.take(length)
+        require(out.length == length, s"Hash code was too short for requested length: $length")
+        out
+      case None =>
+        val fmtString = "%%0%sd".format(length)
+        fmtString.format(i)
+    }
   }
 
   /** Creates a key-value int dataset but does not cache it, allowing for subsequent processing */
@@ -52,7 +63,7 @@ object DataGenerator {
       numPartitions: Int,
       randomSeed: Int,
       persistenceType: String,
-      storageLocation: String)
+      storageLocation: String = "/tmp/spark-perf-kv-data")
     : RDD[(Int, Int)] =
   {
     val inputRDD = generateIntData(
@@ -99,13 +110,14 @@ object DataGenerator {
       numPartitions: Int,
       randomSeed: Int,
       persistenceType: String,
-      storageLocation: String)
+      storageLocation: String = "/tmp/spark-perf-kv-data",
+      hashFunction: Option[HashFunction] = None)
     : RDD[(String, String)] =
   {
     val ints = generateIntData(
       sc, numRecords, uniqueKeys, uniqueValues, numPartitions, randomSeed)
     val inputRDD = ints.map { case (k, v) =>
-      (paddedString(k, keyLength), paddedString(v, valueLength))
+      (paddedString(k, keyLength, hashFunction), paddedString(v, valueLength, hashFunction))
     }
 
     val rdd = persistenceType match {
@@ -122,7 +134,8 @@ object DataGenerator {
       case "hdfs" => {
         val storagePath = new Path(storageLocation)
         val fileSystem = storagePath.getFileSystem(new Configuration())
-        if (!fileSystem.exists(storagePath)) {
+        val pathExists = fileSystem.exists(storagePath) && fileSystem.listStatus(storagePath).length > 0
+        if (!pathExists) {
           inputRDD.map{case (k, v) => "%s\t%s".format(k, v)}
             .saveAsTextFile(storageLocation, classOf[DefaultCodec])
         } else {

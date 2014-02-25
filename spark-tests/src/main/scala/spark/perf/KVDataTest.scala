@@ -5,6 +5,7 @@ import joptsimple.{OptionSet, OptionParser}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
+import com.google.common.hash.Hashing
 
 /** Parent class for tests which run on a large (key, value) dataset. */
 abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends PerfTest {
@@ -25,12 +26,13 @@ abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends
   val RANDOM_SEED =      ("random-seed", "seed for random number generator")
   val PERSISTENCE_TYPE = ("persistent-type", "input persistence (memory, disk, hdfs)")
   val STORAGE_LOCATION = ("storage-location", "directory used for storage with 'hdfs' persistence type")
+  val HASH_RECORDS =     ("hash-records", "Use hashes instead of padded numbers for keys and values")
   val WAIT_FOR_EXIT =    ("wait-for-exit", "JVM will not exit until input is received from stdin")
 
   val intOptions = Seq(NUM_TRIALS, INTER_TRIAL_WAIT, REDUCE_TASKS, KEY_LENGTH, VALUE_LENGTH, UNIQUE_KEYS,
     UNIQUE_VALUES, NUM_RECORDS, NUM_PARTITIONS, RANDOM_SEED)
   val stringOptions = Seq(PERSISTENCE_TYPE, STORAGE_LOCATION)
-  val booleanOptions = Seq(WAIT_FOR_EXIT)
+  val booleanOptions = Seq(WAIT_FOR_EXIT, HASH_RECORDS)
   val options = intOptions ++ stringOptions  ++ booleanOptions
 
   val parser = new OptionParser()
@@ -48,10 +50,12 @@ abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends
   }
 
   var waitForExit = false
+  var hashRecords = false
 
   override def initialize(args: Array[String]) = {
     optionSet = parser.parse(args.toSeq: _*)
     waitForExit = optionSet.has(WAIT_FOR_EXIT._1)
+    hashRecords = optionSet.has(HASH_RECORDS._1)
   }
 
   override def createInputData() = {
@@ -71,10 +75,15 @@ abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends
     if (uniqueValues.toString.length > valueLength) throw new Exception(
       "Can't pack %s unique values into %s digits".format(uniqueValues, valueLength))
 
+    val hashFunction = hashRecords match {
+      case true => Some(Hashing.goodFastHash(math.max(keyLength, valueLength) * 4))
+      case false => None
+    }
+
     rdd = dataType match {
       case "string" =>
         DataGenerator.createKVStringDataSet(sc, numRecords, uniqueKeys, keyLength, uniqueValues,
-          valueLength, numPartitions, randomSeed, persistenceType, storageLocation)
+          valueLength, numPartitions, randomSeed, persistenceType, storageLocation, hashFunction)
       case "int" =>
         DataGenerator.createKVIntDataSet(sc, numRecords, uniqueKeys, uniqueValues,
           numPartitions, randomSeed, persistenceType, storageLocation)
