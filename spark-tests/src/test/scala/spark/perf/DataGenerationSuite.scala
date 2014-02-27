@@ -5,6 +5,7 @@ import org.scalatest.matchers.ShouldMatchers._
 import org.scalatest.matchers.ShouldMatchers
 import com.google.common.io.Files
 import org.apache.spark.SparkContext
+import com.google.common.hash.Hashing
 
 class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMatchers {
   private var _sc: SparkContext = _
@@ -115,8 +116,8 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
       valueLength = 30,
       numPartitions = 5,
       randomSeed = 5555,
-      persistenceType = "HDFS",
-      Some(workingDir)).collect()
+      persistenceType = "hdfs",
+      storageLocation = workingDir).collect()
 
     // These are entirely subsumed by the final test, but remain useful for debugging failures:
     memData.size should equal (diskData.size)
@@ -215,6 +216,33 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
 
       uniqueKeys.toSet should equal ((0 to _uniqueKeys - 1).toSet)
       uniqueValues.toSet should equal ((0 to _uniqueValues - 1).toSet)
+      uniquePairs.size should equal (_uniqueKeys * _uniqueValues)
+    }
+    run(5, 5)
+    run(2, 10)
+    run(10, 2)
+  }
+
+
+  test("cardinality of keys and values are as expected (hashing)") {
+    def run(_uniqueKeys: Int, _uniqueValues: Int) = {
+      val data: Seq[(String, String)] = DataGenerator.createKVStringDataSet(sc,
+        numRecords = 10000,
+        uniqueKeys = _uniqueKeys,
+        keyLength = 30,
+        uniqueValues = _uniqueValues,
+        valueLength = 30,
+        numPartitions = 10,
+        randomSeed = 3333,
+        persistenceType = "memory",
+        hashFunction = Some(Hashing.goodFastHash(30 * 4))).collect()
+
+      val uniqueKeys = data.map(_._1).distinct
+      val uniqueValues = data.map(_._2).distinct
+      val uniquePairs = data.distinct
+
+      uniqueKeys.size should equal (_uniqueKeys)
+      uniqueValues.size should equal (_uniqueValues)
       uniquePairs.size should equal (_uniqueKeys * _uniqueValues)
     }
     run(5, 5)
