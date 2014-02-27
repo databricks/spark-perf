@@ -35,6 +35,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
         case _ => MergeStrategy.first
       }
     case PathList("reference.conf", xs @ _*) => MergeStrategy.concat
+    case "log4j.properties" => MergeStrategy.discard
     case PathList("application.conf", xs @ _*) => MergeStrategy.concat
     case _ => MergeStrategy.first
   }
