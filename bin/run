@@ -3,6 +3,7 @@
 import argparse
 import itertools
 from math import sqrt
+import os
 import os.path
 import re
 from subprocess import Popen, PIPE
@@ -45,7 +46,7 @@ should_prep_hive = should_prep_shark and not config.HIVE_SKIP_PREP
 # Spark will always be built, assuming that any possible test run of this program is going to depend
 # on Spark.
 has_spark_tests = (len(config.SPARK_TESTS) > 0)
-should_prep_spark = not config.SPARK_SKIP_PREP
+should_prep_spark = (not config.SPARK_SKIP_PREP) and (not config.USE_CLUSTER_SPARK)
 
 # Since Spark is always going to prepared, streaming does not require extra preparation
 has_streaming_tests = (len(config.STREAMING_TESTS) > 0)
@@ -271,6 +272,10 @@ if os.path.exists(spark_work_dir):
 
 print("Building perf tests...")
 if should_prep_spark_tests:
+    if config.USE_CLUSTER_SPARK:
+      os.environ['SPARK_DIST_DIR'] = config.SPARK_HOME_DIR
+    else:
+      os.environ['SPARK_DIST_DIR'] = proj_dir
     run_cmd("cd %s/spark-tests; %s clean assembly" % (proj_dir, sbt_cmd))
 else:
     spark_test_jar_path = "%s/spark-tests/target/spark-perf-tests-assembly.jar" % proj_dir

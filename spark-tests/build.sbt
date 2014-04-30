@@ -17,7 +17,9 @@ libraryDependencies += "com.google.guava" % "guava" % "14.0.1"
 // Assumes that the 'base' directory is 'perf-tests/spark-tests' and that the Spark repo is cloned
 // to 'perf-tests/spark'.
 unmanagedJars in Compile <++= baseDirectory map  { base =>
-  val finder: PathFinder = (file("../spark/assembly/target")) ** "*assembly*hadoop*.jar"
+  val distDir: String = sys.env("SPARK_DIST_DIR")
+  val targetDir: String = distDir + "/assembly/target"
+  val finder: PathFinder = (file(targetDir)) ** "*assembly*hadoop*.jar"
   finder.get
 }
 
