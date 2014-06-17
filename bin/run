@@ -36,13 +36,6 @@ sys.path.append(os.path.dirname(args.config_file))
 print("running 'import %s'" % os.path.basename(args.config_file).split(".")[0])
 exec("import %s" % os.path.basename(args.config_file).split(".")[0])
 
-# Determine which projects and tests to build based on user-specified tests and boolean flags from
-# the config file.
-# Build Hive and Shark if there are Shark tests specified.
-has_shark_tests = (len(config.SHARK_TESTS) > 0)
-should_prep_shark = has_shark_tests and not config.SHARK_SKIP_PREP
-should_prep_hive = should_prep_shark and not config.HIVE_SKIP_PREP
-
 # Spark will always be built, assuming that any possible test run of this program is going to depend
 # on Spark.
 has_spark_tests = (len(config.SPARK_TESTS) > 0)
@@ -52,20 +45,16 @@ should_prep_spark = (not config.SPARK_SKIP_PREP) and (not config.USE_CLUSTER_SPA
 has_streaming_tests = (len(config.STREAMING_TESTS) > 0)
 
 # Only build the perf test sources that will be used.
-should_prep_spark_tests = (has_spark_tests or has_shark_tests) and not config.SPARK_SKIP_TEST_PREP
+should_prep_spark_tests = has_spark_tests and not config.SPARK_SKIP_TEST_PREP
 should_prep_streaming_tests = has_streaming_tests and not config.STREAMING_SKIP_TEST_PREP
-should_prep_shark_tests = has_shark_tests and not config.SHARK_SKIP_TEST_PREP
 
 # Do disk warmup only if there are tests to run.
-should_warmup_disk = (has_shark_tests or has_spark_tests) and not config.SKIP_DISK_WARMUP
+should_warmup_disk = has_spark_tests and not config.SKIP_DISK_WARMUP
 
 # Check that commit ID's are specified in config_file.
 if should_prep_spark:
     assert config.SPARK_COMMIT_ID is not "", \
         ("Please specify SPARK_COMMIT_ID in %s" % args.config_file)
-if should_prep_shark:
-    assert config.SHARK_COMMIT_ID is not "", \
-        ("Please specifiy SHARK_COMMIT_ID in %s" % args.config_file)
 
 # Run shell command and ignore output.
 def run_cmd(cmd, exit_on_fail=True):
@@ -195,73 +184,6 @@ else:
     print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, " +
         "copy conf files).")
 
-# Prepare Hive.
-if should_prep_hive:
-    # Assumes that the preexisting 'hive' directory is valid.
-    if not os.path.isdir("hive"):
-        # Clone the Hive repository.
-        print("Git cloning Hive...")
-        run_cmd("git clone %s hive" % config.HIVE_GIT_REPO)
-
-    # Build Hive.
-    os.chdir("hive")
-    run_cmd("ant clean package")
-
-    # Change back to 'proj_dir' directory.
-    os.chdir("..")
-else:
-    if has_shark_tests:
-        assert os.path.exists(
-            "%s/hive/build/dist/lib" % proj_dir), ("You chose to skip Hive prep, but we can't " +
-            "since %s/hive/build/dist/lib does not exist, so Hive needs to be rebuilt/packaged." %
-            proj_dir)
-    print("Skipping preparation tasks for Hive (i.e, git clone, build).")
-
-# Prepare Shark.
-if should_prep_shark:
-    if not os.path.isdir("shark"):
-        # Clone the Shark repository.
-        print("Git cloning Shark...")
-        run_cmd("git clone %s shark" % config.SHARK_GIT_REPO)
-        run_cmd("cd shark; git config --add remote.origin.fetch "
-            "'+refs/pull/*/head:refs/remotes/origin/pr/*'")
-        run_cmd("cd shark; git config --add remote.origin.fetch "
-            "'+refs/tags/*:refs/remotes/origin/tag/*'")
-
-    # Fetch updates.
-    os.chdir("shark")
-    print("Updating Shark repo...")
-    run_cmd("git fetch")
-
-    # Build Shark.
-    print("Cloning Shark and building branch %s. This may take a while...\n" %
-        config.SHARK_COMMIT_ID)
-    run_cmd("git clean -f -d -x")
-
-    if config.SHARK_MERGE_COMMIT_INTO_MASTER:
-        run_cmd("git reset --hard master")
-        run_cmd("git merge %s -m ='Merging %s into master.'" %
-            config.SHARK_COMMIT_ID, config.SHARK_COMMIT_ID)
-    else:
-        run_cmd("git reset --hard %s" % config.SHARK_COMMIT_ID)
-
-    run_cmd("%s clean package" % sbt_cmd)
-
-    # Copy Shark configuration files from the SHARK_CONF_DIR specified in config.py.
-    print("Copying all files from %s to %s/shark/conf/" % (config.SHARK_CONF_DIR, proj_dir))
-    assert os.path.exists("%s/shark-env.sh" % config.SHARK_CONF_DIR), \
-        "Could not find required file %s/shark-env.sh" % config.SHARK_CONF_DIR
-    run_cmd("cp %s/* %s/shark/conf/" % (config.SHARK_CONF_DIR, proj_dir))
-
-    # Change from 'perf-tests/shark' back to the 'proj_dir' directory.
-    os.chdir("..")
-else:
-    if has_shark_tests:
-        assert os.path.exists(
-            "%s/shark/target" % proj_dir), ("You chose to skip Shark prep, but we can't since "
-            "%s/shark/target does not exist, so Shark needs to be rebuilt/packaged." % proj_dir)
-    print("Skipping preparation tasks for Shark (i.e, git clone or update, checkout, build, copy).")
-
 # Build the tests for each project based on copies cloned to the 'proj_dir'.
 spark_work_dir = "%s/spark/work" % proj_dir
 if os.path.exists(spark_work_dir):
@@ -289,13 +211,6 @@ elif has_streaming_tests:
     assert os.path.exists(spark_test_jar_path), ("You tried to skip packaging the Spark Streaming perf " +
         "tests, but %s was not already present") % spark_test_jar_path
 
-if should_prep_shark_tests:
-    run_cmd("cd %s/shark-tests; %s clean assembly" % (proj_dir, sbt_cmd))
-elif has_shark_tests:
-    shark_test_jar_path = "%s/shark-tests/target/shark-perf-tests-assembly.jar" % proj_dir
-    assert os.path.exists(shark_test_jar_path), ("You tried to skip packaging the Shark perf " +
-        "tests, but %s was not already present") % shark_test_jar_path
-
 # Sync the whole directory to the slaves.
 print("Syncing the test directory to the slaves.")
 run_cmds_parallel([(make_rsync_cmd(proj_dir, slave), True) for slave in slaves_list])
@@ -312,26 +227,17 @@ new_env = os.environ.copy()
 
 new_env["SPARK_HOME"] = "%s/spark" % proj_dir
 
-# Search for 'spark.local.dir' in spark-env.sh, or shark-env.sh if Shark is also being built. Note
-# that for the latter case, 'spark.local.dir' in shark-env.sh takes precedence.
+# Search for 'spark.local.dir' in spark-env.sh.
 spark_local_dirs = ""
 path_to_env_file = ""
-if has_shark_tests:
-    # Store Hive metastore and warehouse subdirectories created by each Shark PerfTest.
-    perf_test_warehouses_dir = "%s/test-warehouses" % proj_dir
-    new_env["PERF_TEST_WAREHOUSES"] = perf_test_warehouses_dir
-    path_to_env_file = "%s/shark-env.sh" % config.SHARK_CONF_DIR
-else:
-    path_to_env_file = "%s/spark-env.sh" % config.SPARK_CONF_DIR
-
 env_file_content = open(path_to_env_file, 'r').read()
 re_result = re.search(r'spark.local.dir=([^"]*)"', env_file_content)
 if re_result:
     spark_local_dirs = re_result.group(1).split(",")
 else:
     sys.exit("ERROR: These scripts require you to explicitly set spark.local.dir in spark-env.sh "
-        "(or shark-env.sh) so that it can be cleaned. The way we check this is pretty picky, "
-        "specifically we try to find the following string in spark-env.sh (or shark-env.sh): "
+        "so that it can be cleaned. The way we check this is pretty picky, "
+        "specifically we try to find the following string in spark-env.sh: "
         "spark.local.dir=ONE_OR_MORE_DIRNAMES\" so you will want a line like this: "
         "SPARK_JAVA_OPTS+=\" -Dspark.local.dir=/tmp\"")
 
@@ -473,7 +379,6 @@ def process_streaming_output(short_name, opt_list, stdout_filename, stderr_filen
 scala_cmd_classpath = "%s/spark-tests/target/spark-perf-tests-assembly.jar" % proj_dir
 spark_test_classpath = "%s/spark-tests/target/spark-perf-tests-assembly.jar" % proj_dir
 streaming_test_classpath = "%s/streaming-tests/target/streaming-perf-tests-assembly.jar" % proj_dir
-shark_test_classpath  = "%s/shark-tests/target/shark-perf-tests-assembly.jar" % proj_dir
 
 if has_spark_tests:
     scala_cmd_classpath = spark_test_classpath 
@@ -484,16 +389,6 @@ if has_streaming_tests:
     scala_cmd_classpath = streaming_test_classpath 
     run_tests(scala_cmd_classpath, config.STREAMING_TESTS, "Streaming-Tests",
         process_streaming_output, config.STREAMING_OUTPUT_FILENAME)
-
-if has_shark_tests:
-    # Set up the 'perf_test_warehouses'.
-    if os.path.isdir(perf_test_warehouses_dir):
-        clear_dir(perf_test_warehouses_dir, ["localhost"])
-    else:
-        os.mkdir(perf_test_warehouses_dir)
-    scala_cmd_classpath = spark_test_classpath + ":" + shark_test_classpath 
-    run_tests(scala_cmd_classpath, config.SHARK_TESTS, "Shark-Tests",
-        process_trials_output, config.SHARK_OUTPUT_FILENAME)
 
 print("All tests have finished running. Stopping Spark standalone cluster ...")
 run_cmd("%s/spark/sbin/stop-all.sh" % proj_dir)
