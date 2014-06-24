@@ -41,3 +41,10 @@ class FlagSet:
             assert val == True or val == False, ("FlagSet value for %s is not True or False" % 
                 self.name)
         return ["--%s" % self.name if val is True else "" for val in self.vals]
+
+# Represents an option with a constant value
+class ConstantOption:
+    def __init__(self, name):
+        self.name = name
+    def to_array(self, scale_factor = 1.0):
+        return [self.name]

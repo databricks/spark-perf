@@ -1,19 +1,18 @@
 package spark.perf
 
+import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
 object TestRunner {
   def main(args: Array[String]) {
-    if (args.size < 2) {
+    if (args.size < 1) {
       println(
-        "spark.perf.TestRunner requires 2 or more args, you gave %s, exiting".format(args.size))
+        "spark.perf.TestRunner requires 1 or more args, you gave %s, exiting".format(args.size))
       System.exit(1)
     }
     val testName = args(0)
-    val master = args(1)
-    val perfTestArgs = args.slice(2, args.length)
-    val sc = new SparkContext(master, "TestRunner: " + testName, System.getenv("SPARK_HOME"),
-      Seq(System.getProperty("user.dir") + "/spark-tests/target/spark-perf-tests-assembly.jar"))
+    val perfTestArgs = args.slice(1, args.length)
+    val sc = new SparkContext(new SparkConf().setAppName("TestRunner: " + testName))
 
     val test: PerfTest =
       testName match {

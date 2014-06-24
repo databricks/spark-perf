@@ -14,20 +14,15 @@ libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test"
 
 libraryDependencies += "com.google.guava" % "guava" % "14.0.1"
 
-// Assumes that the 'base' directory is 'perf-tests/spark-tests' and that the Spark repo is cloned
-// to 'perf-tests/spark'.
-unmanagedJars in Compile <++= baseDirectory map  { base =>
-  val distDir: String = sys.env("SPARK_DIST_DIR")
-  val targetDir: String = distDir + "/assembly/target"
-  val finder: PathFinder = (file(targetDir)) ** "*assembly*hadoop*.jar"
-  finder.get
-}
+libraryDependencies += "org.apache.spark" %% "spark-core" % "1.0.0" % "provided"
 
 assemblySettings
 
 test in assembly := {}
 
 outputPath in assembly := file("target/spark-perf-tests-assembly.jar")
+
+assemblyOption in assembly ~= { _.copy(includeScala = false) }
 
 mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
   {
