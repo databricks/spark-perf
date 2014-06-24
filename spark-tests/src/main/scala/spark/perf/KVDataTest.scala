@@ -129,6 +129,13 @@ class AggregateByKeyInt(sc: SparkContext) extends KVDataTest(sc, "int") {
   }
 }
 
+class AggregateByKeyNaive(sc: SparkContext) extends KVDataTest(sc) {
+  override def runTest(rdd: RDD[_], reduceTasks: Int) {
+    rdd.asInstanceOf[RDD[(String, String)]]
+      .map{case (k, v) => (k, v.toInt)}.groupByKey.map{case (k, vs) => vs.sum}.count()
+  }
+}
+
 class SortByKey(sc: SparkContext) extends KVDataTest(sc) {
   override def runTest(rdd: RDD[_], reduceTasks: Int) {
     rdd.asInstanceOf[RDD[(String, String)]]
