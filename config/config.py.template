@@ -23,7 +23,6 @@ SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
 # If this is true, we'll submit your job using an existing Spark installation.
 # If this is false, we'll checkout and build a specific version of Spark, then
 # copy configurations from your existing Spark install.
-# and copy configuration properties from your cluster.
 USE_CLUSTER_SPARK = False
 
 # Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO
@@ -49,9 +48,6 @@ STREAMING_OUTPUT_FILENAME = "streaming_perf_output_%s_%s" % (
 # Git repos used to clone clean copies of Spark and Shark to path/to/perf-tests/spark and
 # path/to/perf-tests/shark, respectively.
 SPARK_GIT_REPO = "git://git.apache.org/spark.git"
-
-# Git repo for a patched, Shark-compatible version of Hive 0.9.
-HIVE_GIT_REPO = "git://github.com/amplab/hive.git -b shark-0.9"
 
 # Test Configuration
 # --------------------------------------------------------------------------------------------------
