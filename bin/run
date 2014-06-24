@@ -181,8 +181,12 @@ if should_prep_spark:
 
     # Sync the whole directory to the slaves.
     print("Syncing Spark directory to the slaves.")
-    cmds = [(make_rsync_cmd("%s/spark" % proj_dir , slave), True) for slave in slaves_list]
-    run_cmds_parallel(cmds)
+
+    make_proj_dir = [(make_ssh_cmd("mkdir -p %s" % proj_dir , s), True) for s in slaves_list]
+    run_cmds_parallel(make_proj_dir)
+ 
+    copy_spark = [(make_rsync_cmd("%s/spark" % proj_dir , s), True) for s in slaves_list]
+    run_cmds_parallel(copy_spark)
 
 # Build the tests for each project.
 spark_work_dir = "%s/work" % effective_spark_home
