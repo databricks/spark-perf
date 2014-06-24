@@ -222,21 +222,22 @@ time.sleep(5) # Starting the cluster takes a little time so give it a second.
 # Set Spark Java Options (from config.py)
 test_env = os.environ.copy()
 
-# Search for 'spark.local.dir' in spark-env.sh.
-spark_local_dirs = ""
-path_to_env_file = "%s/spark-env.sh" % config.SPARK_CONF_DIR
-env_file_content = open(path_to_env_file, 'r').read()
-re_result = re.search(r'SPARK_LOCAL_DIRS=(.*)', env_file_content)
-if re_result:
-    spark_local_dirs = re_result.group(1).split(",")
-else:
-    sys.exit("ERROR: These scripts require you to explicitly set SPARK_LOCAL_DIRS in spark-env.sh "
-        "so that it can be cleaned. The way we check this is pretty picky, "
+if should_warmup_disk:
+    # Search for 'spark.local.dir' in spark-env.sh.
+    spark_local_dirs = ""
+    path_to_env_file = "%s/spark-env.sh" % config.SPARK_CONF_DIR
+    env_file_content = open(path_to_env_file, 'r').read()
+    re_result = re.search(r'SPARK_LOCAL_DIRS=(.*)', env_file_content)
+    if re_result:
+        spark_local_dirs = re_result.group(1).split(",")
+    else:
+        sys.exit("ERROR: These scripts require you to explicitly set SPARK_LOCAL_DIRS "
+        "in spark-env.sh so that it can be cleaned. The way we check this is pretty picky, "
         "specifically we try to find the following string in spark-env.sh: "
         "SPARK_LOCAL_DIRS=ONE_OR_MORE_DIRNAMES\" so you will want a line like this: ")
 
-if should_warmup_disk:
     for local_dir in spark_local_dirs:
+
         # Strip off any trailing whitespace(s) so that the clear commands below can work properly.
         local_dir = local_dir.rstrip()
 

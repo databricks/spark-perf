@@ -2,21 +2,45 @@
 
 This is a framework for repeatedly running a suite of performance tests for the [Spark cluster computing framework](http://spark-project.org).
 
-## Running the Tests
-1. Start a spark cluster for the tests using the [Spark EC2 scripts](http://spark-project.org/docs/latest/ec2-scripts.html)
-2. SSH into the Spark master and git clone spark-perf
-3. cd spark-perf
-4. copy config/config.py.template to config/config.py and modify as necessary. Specifically, you must set COMMIT_ID.
-5. execute bin/run
+The script assumes you already have a binary distribution of Spark 1.0+ installed. It can optionally checkout a new version of Spark and copy configurations over from your existing installation.
 
-## Developing and Running on a Non-EC2 Cluster
-The default configuration settings aim to make it easy to run on Amazon using the Spark EC2
-scripts. To run in another environment, customize config.py. For example, when developing and
-testing this framework, we recommend running a master and slave daemon on your development machine
-(the test framework will start and stop this cluster for you with the correct config settings).
-This exercises production code paths and avoids the need for extra code to support testing
-locally. See DEVELOPER-NOTES.txt for a list of the variables you probably want to update and
-possible suggestions for values to use.
+## Running locally
+
+1. Download a `spark` 1.0+ binary distribution.
+2. Set up local SSH server/keys such that `ssh localhost` works on your machine without a password.
+3. Git clone spark-perf (this repo) and cd spark-perf
+4. Copy config/config.py.template to config/config.py
+5. Set config.py options that are friendly for local execution:
+ * SPARK_HOME_DIR = /path/to/your/spark
+ * SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname() 
+ * SCALE_FACTOR = .05
+ * spark.executor.memory = 2g
+ * uncomment at least one SPARK_TESTS entry
+6. Execute bin/run
+
+## Running on an existing Spark cluster
+1. SSH into the machine hosting the standalone master
+2. Git clone spark-perf (this repo) and cd spark-perf
+3. Copy config/config.py.template to config/config.py
+4. Set config.py options:
+ * SPARK_HOME_DIR = /path/to/your/spark/install
+ * SPARK_CLUSTER_URL = "spark://<your-master-hostname>:7077"
+ * SCALE_FACTOR = <depends on your hardware>
+ * spark.executor.memory = <depends on your hardware>
+ * uncomment at least one SPARK_TESTS entry
+5. Execute bin/run
+
+## Running on a spark-ec2 cluster with a custom Spark version
+1. Launch an EC2 cluster with [spark-ec2 scripts](https://github.com/mesos/spark-ec2).
+2. Git clone spark-perf (this repo) and cd spark-perf
+3. Copy config/config.py.template to config/config.py
+4. Set config.py options:
+ * USE_CLUSTER_SPARK = False
+ * SPARK_COMMIT_ID = <what you want test>
+ * SCALE_FACTOR = <depends on your hardware>
+ * spark.executor.memory = <depends on your hardware>
+ * uncomment at least one SPARK_TESTS entry
+5. Execute bin/run
 
 ## Requirements
 The script requires Python 2.7. For earlier versions of Python, argparse might need to be installed, 

@@ -25,7 +25,7 @@ SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip() 
 # If this is true, we'll submit your job using an existing Spark installation.
 # If this is false, we'll checkout and build a specific version of Spark, and
 # copy configurations from your existing Spark install.
-USE_CLUSTER_SPARK = False
+USE_CLUSTER_SPARK = True
 
 # Commit id and repo used if you are not building a custom version of Spark. 
 # The remote name in your git repo is assumed to be "origin". 
@@ -196,8 +196,8 @@ SPARK_SKIP_PREP = False
 SPARK_SKIP_TEST_PREP = False
 STREAMING_SKIP_TEST_PREP = False 
 
-# Skip warming up local disks.
-SKIP_DISK_WARMUP = False
+# Skip warming up local disks (warm-up is only necesary on EC2).
+SKIP_DISK_WARMUP = True
 
 # Total number of bytes used to warm up each local directory.
 DISK_WARMUP_BYTES = 200 * 1024 * 1024
