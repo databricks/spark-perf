@@ -3,6 +3,7 @@
 import time
 import os
 import os.path
+import socket
 
 from config_utils import FlagSet
 from config_utils import JavaOptionSet
@@ -14,19 +15,21 @@ from config_utils import ConstantOption
 
 # Point to an installation of Spark on the cluster.
 SPARK_HOME_DIR = "/root/spark"
-SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
+# TODO: If we drop the disk warm-up, we could limit the scope of this to only when using
+#       the cluster Spark.
 
-# This default setting assumes we are running on the Spark EC2 AMI. Developers will probably want
-# to change this to SPARK_CLUSTER_URL = "spark://localhost:7077" for testing.
-SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
+# Master used when submitting Spark jobs.
+SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip() # EC2 Cluster
+# SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname()                  # Local cluster
 
 # If this is true, we'll submit your job using an existing Spark installation.
-# If this is false, we'll checkout and build a specific version of Spark, then
+# If this is false, we'll checkout and build a specific version of Spark, and
 # copy configurations from your existing Spark install.
 USE_CLUSTER_SPARK = False
 
-# Git commit id to checkout and test. The repository location configured via SPARK_GIT_REPO
-# is named "origin". This ID can specify any of the following:
+# Commit id and repo used if you are not building a custom version of Spark. 
+# The remote name in your git repo is assumed to be "origin". 
+# The commit ID can specify any of the following:
 #     1. A git commit hash         e.g. "4af93ff3"
 #     2. A branch name             e.g. "origin/branch-0.7"
 #     3. A tag name                e.g. "origin/tag/v0.8.0-incubating"
@@ -34,10 +37,8 @@ USE_CLUSTER_SPARK = False
 #
 # Required if you are testing a custom version of Spark
 SPARK_COMMIT_ID = ""
-
-# Whether to merge this commit into master before testing. If the commit cannot be merged into
-# master, the script will exit with a failure.
-SPARK_MERGE_COMMIT_INTO_MASTER = False
+SPARK_GIT_REPO = "git://git.apache.org/spark.git"
+SPARK_MERGE_COMMIT_INTO_MASTER = False # Whether to merge the commit into master
 
 # File to write results to.
 SPARK_OUTPUT_FILENAME = "spark_perf_output_%s_%s" % (
@@ -45,9 +46,6 @@ SPARK_OUTPUT_FILENAME = "spark_perf_output_%s_%s" % (
 STREAMING_OUTPUT_FILENAME = "streaming_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 
-# Git repos used to clone clean copies of Spark and Shark to path/to/perf-tests/spark and
-# path/to/perf-tests/shark, respectively.
-SPARK_GIT_REPO = "git://git.apache.org/spark.git"
 
 # Test Configuration
 # --------------------------------------------------------------------------------------------------
@@ -210,3 +208,6 @@ DISK_WARMUP_FILES = 200
 
 # Prompt for confirmation when deleting temporary files.
 PROMPT_FOR_DELETES = True
+
+# Use a custom configuration directory
+SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"

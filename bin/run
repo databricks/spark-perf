@@ -224,7 +224,7 @@ test_env = os.environ.copy()
 
 # Search for 'spark.local.dir' in spark-env.sh.
 spark_local_dirs = ""
-path_to_env_file = "%s/conf/spark-env.sh" % effective_spark_home
+path_to_env_file = "%s/spark-env.sh" % config.SPARK_CONF_DIR
 env_file_content = open(path_to_env_file, 'r').read()
 re_result = re.search(r'SPARK_LOCAL_DIRS=(.*)', env_file_content)
 if re_result:
