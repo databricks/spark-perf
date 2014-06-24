@@ -184,13 +184,6 @@ if should_prep_spark:
     cmds = [(make_rsync_cmd("%s/spark" % proj_dir , slave), True) for slave in slaves_list]
     run_cmds_parallel(cmds)
 
-else:
-    assert os.path.exists(
-        "%s/spark/core/target" % proj_dir), ("You chose to skip Spark prep, but we can't since " +
-        "%s/spark/target does not exist, so Spark needs to be rebuilt/packaged." % proj_dir)
-    print("Skipping preparation tasks for Spark (i.e, git clone or update, checkout, build, " +
-        "copy conf files).")
-
 # Build the tests for each project.
 spark_work_dir = "%s/work" % effective_spark_home
 if os.path.exists(spark_work_dir):
