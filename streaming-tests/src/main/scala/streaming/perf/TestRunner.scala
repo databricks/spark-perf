@@ -7,20 +7,18 @@ import streaming.perf
 object TestRunner {
 
   def main(args: Array[String]) {
-    if (args.size < 2) {
-      println("streaming.perf.TestRunner requires 2 or more args, you gave %s, exiting".format(args.size))
+    if (args.size < 1) {
+      println("streaming.perf.TestRunner requires 1 or more args, you gave %s, exiting".format(args.size))
       System.exit(1)
     }
     val testName = args(0)
-    val master = args(1)
-    val perfTestArgs = args.slice(2, args.length)
+    val perfTestArgs = args.slice(1, args.length)
 
     val testClassName = getTestClassName(testName)
     println("Running " + testName + " (class = " + testClassName + ")" +
-      " with master = " + master + " and arguments " + perfTestArgs.mkString("[", ",", "]"))
-    val classLoader = Thread.currentThread().getContextClassLoader
+      " with arguments " + perfTestArgs.mkString("[", ",", "]"))
     val test = Class.forName(testClassName).newInstance().asInstanceOf[PerfTest]
-    test.initialize(testName, master, perfTestArgs)
+    test.initialize(testName, perfTestArgs)
     val result = test.run()
     println("\n" + ("=" * 100) + "\n\nResult: " + result)
     System.out.flush()

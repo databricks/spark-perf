@@ -2,6 +2,8 @@ package streaming.perf
 
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.Logging
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkConf
 import joptsimple.{OptionSet, OptionParser}
 
 abstract class PerfTest extends Logging {
@@ -16,9 +18,8 @@ abstract class PerfTest extends Logging {
   def booleanOptions: Seq[(String, String, Boolean)] = Seq()
 
   /** Initialize internal state based on arguments */
-  def initialize(testName_ : String, master_ : String, otherArgs: Array[String]) {
+  def initialize(testName_ : String, otherArgs: Array[String]) {
     testName = testName_
-    master = master_
     optionSet = parser.parse(otherArgs:_*)
     batchDuration = optionSet.valueOf(PerfTest.BATCH_DURATION._1).asInstanceOf[Int]
     ssc = createContext()
@@ -30,7 +31,6 @@ abstract class PerfTest extends Logging {
   val parser = new OptionParser()
   var optionSet: OptionSet = _
   var testName: String = _
-  var master: String = _
   var batchDuration: Int = _
   var ssc: StreamingContext = _
 
@@ -49,11 +49,10 @@ abstract class PerfTest extends Logging {
   }
 
   protected def createContext() = {
-    val jarFile = System.getProperty("user.dir", "..") + "/streaming-tests/target/streaming-perf-tests-assembly.jar"
-    val sparkDir = Option(System.getenv("SPARK_HOME")).getOrElse("../spark/")
-    println("Creating streaming context with spark directory = " + sparkDir + " and jar file  = " + jarFile)
-    new StreamingContext(master, "TestRunner: " + testName,
-      Milliseconds(batchDuration), sparkDir, Seq(jarFile))
+    val conf = new SparkConf().setAppName(testName)
+    val sparkContext = new SparkContext(new SparkConf())
+    new StreamingContext(sparkContext,
+      Milliseconds(batchDuration))
   }
 
   def intOptionValue(option: (String, String, Boolean)) = optionSet.valueOf(option._1).asInstanceOf[Int]
