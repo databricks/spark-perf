@@ -199,7 +199,7 @@ if os.path.exists(spark_work_dir):
 print("Building perf tests...")
 if should_prep_spark_tests:
     run_cmd("cd %s/spark-tests; %s clean assembly" % (proj_dir, sbt_cmd))
-else:
+elif has_spark_tests:
     spark_test_jar_path = "%s/spark-tests/target/spark-perf-tests-assembly.jar" % proj_dir
     assert os.path.exists(spark_test_jar_path), ("You tried to skip packaging the Spark perf " +
         "tests, but %s was not already present") % spark_test_jar_path
