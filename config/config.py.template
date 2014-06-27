@@ -41,9 +41,9 @@ SPARK_GIT_REPO = "git://git.apache.org/spark.git"
 SPARK_MERGE_COMMIT_INTO_MASTER = False # Whether to merge the commit into master
 
 # File to write results to.
-SPARK_OUTPUT_FILENAME = "spark_perf_output_%s_%s" % (
+SPARK_OUTPUT_FILENAME = "results/spark_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
-STREAMING_OUTPUT_FILENAME = "streaming_perf_output_%s_%s" % (
+STREAMING_OUTPUT_FILENAME = "results/streaming_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 
 
