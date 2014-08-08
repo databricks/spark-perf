@@ -79,6 +79,8 @@ COMMON_JAVA_OPTS = [
     JavaOptionSet("spark.storage.memoryFraction", [0.66]),
     JavaOptionSet("spark.serializer", ["org.apache.spark.serializer.JavaSerializer"]),
     JavaOptionSet("spark.executor.memory", ["9g"]),
+    # Turn event logging on in order better diagnose failed tests
+    JavaOptionSet("spark.eventLog.enabled", [True]),
     # To ensure consistency across runs, we disable delay scheduling
     JavaOptionSet("spark.locality.wait", [str(60 * 1000 * 1000)])
 ]
