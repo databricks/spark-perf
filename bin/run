@@ -41,12 +41,13 @@ exec("import %s" % os.path.basename(args.config_file).split(".")[0])
 has_spark_tests = (len(config.SPARK_TESTS) > 0)
 should_prep_spark = (not config.SPARK_SKIP_PREP) and (not config.USE_CLUSTER_SPARK)
 
-# Since Spark is always going to prepared, streaming does not require extra preparation
+# Since Spark is always going to prepared, streaming and mllib do not require extra preparation
 has_streaming_tests = (len(config.STREAMING_TESTS) > 0)
-
+has_mllib_tests = (len(config.MLLIB_TESTS) > 0)
 # Only build the perf test sources that will be used.
 should_prep_spark_tests = has_spark_tests and not config.SPARK_SKIP_TEST_PREP
 should_prep_streaming_tests = has_streaming_tests and not config.STREAMING_SKIP_TEST_PREP
+should_prep_mllib_tests = has_mllib_tests and not config.MLLIB_SKIP_TEST_PREP
 
 # Do disk warmup only if there are tests to run.
 should_warmup_disk = has_spark_tests and not config.SKIP_DISK_WARMUP
@@ -211,6 +212,13 @@ elif has_streaming_tests:
     assert os.path.exists(spark_test_jar_path), ("You tried to skip packaging the Spark Streaming perf " +
         "tests, but %s was not already present") % spark_test_jar_path
 
+if should_prep_mllib_tests:
+    run_cmd("cd %s/mllib-tests; %s clean assembly" % (proj_dir, sbt_cmd))
+elif has_mllib_tests:
+    spark_test_jar_path = "%s/mllib-tests/target/mllib-perf-tests-assembly.jar" % proj_dir
+    assert os.path.exists(spark_test_jar_path), ("You tried to skip packaging the MLlib perf " +
+        "tests, but %s was not already present") % spark_test_jar_path
+
 # Start our Spark cluster.
 print("Starting a Spark standalone cluster to use for testing...")
 run_cmd("%s/sbin/start-all.sh" % effective_spark_home)
@@ -292,13 +300,13 @@ def run_tests(test_jar, tests_to_run, test_group_name, output_processing_functio
     output_divider_string = "--------------------------------------------------------------------"
     print(output_divider_string)
     print("Running %d tests in %s.\n" % (num_tests_to_run, test_group_name))
-
+    failed_tests = []
     for short_name, main_class, scale_factor, java_opt_sets, opt_sets in tests_to_run:
         print(output_divider_string)
         print("Running test command: '%s' ..." % main_class)
         stdout_filename = "%s/%s.out" % (output_dirname, short_name) 
         stderr_filename = "%s/%s.err" % (output_dirname, short_name) 
-        
+
         # Run a test for all combinations of the OptionSets given, then capture
         # and print the output.
         java_opt_set_arrays = [i.to_array(scale_factor) for i in java_opt_sets]
@@ -310,9 +318,9 @@ def run_tests(test_jar, tests_to_run, test_group_name, output_processing_functio
                 append_config_to_file(stderr_filename, java_opt_list, opt_list)
                 test_env["SPARK_SUBMIT_OPTS"] = " ".join(java_opt_list)
                 spark_submit = "%s/bin/spark-submit" % effective_spark_home
-                cmd = "%s --class %s --master %s %s %s 1>> %s 2>> %s" % (
-                    spark_submit, main_class, config.SPARK_CLUSTER_URL, test_jar, 
-                    " ".join(opt_list), stdout_filename, stderr_filename)
+                cmd = "%s --class %s --master %s %s %s %s 1>> %s 2>> %s" % (
+                    spark_submit, main_class, config.SPARK_CLUSTER_URL, config.SPARK_DRIVER_MEMORY,
+                    test_jar, " ".join(opt_list), stdout_filename, stderr_filename)
 
                 print("\nRunning command: %s\n" % cmd)
                 Popen(cmd, shell=True, env=test_env).wait()
@@ -320,15 +328,30 @@ def run_tests(test_jar, tests_to_run, test_group_name, output_processing_functio
                 print(output_divider_string)
                 print("\nResult: " + result_string) 
                 print(output_divider_string)
+                if "FAILED" in result_string:
+                    failed_tests.append(short_name)
                 out_file.write(result_string + "\n")
                 out_file.flush()
 
     print("\nFinished running %d tests in %s.\nSee summary in %s" %
         (num_tests_to_run, test_group_name, output_filename))
+    print("\nNumber of failed tests: %d, failed tests: %s" %
+        (len(failed_tests), failed_tests.join(",")))
     print(output_divider_string)
 
+def stats_for_results(result_list):
+    result_first = result_list[0]
+    result_last = result_list[-1]
+    sorted_results = sorted([float(x) for x in result_list])
+    result_med = sorted_results[len(sorted_results)/2]
+    if (len(result_list) % 2 ==0):
+        result_med = (sorted_results[len(result_list)/2] + sorted_results[len(result_list)/2+1])/2
+    result_std = sqrt(variance(sorted_results))
+    result_min = sorted_results[0]
 
-# Function to process the output of multiple trials for Spark and Shark tests 
+    return (result_med, result_std, result_min, result_first, result_last)
+
+# Function to process the output of multiple trials for Spark and Shark tests
 def process_trials_output(short_name, opt_list, stdout_filename, stderr_filename):
     with open (stdout_filename, "r") as stdout_file:
         output = stdout_file.read()
@@ -342,16 +365,11 @@ def process_trials_output(short_name, opt_list, stdout_filename, stderr_filename
     assert len(result_list) > config.IGNORED_TRIALS, ("Expecting at least %s results "
         "but only found %s" % (config.IGNORED_TRIALS + 1, len(result_list)))
     result_list = result_list[config.IGNORED_TRIALS:]
-    result_first = result_list[0]
-    result_last = result_list[len(result_list) - 1]
 
-    # TODO(andy): For even cardinality lists, return average of middle two elts.
-    result_list = sorted([float(x) for x in result_list])
-    result_med = result_list[len(result_list)/2]
-    result_std = sqrt(variance(result_list))
-    result_min = min(result_list)
-    result_string = "%s, %s, %s, %.3f, %s, %s, %s" % (short_name, " ".join(opt_list),
-        result_med, result_std, result_min, result_first, result_last)
+    result_string = "%s, %s, " % (short_name, " ".join(opt_list))
+
+    result_string += "%s, %.3f, %s, %s, %s\n" % stats_for_results(result_list)
+
     sys.stdout.flush()
     return result_string
 
@@ -367,6 +385,29 @@ def process_streaming_output(short_name, opt_list, stdout_filename, stderr_filen
     result_string = "%s [ %s ] - %s" % (short_name, " ".join(opt_list), result)
     return str(result_string)
 
+# Function to process the output of multiple trials for MLlib tests 
+def process_mllib_output(short_name, opt_list, stdout_filename, stderr_filename):
+    with open (stdout_filename, "r") as stdout_file:
+        output = stdout_file.read()
+    results_token = "results: "
+    result = ""
+    if results_token not in output:
+        result = "FAILED"
+    else:
+        result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
+        result_list = result_line.replace(results_token, "").split(",")
+        assert len(result_list) > config.IGNORED_TRIALS, ("Expecting at least %s results "
+            "but only found %s" % (config.IGNORED_TRIALS + 1, len(result_list)))
+        result_list = result_list[config.IGNORED_TRIALS:]
+        result += "Runtime: %s, %.3f, %s, %s, %s\n" % stats_for_results([x.split(";")[0] for x in result_list])
+        result += "Train Set Metric: %s, %.3f, %s, %s, %s\n" % stats_for_results([x.split(";")[1] for x in result_list])
+        result += "Test Set Metric: %s, %.3f, %s, %s, %s" % stats_for_results([x.split(";")[2] for x in result_list])
+
+    result_string = "%s, %s\n%s" % (short_name, " ".join(opt_list), result)
+
+    sys.stdout.flush()
+    return result_string
+
 if has_spark_tests:
     spark_test_jar = "%s/spark-tests/target/spark-perf-tests-assembly.jar" % proj_dir
     run_tests(spark_test_jar, config.SPARK_TESTS, "Spark-Tests",
@@ -376,6 +417,11 @@ if has_streaming_tests:
     streaming_test_jar = "%s/streaming-tests/target/streaming-perf-tests-assembly.jar" % proj_dir
     run_tests(streaming_test_jar, config.STREAMING_TESTS, "Streaming-Tests",
         process_streaming_output, config.STREAMING_OUTPUT_FILENAME)
+
+if has_mllib_tests:
+    mllib_test_jar = "%s/mllib-tests/target/mllib-perf-tests-assembly.jar" % proj_dir
+    run_tests(mllib_test_jar, config.MLLIB_TESTS, "MLlib-Tests",
+        process_mllib_output, config.MLLIB_OUTPUT_FILENAME)
 
 print("All tests have finished running. Stopping Spark standalone cluster ...")
 run_cmd("%s/sbin/stop-all.sh" % effective_spark_home)

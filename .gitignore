@@ -11,6 +11,7 @@ target
 
 # IntelliJ IDE files
 *.iml
+*.idea
 
 # Compiled sources
 *.pyc
