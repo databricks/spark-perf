@@ -39,8 +39,8 @@ abstract class PerfTest extends Logging {
   var optionSet: OptionSet = _
   var testName: String = _
 
-  var intOptions: Seq[(String, String)] = Seq(NUM_TRIALS, INTER_TRIAL_WAIT, NUM_PARTITIONS, RANDOM_SEED,
-    NUM_ITERATIONS)
+  var intOptions: Seq[(String, String)] = Seq(NUM_TRIALS, INTER_TRIAL_WAIT, NUM_PARTITIONS,
+    RANDOM_SEED, NUM_ITERATIONS)
 
   var doubleOptions: Seq[(String, String)] = Seq(REGULARIZATION)
   var longOptions: Seq[(String, String)] = Seq()
@@ -67,13 +67,18 @@ abstract class PerfTest extends Logging {
     }
   }
 
-  def intOptionValue(option: (String, String)) = optionSet.valueOf(option._1).asInstanceOf[Int]
+  def intOptionValue(option: (String, String)) =
+    optionSet.valueOf(option._1).asInstanceOf[Int]
 
-  def stringOptionValue(option: (String, String)) = optionSet.valueOf(option._1).asInstanceOf[String]
+  def stringOptionValue(option: (String, String)) =
+    optionSet.valueOf(option._1).asInstanceOf[String]
 
-  def booleanOptionValue(option: (String, String)) = optionSet.has(option._1)
+  def booleanOptionValue(option: (String, String)) =
+    optionSet.has(option._1)
 
-  def doubleOptionValue(option: (String, String)) = optionSet.valueOf(option._1).asInstanceOf[Double]
+  def doubleOptionValue(option: (String, String)) =
+    optionSet.valueOf(option._1).asInstanceOf[Double]
 
-  def longOptionValue(option: (String, String)) = optionSet.valueOf(option._1).asInstanceOf[Long]
+  def longOptionValue(option: (String, String)) =
+    optionSet.valueOf(option._1).asInstanceOf[Long]
 }

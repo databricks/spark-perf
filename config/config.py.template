@@ -85,7 +85,7 @@ COMMON_JAVA_OPTS = [
     JavaOptionSet("spark.locality.wait", [str(60 * 1000 * 1000)])
 ]
 # Set driver memory here
-SPARK_DRIVER_MEMORY = "--driver-memory 20g"
+SPARK_DRIVER_MEMORY = "20g"
 # The following options value sets are shared among all tests.
 COMMON_OPTS = [
     # How many times to run each experiment - used to warm up system caches.
@@ -397,8 +397,6 @@ MLLIB_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
 MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS + [
       # The number of rows for the matrix
       OptionSet("num-rows", [1000000], can_scale=True),
-      # The number of columns for the matrix
-      OptionSet("num-cols", [1000], can_scale=True),
       # Regularization Parameter (Not used in these tests)
       OptionSet("reg-param", [0.0]),
       # Number of iterations (not used in these tests)
@@ -406,10 +404,12 @@ MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS + [
 ]
 
 #MLLIB_TESTS += [("pearson", "mllib.perf.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("pearson")] + MLLIB_STATS_TEST_OPTS)]
+#    COMMON_JAVA_OPTS, [ConstantOption("pearson"), OptionSet("num-cols", [1000], can_scale=True)]
+#    + MLLIB_STATS_TEST_OPTS)]
 
 #MLLIB_TESTS += [("spearman", "mllib.perf.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("spearman")] + MLLIB_STATS_TEST_OPTS)]
+#    COMMON_JAVA_OPTS, [ConstantOption("spearman"), OptionSet("num-cols", [50], can_scale=True)]
+#    + MLLIB_STATS_TEST_OPTS)]
 
 # Skip downloading and building Spark
 SPARK_SKIP_PREP = False
@@ -417,7 +417,7 @@ SPARK_SKIP_PREP = False
 # Skip building and packaging project tests (requires respective perf tests to already be packaged
 # in the project's target directory).
 SPARK_SKIP_TEST_PREP = False
-STREAMING_SKIP_TEST_PREP = False 
+STREAMING_SKIP_TEST_PREP = False
 MLLIB_SKIP_TEST_PREP = False
 
 # Skip warming up local disks (warm-up is only necesary on EC2).

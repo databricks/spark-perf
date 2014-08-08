@@ -14,8 +14,8 @@ The script assumes you already have a binary distribution of Spark 1.0+ installe
  * SPARK_HOME_DIR = /path/to/your/spark
  * SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname() 
  * SCALE_FACTOR = .05
+ * SPARK_DRIVER_MEMORY = 512m
  * spark.executor.memory = 2g
- * SPARK_DRIVER_MEMORY = 
  * uncomment at least one SPARK_TESTS entry
 6. Execute bin/run
 
@@ -27,7 +27,7 @@ The script assumes you already have a binary distribution of Spark 1.0+ installe
  * SPARK_HOME_DIR = /path/to/your/spark/install
  * SPARK_CLUSTER_URL = "spark://<your-master-hostname>:7077"
  * SCALE_FACTOR = <depends on your hardware>
- * SPARK_DRIVER_MEMORY = 
+ * SPARK_DRIVER_MEMORY = <depends on your hardware>
  * spark.executor.memory = <depends on your hardware>
  * uncomment at least one SPARK_TESTS entry
 5. Execute bin/run
@@ -40,7 +40,7 @@ The script assumes you already have a binary distribution of Spark 1.0+ installe
  * USE_CLUSTER_SPARK = False
  * SPARK_COMMIT_ID = <what you want test>
  * SCALE_FACTOR = <depends on your hardware>
- * SPARK_DRIVER_MEMORY = 
+ * SPARK_DRIVER_MEMORY = <depends on your hardware>
  * spark.executor.memory = <depends on your hardware>
  * uncomment at least one SPARK_TESTS entry
 5. Execute bin/run

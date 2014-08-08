@@ -318,7 +318,7 @@ def run_tests(test_jar, tests_to_run, test_group_name, output_processing_functio
                 append_config_to_file(stderr_filename, java_opt_list, opt_list)
                 test_env["SPARK_SUBMIT_OPTS"] = " ".join(java_opt_list)
                 spark_submit = "%s/bin/spark-submit" % effective_spark_home
-                cmd = "%s --class %s --master %s %s %s %s 1>> %s 2>> %s" % (
+                cmd = "%s --class %s --master %s --driver-memory %s %s %s 1>> %s 2>> %s" % (
                     spark_submit, main_class, config.SPARK_CLUSTER_URL, config.SPARK_DRIVER_MEMORY,
                     test_jar, " ".join(opt_list), stdout_filename, stderr_filename)
 
@@ -336,7 +336,7 @@ def run_tests(test_jar, tests_to_run, test_group_name, output_processing_functio
     print("\nFinished running %d tests in %s.\nSee summary in %s" %
         (num_tests_to_run, test_group_name, output_filename))
     print("\nNumber of failed tests: %d, failed tests: %s" %
-        (len(failed_tests), failed_tests.join(",")))
+        (len(failed_tests), ",".join(failed_tests)))
     print(output_divider_string)
 
 def stats_for_results(result_list):
@@ -344,7 +344,7 @@ def stats_for_results(result_list):
     result_last = result_list[-1]
     sorted_results = sorted([float(x) for x in result_list])
     result_med = sorted_results[len(sorted_results)/2]
-    if (len(result_list) % 2 ==0):
+    if (len(result_list) % 2 == 0):
         result_med = (sorted_results[len(result_list)/2] + sorted_results[len(result_list)/2+1])/2
     result_std = sqrt(variance(sorted_results))
     result_min = sorted_results[0]

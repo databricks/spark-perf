@@ -24,8 +24,8 @@ object DataGenerator {
                              seed: Long = System.currentTimeMillis(),
                              problem: String = ""): RDD[LabeledPoint] = {
 
-    RandomRDDGenerators.randomRDD(sc, new LinearDataGenerator(numCols,intercept, seed, eps, problem),
-      numRows, numPartitions, seed)
+    RandomRDDGenerators.randomRDD(sc,
+      new LinearDataGenerator(numCols,intercept, seed, eps, problem), numRows, numPartitions, seed)
 
   }
 
@@ -56,7 +56,7 @@ object DataGenerator {
   /**
    * @param labelType  0 = regression with labels in [0,1].  Values >= 2 indicate classification.
    * @param fracCategorical  Fraction of columns/features to be categorical.
-   * @param fracBinary       Fraction of categorical features to be binary.  Others are high-arity (20).
+   * @param fracBinary   Fraction of categorical features to be binary.  Others are high-arity (20).
    * @param treeDepth  Depth of "true" tree used to label points.
    * @return (data, categoricalFeaturesInfo)
    *         data is an RDD of data points.
@@ -84,13 +84,14 @@ object DataGenerator {
 
     val isRegression = labelType == 0
     if (!isRegression) {
-      require(labelType >= 2, s"labelType must be >= 2 for classification.  0 indicates regression.")
+      require(labelType >= 2, s"labelType must be >= 2 for classification. 0 indicates regression.")
     }
     val numCategorical = (numCols * fracCategorical).toInt
     val numContinuous = numCols - numCategorical
     val numBinary = (numCategorical * fracBinary).toInt
     val numHighArity = numCategorical - numBinary
-    val categoricalArities = Array.concat(Array.fill(numBinary)(2), Array.fill(numHighArity)(highArity))
+    val categoricalArities = Array.concat(Array.fill(numBinary)(2),
+      Array.fill(numHighArity)(highArity))
 
     val featuresGenerator = new FeaturesGenerator(categoricalArities, numContinuous)
     val featureMatrix = RandomRDDGenerators.randomRDD(sc, featuresGenerator,
@@ -122,7 +123,7 @@ object DataGenerator {
       s" but depth = $depth and featureArity.size = ${featureArity.size}")
     val isRegression = labelType == 0
     if (!isRegression) {
-      require(labelType >= 2, s"labelType must be >= 2 for classification.  0 indicates regression.")
+      require(labelType >= 2, s"labelType must be >= 2 for classification. 0 indicates regression.")
     }
 
     val rng = new scala.util.Random()
@@ -134,7 +135,8 @@ object DataGenerator {
       new ClassLabelPairGenerator(labelType)
     }
 
-    val topNode = randomBalancedDecisionTreeHelper(0, depth, featureArity, labelGenerator, Set.empty, rng)
+    val topNode = randomBalancedDecisionTreeHelper(0, depth, featureArity, labelGenerator,
+      Set.empty, rng)
     if (isRegression) {
       new DecisionTreeModel(topNode, Algo.Regression)
     } else {
@@ -147,8 +149,10 @@ object DataGenerator {
    * @param nodeIndex  Index of node.
    * @param subtreeDepth  Depth of subtree to build.  Depth 0 means this is a leaf node.
    * @param featureArity  Indicates feature type.  Value 0 indicates continuous feature.
-   *                      Other values >= 2 indicate a categorical feature, where the value is the number of categories.
-   * @param usedFeatures  Features appearing in the path from the tree root to the node being constructed.
+   *                      Other values >= 2 indicate a categorical feature,
+   *                      where the value is the number of categories.
+   * @param usedFeatures  Features appearing in the path from the tree root to the node
+   *                      being constructed.
    * @param labelGenerator  Generates pairs of distinct labels.
    * @return
    */
@@ -169,7 +173,8 @@ object DataGenerator {
     val numFeatures = featureArity.size
     if (usedFeatures.size >= numFeatures) {
       // Should not happen.
-      throw new RuntimeException(s"randomBalancedDecisionTreeSplitNode ran out of features for splits.")
+      throw new RuntimeException(s"randomBalancedDecisionTreeSplitNode ran out of " +
+        s"features for splits.")
     }
 
     // Make node internal.
@@ -183,11 +188,13 @@ object DataGenerator {
         featureType = FeatureType.Continuous, categories = List())
     } else {
       // categorical feature
-      // Put nCatsSplit categories on left, and the rest on the right.  nCatsSplit is in {1,...,arity-1}.
+      // Put nCatsSplit categories on left, and the rest on the right.
+      // nCatsSplit is in {1,...,arity-1}.
       val nCatsSplit = rng.nextInt(featureArity(feature) - 1) + 1
       val splitCategories = rng.shuffle(Range(0,featureArity(feature)).toList).take(nCatsSplit)
       new Split(feature = feature, threshold = 0,
-        featureType = FeatureType.Categorical, categories = splitCategories.asInstanceOf[List[Double]])
+        featureType = FeatureType.Categorical, categories =
+          splitCategories.asInstanceOf[List[Double]])
     }
 
     val leftChildIndex = nodeIndex * 2 + 1
@@ -202,10 +209,10 @@ object DataGenerator {
           split = None, leftNode = None, rightNode = None, stats = None)), stats = None)
     } else {
       new Node(id = nodeIndex, predict = 0, isLeaf = false, split = Some(split),
-        leftNode = Some(randomBalancedDecisionTreeHelper(leftChildIndex, subtreeDepth - 1, featureArity,
-          labelGenerator, usedFeatures + feature, rng)),
-        rightNode = Some(randomBalancedDecisionTreeHelper(rightChildIndex, subtreeDepth - 1, featureArity,
-          labelGenerator, usedFeatures + feature, rng)), stats = None)
+        leftNode = Some(randomBalancedDecisionTreeHelper(leftChildIndex, subtreeDepth - 1,
+          featureArity, labelGenerator, usedFeatures + feature, rng)),
+        rightNode = Some(randomBalancedDecisionTreeHelper(rightChildIndex, subtreeDepth - 1,
+          featureArity, labelGenerator, usedFeatures + feature, rng)), stats = None)
     }
   }
 
@@ -216,11 +223,13 @@ object DataGenerator {
                              numPartitions: Int,
                              seed: Long = System.currentTimeMillis()): RDD[Vector] = {
 
-    RandomRDDGenerators.randomRDD(sc, new KMeansDataGenerator(numCenters, numCols, seed), numRows, numPartitions, seed)
+    RandomRDDGenerators.randomRDD(sc, new KMeansDataGenerator(numCenters, numCols, seed),
+      numRows, numPartitions, seed)
   }
 
 
-  // Problems with having a userID or productID in the test set but not training set leads to a lot of work...
+  // Problems with having a userID or productID in the test set but not training set
+  // leads to a lot of work...
   def generateRatings( sc: SparkContext,
                        numUsers: Int,
                        numProducts: Int,
@@ -229,14 +238,18 @@ object DataGenerator {
                        numPartitions: Int,
                        seed: Long = System.currentTimeMillis()): (RDD[Rating],RDD[Rating]) = {
 
-    val train = RandomRDDGenerators.randomRDD(sc, new RatingGenerator(numUsers, numProducts,implicitPrefs),
-       numRatings, numPartitions, seed).cache()
+    val train = RandomRDDGenerators.randomRDD(sc,
+      new RatingGenerator(numUsers, numProducts,implicitPrefs),
+      numRatings, numPartitions, seed).cache()
 
-    val test = RandomRDDGenerators.randomRDD(sc, new RatingGenerator(numUsers, numProducts,implicitPrefs),
-      math.ceil(numRatings*0.25).toLong, numPartitions, seed+24)
+    val test = RandomRDDGenerators.randomRDD(sc,
+      new RatingGenerator(numUsers, numProducts,implicitPrefs),
+      math.ceil(numRatings * 0.25).toLong, numPartitions, seed + 24)
 
-    // Now get rid of duplicate ratings and remove non-existant userID's and prodID's from the test set
-    val commons: PairRDDFunctions[(Int,Int),Rating] = new PairRDDFunctions(train.keyBy(rating => (rating.user, rating.product)).cache())
+    // Now get rid of duplicate ratings and remove non-existant userID's
+    // and prodID's from the test set
+    val commons: PairRDDFunctions[(Int,Int),Rating] =
+      new PairRDDFunctions(train.keyBy(rating => (rating.user, rating.product)).cache())
 
     val exact = commons.join(test.keyBy(rating => (rating.user, rating.product)))
 
@@ -244,15 +257,20 @@ object DataGenerator {
 
     // Now get rid of users that don't exist in the train set
     val trainUsers: RDD[(Int,Rating)] = trainPruned.keyBy(rating => rating.user)
-    val testUsers: PairRDDFunctions[Int,Rating] = new PairRDDFunctions(test.keyBy(rating => rating.user))
+    val testUsers: PairRDDFunctions[Int,Rating] =
+      new PairRDDFunctions(test.keyBy(rating => rating.user))
     val testWithAdditionalUsers = testUsers.subtractByKey(trainUsers)
 
-    val userPrunedTestProds: RDD[(Int,Rating)] = testUsers.subtractByKey(testWithAdditionalUsers).map(_._2).keyBy(rating => rating.product)
+    val userPrunedTestProds: RDD[(Int,Rating)] =
+      testUsers.subtractByKey(testWithAdditionalUsers).map(_._2).keyBy(rating => rating.product)
 
     val trainProds: RDD[(Int,Rating)] = trainPruned.keyBy(rating => rating.product)
 
-    val testWithAdditionalProds = new PairRDDFunctions[Int, Rating](userPrunedTestProds).subtractByKey(trainProds)
-    val finalTest = new PairRDDFunctions[Int, Rating](userPrunedTestProds).subtractByKey(testWithAdditionalProds).map(_._2)
+    val testWithAdditionalProds =
+      new PairRDDFunctions[Int, Rating](userPrunedTestProds).subtractByKey(trainProds)
+    val finalTest =
+      new PairRDDFunctions[Int, Rating](userPrunedTestProds).subtractByKey(testWithAdditionalProds)
+        .map(_._2)
 
     (trainPruned, finalTest)
   }
@@ -308,7 +326,8 @@ class MatrixGenerator( private val n: Long) extends RandomDataGenerator[Vector] 
 // For general classification
 class ClassLabelGenerator(private val numFeatures: Int,
                           private val threshold: Double,
-                          private val scaleFactor: Double) extends RandomDataGenerator[LabeledPoint] {
+                          private val scaleFactor: Double)
+  extends RandomDataGenerator[LabeledPoint] {
 
   private val rng = new java.util.Random()
 
@@ -325,7 +344,8 @@ class ClassLabelGenerator(private val numFeatures: Int,
     rng.setSeed(seed)
   }
 
-  override def copy(): ClassLabelGenerator = new ClassLabelGenerator(numFeatures, threshold, scaleFactor)
+  override def copy(): ClassLabelGenerator =
+    new ClassLabelGenerator(numFeatures, threshold, scaleFactor)
 }
 
 class LinearDataGenerator(val numFeatures: Int,
@@ -342,9 +362,9 @@ class LinearDataGenerator(val numFeatures: Int,
     val x = Array.fill[Double](numFeatures)(2*rng.nextDouble()-1)
     val y = weights.zip(x).map(p => p._1 * p._2).sum + intercept + eps*rng.nextGaussian()
     val yD =
-      if (problem == "SVM") {
+      if (problem == "SVM"){
         if (y < 0.0) 0.0 else 1.0
-      }else {
+      } else{
         y
       }
 
@@ -355,7 +375,8 @@ class LinearDataGenerator(val numFeatures: Int,
     rng.setSeed(seed)
   }
 
-  override def copy(): LinearDataGenerator = new LinearDataGenerator(numFeatures, intercept, seed, eps, problem)
+  override def copy(): LinearDataGenerator =
+    new LinearDataGenerator(numFeatures, intercept, seed, eps, problem)
 }
 
 
@@ -363,7 +384,8 @@ class LinearDataGenerator(val numFeatures: Int,
  * Generator for a pair of distinct class labels from the set {0,...,numClasses-1}.
  * @param numClasses  Number of classes.
  */
-class ClassLabelPairGenerator(val numClasses: Int) extends RandomDataGenerator[Pair[Double, Double]] {
+class ClassLabelPairGenerator(val numClasses: Int)
+  extends RandomDataGenerator[Pair[Double, Double]] {
 
   require(numClasses >= 2,
     s"ClassLabelPairGenerator given label numClasses = $numClasses, but numClasses should be >= 2.")
@@ -394,7 +416,8 @@ class RealLabelPairGenerator() extends RandomDataGenerator[Pair[Double, Double]]
 
   private val rng = new java.util.Random()
 
-  override def nextValue(): Pair[Double, Double] = new Pair[Double, Double](rng.nextDouble(), rng.nextDouble())
+  override def nextValue(): Pair[Double, Double] =
+    new Pair[Double, Double](rng.nextDouble(), rng.nextDouble())
 
   override def setSeed(seed: Long) {
     rng.setSeed(seed)
@@ -413,7 +436,8 @@ class FeaturesGenerator(val categoricalArities: Array[Int], val numContinuous: I
     extends RandomDataGenerator[Vector] {
 
   categoricalArities.foreach { arity =>
-    require(arity >= 2, s"FeaturesGenerator given categorical arity = $arity, but arity should be >= 2.")
+    require(arity >= 2, s"FeaturesGenerator given categorical arity = $arity, " +
+      s"but arity should be >= 2.")
   }
 
   val numFeatures = categoricalArities.size + numContinuous
@@ -463,11 +487,11 @@ class KMeansDataGenerator(val numCenters: Int,
                           val seed: Long) extends RandomDataGenerator[Vector] {
 
   private val rng = new java.util.Random(seed)
-  private val rng2 = new java.util.Random(seed+24)
-  private val scale_factors = Array.fill(numCenters)(rng.nextInt(20)-10)
+  private val rng2 = new java.util.Random(seed + 24)
+  private val scale_factors = Array.fill(numCenters)(rng.nextInt(20) - 10)
 
   // Have a random number of points around a cluster
-  private val concentrations: IndexedSeq[Double] = {
+  private val concentrations: Seq[Double] = {
     val rand = Array.fill(numCenters)(rng.nextDouble())
     val randSum = rand.sum
     val scaled = rand.map(x => x / randSum)
@@ -478,29 +502,13 @@ class KMeansDataGenerator(val numCenters: Int,
   }
 
   private val centers = (0 until numCenters).map{i =>
-    Array.fill(numColumns)((2*rng.nextDouble()-1)*scale_factors(i))
-  }
-
-  def binarySearch(target: Double, list: Seq[Double]): Int = {
-    var left = 0
-    var right = list.length-1
-    var mid = 0
-    while (left<= right){
-      mid = left + (right-left)/2
-      if (list(mid)==target || mid==left)
-        return mid
-      else if (list(mid)>target)
-        right = mid-1
-      else
-        left = mid+1
-    }
-    mid
+    Array.fill(numColumns)((2 * rng.nextDouble() - 1)*scale_factors(i))
   }
 
   override def nextValue(): Vector = {
     val pick_center_rand = rng2.nextDouble()
 
-    val centerToAddTo = centers(binarySearch(pick_center_rand, concentrations))
+    val centerToAddTo = centers(concentrations.indexWhere(p => pick_center_rand <= p))
 
     Vectors.dense(Array.tabulate(numColumns)(i => centerToAddTo(i) + rng2.nextGaussian()))
   }
