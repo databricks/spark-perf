@@ -1,0 +1,6 @@
+#!/bin/bash
+EXTRA_ARGS=""
+if [ "$MESOS_HOME" != "" ]; then
+  EXTRA_ARGS="-Djava.library.path=$MESOS_HOME/lib/java"
+fi
+java -Xmx1200m -XX:MaxPermSize=500m -XX:ReservedCodeCacheSize=128m $EXTRA_ARGS -jar ./sbt/sbt-launch-*.jar "$@"
