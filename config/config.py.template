@@ -291,7 +291,7 @@ MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
 #    COMMON_JAVA_OPTS,
 #    [ConstantOption("logistic-regression")] + MLLIB_CLASSIFICATION_TEST_OPTS)]
 
-# Ridge Regression with L-BFGS #
+# Logistic Regression with L-BFGS #
 #MLLIB_TESTS += [("lr-lbfgs", "mllib.perf.TestRunner", SCALE_FACTOR,
 #    COMMON_JAVA_OPTS, [ConstantOption("lr-lbfgs"), OptionSet("convergence-tol", [1e-5])] +
 #    MLLIB_CLASSIFICATION_TEST_OPTS)]
