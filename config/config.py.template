@@ -49,7 +49,8 @@ PYSPARK_OUTPUT_FILENAME = "results/python_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 STREAMING_OUTPUT_FILENAME = "results/streaming_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
-
+MLLIB_OUTPUT_FILENAME = "results/mllib_perf_output_%s_%s" % (
+    SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 
 # Test Configuration
 # --------------------------------------------------------------------------------------------------
@@ -78,10 +79,13 @@ COMMON_JAVA_OPTS = [
     JavaOptionSet("spark.storage.memoryFraction", [0.66]),
     JavaOptionSet("spark.serializer", ["org.apache.spark.serializer.JavaSerializer"]),
     JavaOptionSet("spark.executor.memory", ["9g"]),
+    # Turn event logging on in order better diagnose failed tests
+    JavaOptionSet("spark.eventLog.enabled", [True]),
     # To ensure consistency across runs, we disable delay scheduling
     JavaOptionSet("spark.locality.wait", [str(60 * 1000 * 1000)])
 ]
-
+# Set driver memory here
+SPARK_DRIVER_MEMORY = "20g"
 # The following options value sets are shared among all tests.
 COMMON_OPTS = [
     # How many times to run each experiment - used to warm up system caches.
@@ -227,6 +231,184 @@ STREAMING_COMMON_OPTS = streaming_batch_duration_opts(1000)
 #    STREAMING_COMMON_JAVA_OPTS, 
 #    [ConstantOption("hdfs-recovery")] + STREAMING_HDFS_RECOVERY_TEST_OPTS)]
 
+# MLlib Tests #
+MLLIB_TESTS = []
+
+# The following options value sets are shared among all tests of
+# operations on MLlib algorithms.
+MLLIB_COMMON_OPTS = COMMON_OPTS + [
+    # The number of input partitions.
+    OptionSet("num-partitions", [400], can_scale=True),
+    # A random seed to make tests reproducable.
+    OptionSet("random-seed", [5])
+]
+
+# Regression and Classification Tests #
+MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
+    # The number of rows or examples
+    OptionSet("num-examples", [1000000], can_scale=True),
+    # The number of features per example
+    OptionSet("num-features", [10000], can_scale=True),
+    # The number of iterations for SGD
+    OptionSet("num-iterations", [100]),
+    # The step size for SGD
+    OptionSet("step-size", [0.05])
+]
+
+# Regression Tests #
+MLLIB_REGRESSION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    # The intercept for the data
+    OptionSet("intercept", [0.0]),
+    # The scale factor for the noise
+    OptionSet("epsilon", [0.1])
+]
+
+#MLLIB_TESTS += [("linear-regression", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("linear-regression"), OptionSet("reg-param", [0.0])] +
+#    MLLIB_REGRESSION_TEST_OPTS)]
+
+#MLLIB_TESTS += [("lasso", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("lasso"), OptionSet("reg-param", [0.0,1.0])] +
+#    MLLIB_REGRESSION_TEST_OPTS)]
+
+#MLLIB_TESTS += [("ridge-regression", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("ridge-regression"), OptionSet("reg-param", [0.0,1.0])] +
+#    MLLIB_REGRESSION_TEST_OPTS)]
+
+# Classification Tests #
+MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+     # The intercept for the data
+     OptionSet("per-negative", [0.3]),
+     # The scale factor for the noise
+     OptionSet("scale-factor", [1.0]),
+     # Naive Bayes smoothing lambda
+     OptionSet("nb-lambda", [1.0]),
+     # SVM regularization
+     OptionSet("reg-param", [1.0])
+]
+
+#MLLIB_TESTS += [("logistic-regression", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS,
+#    [ConstantOption("logistic-regression")] + MLLIB_CLASSIFICATION_TEST_OPTS)]
+
+# Logistic Regression with L-BFGS #
+#MLLIB_TESTS += [("lr-lbfgs", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("lr-lbfgs"), OptionSet("convergence-tol", [1e-5])] +
+#    MLLIB_CLASSIFICATION_TEST_OPTS)]
+
+#MLLIB_TESTS += [("naive-bayes", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS,
+#    [ConstantOption("naive-bayes")] + MLLIB_CLASSIFICATION_TEST_OPTS)]
+
+#MLLIB_TESTS += [("svm", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS,
+#    [ConstantOption("svm")] + MLLIB_CLASSIFICATION_TEST_OPTS)]
+
+# Decision Trees #
+
+MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
+    # The number of rows or examples
+    OptionSet("num-examples", [1000000], can_scale=True),
+    # The number of features per example
+    OptionSet("num-features", [10000], can_scale=True),
+    # Type of label: 0 indicates regression, 2+ indicates classification with this many classes
+    OptionSet("label-type", [0, 2], can_scale=False),
+    # Fraction of features which are categorical
+    OptionSet("frac-categorical-features", [0.5], can_scale=False),
+    # Fraction of categorical features which are binary. Others have 20 categories.
+    OptionSet("frac-binary-features", [0.5], can_scale=False),
+    # Depth of true decision tree model used to label examples.
+    OptionSet("tree-depth", [5], can_scale=False),
+    # Maximum number of bins for the decision tree learning algorithm.
+    OptionSet("max-bins", [100], can_scale=False),
+    # (unused parameter)
+    OptionSet("num-iterations", [0], can_scale=False),
+    # (unused parameter)
+    OptionSet("reg-param", [0], can_scale=False)
+]
+
+#MLLIB_TESTS += [("decision-tree", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS,
+#    [ConstantOption("decision-tree")] + MLLIB_DECISION_TREE_TEST_OPTS)]
+
+# Recommendation Tests #
+MLLIB_RECOMMENDATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
+     # The number of users
+     OptionSet("num-users", [6000000], can_scale=True),
+     # The number of products
+     OptionSet("num-products", [5000000], can_scale=True),
+     # The number of ratings
+     OptionSet("num-ratings", [100000000], can_scale=True),
+     # The number of iterations for ALS
+     OptionSet("num-iterations", [20]),
+     # The rank of the factorized matrix model
+     OptionSet("rank", [20]),
+     # The regularization parameter
+     OptionSet("reg-param", [1.0]),
+     # Whether to use implicit preferences or not
+     FlagSet("implicit-prefs", [False])
+]
+
+#MLLIB_TESTS += [("als", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS,
+#    [ConstantOption("als")] + MLLIB_RECOMMENDATION_TEST_OPTS)]
+
+# Clustering Tests #
+MLLIB_CLUSTERING_TEST_OPTS = MLLIB_COMMON_OPTS + [
+     # The number of points
+     OptionSet("num-points", [1000000], can_scale=True),
+     # The number of features per point
+     OptionSet("num-columns", [10000], can_scale=True),
+     # The number of centers
+     OptionSet("num-centers", [20]),
+     # The number of iterations for KMeans
+     OptionSet("num-iterations", [20])
+]
+
+#MLLIB_TESTS += [("kmeans", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS,
+#    [ConstantOption("kmeans"), OptionSet("reg-param", [0.0])] + MLLIB_CLUSTERING_TEST_OPTS)]
+
+# Linear Algebra Tests #
+MLLIB_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
+     # The number of rows for the matrix
+     OptionSet("num-rows", [1000000], can_scale=True),
+     # The number of columns for the matrix
+     OptionSet("num-cols", [1000], can_scale=True),
+     # The number of top singular values wanted for SVD and PCA
+     OptionSet("rank", [50]),
+     # Regularization Parameter (Not used in these tests)
+     OptionSet("reg-param", [0.0]),
+     # Number of iterations (not used in these tests)
+     OptionSet("num-iterations", [0])
+]
+
+#MLLIB_TESTS += [("svd", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_LINALG_TEST_OPTS)]
+
+#MLLIB_TESTS += [("pca", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("pca")] + MLLIB_LINALG_TEST_OPTS)]
+
+#MLLIB_TESTS += [("summary-statistics", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("summary-statistics")] + MLLIB_LINALG_TEST_OPTS)]
+
+# Statistic Toolkit Tests #
+MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS + [
+      # The number of rows for the matrix
+      OptionSet("num-rows", [1000000], can_scale=True),
+      # Regularization Parameter (Not used in these tests)
+      OptionSet("reg-param", [0.0]),
+      # Number of iterations (not used in these tests)
+      OptionSet("num-iterations", [0])
+]
+
+#MLLIB_TESTS += [("pearson", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("pearson"), OptionSet("num-cols", [1000], can_scale=True)]
+#    + MLLIB_STATS_TEST_OPTS)]
+
+#MLLIB_TESTS += [("spearman", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("spearman"), OptionSet("num-cols", [50], can_scale=True)]
+#    + MLLIB_STATS_TEST_OPTS)]
 
 # Skip downloading and building Spark
 SPARK_SKIP_PREP = False
@@ -234,7 +416,8 @@ SPARK_SKIP_PREP = False
 # Skip building and packaging project tests (requires respective perf tests to already be packaged
 # in the project's target directory).
 SPARK_SKIP_TEST_PREP = False
-STREAMING_SKIP_TEST_PREP = False 
+STREAMING_SKIP_TEST_PREP = False
+MLLIB_SKIP_TEST_PREP = False
 
 # Skip warming up local disks (warm-up is only necesary on EC2).
 SKIP_DISK_WARMUP = True
