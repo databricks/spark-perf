@@ -382,8 +382,6 @@ def run_python_tests(tests, test_group_name, output_processing_function, output_
                     spark_submit, config.SPARK_CLUSTER_URL, scripts, " ".join(opt_list),
                     stdout_filename, stderr_filename)
 
-<<<<<<< HEAD
-=======
 def run_python_tests(tests, test_group_name, output_processing_function, output_filename):
     output_dirname = output_filename + "_logs"
     os.makedirs(output_dirname)
