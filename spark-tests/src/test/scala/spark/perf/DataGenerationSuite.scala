@@ -117,7 +117,7 @@ class DataGenerationSuite extends FunSuite with BeforeAndAfterAll with ShouldMat
       numPartitions = 5,
       randomSeed = 5555,
       persistenceType = "hdfs",
-      storageLocation = workingDir).collect()
+      storageLocation = workingDir + "/hdfsData").collect()
 
     // These are entirely subsumed by the final test, but remain useful for debugging failures:
     memData.size should equal (diskData.size)

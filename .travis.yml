@@ -1,0 +1,10 @@
+language: scala
+scala:
+  - 2.10.4
+jdk:
+  - openjdk7
+script:
+  - cd spark-tests
+  - sbt/sbt test
+  - cd ../streaming-tests
+  - sbt/sbt test
