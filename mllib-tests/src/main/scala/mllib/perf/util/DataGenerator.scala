@@ -15,38 +15,41 @@ import org.apache.spark.SparkContext
 
 object DataGenerator {
 
-  def generateLabeledPoints( sc: SparkContext,
-                             numRows: Long,
-                             numCols: Int,
-                             intercept: Double,
-                             eps: Double,
-                             numPartitions: Int,
-                             seed: Long = System.currentTimeMillis(),
-                             problem: String = ""): RDD[LabeledPoint] = {
+  def generateLabeledPoints(
+      sc: SparkContext,
+      numRows: Long,
+      numCols: Int,
+      intercept: Double,
+      eps: Double,
+      numPartitions: Int,
+      seed: Long = System.currentTimeMillis(),
+      problem: String = ""): RDD[LabeledPoint] = {
 
     RandomRDDGenerators.randomRDD(sc,
       new LinearDataGenerator(numCols,intercept, seed, eps, problem), numRows, numPartitions, seed)
 
   }
 
-  def generateDistributedSquareMatrix( sc: SparkContext,
-                             m: Long,
-                             n: Int,
-                             numPartitions: Int,
-                             seed: Long = System.currentTimeMillis()): RowMatrix = {
+  def generateDistributedSquareMatrix(
+      sc: SparkContext,
+      m: Long,
+      n: Int,
+      numPartitions: Int,
+      seed: Long = System.currentTimeMillis()): RowMatrix = {
 
     val data: RDD[Vector] = RandomRDDGenerators.normalVectorRDD(sc, m, n, numPartitions, seed)
 
     new RowMatrix(data,m,n)
   }
 
-  def generateClassificationLabeledPoints( sc: SparkContext,
-                             numRows: Long,
-                             numCols: Int,
-                             threshold: Double,
-                             scaleFactor: Double,
-                             numPartitions: Int,
-                             seed: Long = System.currentTimeMillis()): RDD[LabeledPoint] = {
+  def generateClassificationLabeledPoints(
+      sc: SparkContext,
+      numRows: Long,
+      numCols: Int,
+      threshold: Double,
+      scaleFactor: Double,
+      numPartitions: Int,
+      seed: Long = System.currentTimeMillis()): RDD[LabeledPoint] = {
 
     RandomRDDGenerators.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, scaleFactor),
       numRows, numPartitions, seed)
@@ -216,12 +219,13 @@ object DataGenerator {
     }
   }
 
-  def generateKMeansVectors( sc: SparkContext,
-                             numRows: Long,
-                             numCols: Int,
-                             numCenters: Int,
-                             numPartitions: Int,
-                             seed: Long = System.currentTimeMillis()): RDD[Vector] = {
+  def generateKMeansVectors(
+      sc: SparkContext,
+      numRows: Long,
+      numCols: Int,
+      numCenters: Int,
+      numPartitions: Int,
+      seed: Long = System.currentTimeMillis()): RDD[Vector] = {
 
     RandomRDDGenerators.randomRDD(sc, new KMeansDataGenerator(numCenters, numCols, seed),
       numRows, numPartitions, seed)
@@ -230,13 +234,14 @@ object DataGenerator {
 
   // Problems with having a userID or productID in the test set but not training set
   // leads to a lot of work...
-  def generateRatings( sc: SparkContext,
-                       numUsers: Int,
-                       numProducts: Int,
-                       numRatings: Long,
-                       implicitPrefs: Boolean,
-                       numPartitions: Int,
-                       seed: Long = System.currentTimeMillis()): (RDD[Rating],RDD[Rating]) = {
+  def generateRatings(
+      sc: SparkContext,
+      numUsers: Int,
+      numProducts: Int,
+      numRatings: Long,
+      implicitPrefs: Boolean,
+      numPartitions: Int,
+      seed: Long = System.currentTimeMillis()): (RDD[Rating],RDD[Rating]) = {
 
     val train = RandomRDDGenerators.randomRDD(sc,
       new RatingGenerator(numUsers, numProducts,implicitPrefs),
@@ -277,9 +282,10 @@ object DataGenerator {
 
 }
 
-class RatingGenerator( private val numUsers: Int,
-                       private val numProducts: Int,
-                       private val implicitPrefs: Boolean) extends RandomDataGenerator[Rating] {
+class RatingGenerator(
+    private val numUsers: Int,
+    private val numProducts: Int,
+    private val implicitPrefs: Boolean) extends RandomDataGenerator[Rating] {
 
   private val rng = new java.util.Random()
 
@@ -304,30 +310,11 @@ class RatingGenerator( private val numUsers: Int,
   override def copy(): RatingGenerator = new RatingGenerator(numUsers, numProducts, implicitPrefs)
 }
 
-/*
-// Distributed Matrix Generation
-class MatrixGenerator( private val n: Long) extends RandomDataGenerator[Vector] {
-
-  private val rng = new java.util.Random()
-
-  override def nextValue(): Vector = {
-
-    new MatrixEntry(tuple._1, tuple._2, 2*rng.nextDouble()-1)
-  }
-
-  override def setSeed(seed: Long) {
-    rng.setSeed(seed)
-  }
-
-  override def copy(): MatrixGenerator = new MatrixGenerator(n)
-}
-*/
-
 // For general classification
-class ClassLabelGenerator(private val numFeatures: Int,
-                          private val threshold: Double,
-                          private val scaleFactor: Double)
-  extends RandomDataGenerator[LabeledPoint] {
+class ClassLabelGenerator(
+    private val numFeatures: Int,
+    private val threshold: Double,
+    private val scaleFactor: Double) extends RandomDataGenerator[LabeledPoint] {
 
   private val rng = new java.util.Random()
 
@@ -348,11 +335,12 @@ class ClassLabelGenerator(private val numFeatures: Int,
     new ClassLabelGenerator(numFeatures, threshold, scaleFactor)
 }
 
-class LinearDataGenerator(val numFeatures: Int,
-                          val intercept: Double,
-                          val seed: Long,
-                          val eps: Double,
-                          val problem: String = "") extends RandomDataGenerator[LabeledPoint] {
+class LinearDataGenerator(
+    val numFeatures: Int,
+    val intercept: Double,
+    val seed: Long,
+    val eps: Double,
+    val problem: String = "") extends RandomDataGenerator[LabeledPoint] {
 
   private val rng = new java.util.Random(seed)
 
@@ -433,7 +421,7 @@ class RealLabelPairGenerator() extends RandomDataGenerator[Pair[Double, Double]]
  * @param numContinuous  Number of continuous features.  Feature values are in range [0,1].
  */
 class FeaturesGenerator(val categoricalArities: Array[Int], val numContinuous: Int)
-    extends RandomDataGenerator[Vector] {
+  extends RandomDataGenerator[Vector] {
 
   categoricalArities.foreach { arity =>
     require(arity >= 2, s"FeaturesGenerator given categorical arity = $arity, " +
@@ -482,9 +470,10 @@ class FeaturesGenerator(val categoricalArities: Array[Int], val numContinuous: I
 }
 
 
-class KMeansDataGenerator(val numCenters: Int,
-                          val numColumns: Int,
-                          val seed: Long) extends RandomDataGenerator[Vector] {
+class KMeansDataGenerator(
+    val numCenters: Int,
+    val numColumns: Int,
+    val seed: Long) extends RandomDataGenerator[Vector] {
 
   private val rng = new java.util.Random(seed)
   private val rng2 = new java.util.Random(seed + 24)

@@ -13,7 +13,6 @@ import org.apache.spark.mllib.tree.configuration.Algo._
 import org.apache.spark.mllib.tree.configuration.QuantileStrategy
 import org.apache.spark.mllib.tree.impurity._
 import org.apache.spark.mllib.tree.model.DecisionTreeModel
-import org.apache.spark.mllib.util.MLUtils._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
@@ -143,7 +142,7 @@ abstract class ClassificationTest[M](sc: SparkContext)
 
   def calculateAccuracy(predictions: RDD[(Double, Double)], numExamples: Long): Double = {
     predictions.map{case (pred, label) =>
-      pred.toByte ^ label.toByte ^ 1
+      if (pred == label) 1.0 else 0.0
     }.sum() * 100.0 / numExamples
   }
 
@@ -207,7 +206,7 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
       (model.predict(example.features), example.label)
     }
     predictions.map { case (pred, label) =>
-      pred.toByte ^ label.toByte ^ 1
+      if (pred == label) 1.0 else 0.0 
     }.sum() * 100.0 / numExamples
   }
 
@@ -558,8 +557,3 @@ class KMeansTest(sc: SparkContext) extends ClusteringTests(sc) {
     KMeans.train(rdd, numCenters, numIterations)
   }
 }
-
-
-
-
-
