@@ -275,12 +275,6 @@ MLLIB_REGRESSION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
 #    COMMON_JAVA_OPTS, [ConstantOption("ridge-regression"), OptionSet("reg-param", [0.0,1.0])] +
 #    MLLIB_REGRESSION_TEST_OPTS)]
 
-# Ridge Regression with L-BFGS #
-#MLLIB_TESTS += [("lbfgs", "mllib.perf.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("lbfgs"), OptionSet("reg-param", [0.0,1.0]),
-#    OptionSet("convergence-tol", [1e-5]), OptionSet("num-corrections", [10])] +
-#    MLLIB_REGRESSION_TEST_OPTS)]
-
 # Classification Tests #
 MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
      # The intercept for the data
@@ -296,6 +290,11 @@ MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
 #MLLIB_TESTS += [("logistic-regression", "mllib.perf.TestRunner", SCALE_FACTOR,
 #    COMMON_JAVA_OPTS,
 #    [ConstantOption("logistic-regression")] + MLLIB_CLASSIFICATION_TEST_OPTS)]
+
+# Ridge Regression with L-BFGS #
+#MLLIB_TESTS += [("lr-lbfgs", "mllib.perf.TestRunner", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("lr-lbfgs"), OptionSet("convergence-tol", [1e-5])] +
+#    MLLIB_CLASSIFICATION_TEST_OPTS)]
 
 #MLLIB_TESTS += [("naive-bayes", "mllib.perf.TestRunner", SCALE_FACTOR,
 #    COMMON_JAVA_OPTS,

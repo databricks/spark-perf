@@ -2,7 +2,6 @@ package mllib.perf
 
 
 import mllib.perf.util.DataGenerator
-import org.apache.spark.mllib.optimization.{SquaredL2Updater, LeastSquaresGradient, LBFGS}
 
 import org.apache.spark.mllib.regression._
 import org.apache.spark.mllib.clustering._
@@ -383,61 +382,6 @@ class RidgeRegressionTest(sc: SparkContext) extends RegressionTest(sc) {
   }
 }
 
-// The default optimizer is SGD, therefore a little more work is required to run L-BFGS
-class RidgeRegressionWithLBFGSTest(sc: SparkContext) extends RegressionTest(sc) {
-
-  val CONVERGENCE =  ("convergence-tol",   "convergence tolerance for l-bfgs")
-  val CORRECTIONS =  ("num-corrections",   "number of corrections for l-bfgs")
-
-  doubleOptions = doubleOptions ++ Seq(CONVERGENCE)
-  intOptions = intOptions ++ Seq(CORRECTIONS)
-
-  override val options = intOptions ++ stringOptions  ++ booleanOptions ++
-    doubleOptions ++ longOptions
-  addOptionsToParser()
-
-  override def runTest(rdd: RDD[LabeledPoint], numIterations: Int): RidgeRegressionModel = {
-
-    val regParam = doubleOptionValue(REGULARIZATION)
-    val tol = doubleOptionValue(CONVERGENCE)
-    val numCor = intOptionValue(CORRECTIONS)
-    val numFeatures = intOptionValue(NUM_FEATURES)
-    val addIntercept = doubleOptionValue(INTERCEPT) != 0.0
-    val initialWeights = Vectors.dense(Array.fill(numFeatures)(0.0))
-
-    val lbfgs = new LBFGS(new LeastSquaresGradient(), new SquaredL2Updater())
-    lbfgs.setMaxNumIterations(numIterations)
-      .setRegParam(regParam)
-      .setConvergenceTol(tol)
-      .setNumCorrections(numCor)
-
-    // Prepend an extra variable consisting of all 1.0's for the intercept.
-    val data = if (addIntercept) {
-      rdd.map(labeledPoint => (labeledPoint.label, appendBias(labeledPoint.features)))
-    } else {
-      rdd.map(labeledPoint => (labeledPoint.label, labeledPoint.features))
-    }
-
-    val initialWeightsWithIntercept = if (addIntercept) {
-      appendBias(initialWeights)
-    } else {
-      initialWeights
-    }
-
-    val weightsWithIntercept = lbfgs.optimize(data, initialWeightsWithIntercept)
-
-    val intercept = if (addIntercept) weightsWithIntercept(weightsWithIntercept.size - 1) else 0.0
-    val weights =
-      if (addIntercept) {
-        Vectors.dense(weightsWithIntercept.toArray.slice(0, weightsWithIntercept.size - 1))
-      } else {
-        weightsWithIntercept
-      }
-
-    new RidgeRegressionModel(weights, intercept)
-  }
-}
-
 class LassoTest(sc: SparkContext) extends RegressionTest(sc) {
   override def runTest(rdd: RDD[LabeledPoint], numIterations: Int): LassoModel = {
     val stepSize = doubleOptionValue(STEP_SIZE)
@@ -466,6 +410,27 @@ class LogisticRegressionTest(sc: SparkContext)
     val stepSize = doubleOptionValue(STEP_SIZE)
 
     LogisticRegressionWithSGD.train(rdd, numIterations, stepSize)
+  }
+}
+
+class LogisticRegressionWithLBFGSTest(sc: SparkContext)
+  extends LogisticRegressionTest(sc) {
+
+  val CONVERGENCE =  ("convergence-tol",   "convergence tolerance for l-bfgs")
+
+  doubleOptions = doubleOptions ++ Seq(CONVERGENCE)
+
+  override val options = intOptions ++ stringOptions  ++ booleanOptions ++
+    doubleOptions ++ longOptions
+
+  addOptionsToParser()
+
+  override def runTest(rdd: RDD[LabeledPoint], numIterations: Int): LogisticRegressionModel = {
+
+    val tol = doubleOptionValue(CONVERGENCE)
+
+    new LogisticRegressionWithLBFGS().setConvergenceTol(tol).setNumIterations(numIterations)
+      .run(rdd)
   }
 }
 
