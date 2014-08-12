@@ -170,32 +170,32 @@ SPARK_TESTS = []
 # PySpark tests
 PYSPARK_TESTS = []
 
-PYSPARK_TESTS += [("python-scheduling-throughput", "tests.py",
-    SCALE_FACTOR, COMMON_JAVA_OPTS,
-    [ConstantOption("SchedulerThroughputTest"), OptionSet("num-tasks", [5000])] + COMMON_OPTS)]
+#PYSPARK_TESTS += [("python-scheduling-throughput", "tests.py",
+#    SCALE_FACTOR, COMMON_JAVA_OPTS,
+#    [ConstantOption("SchedulerThroughputTest"), OptionSet("num-tasks", [5000])] + COMMON_OPTS)]
 
-PYSPARK_TESTS += [("python-agg-by-key", "tests.py", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKey")] + SPARK_KV_OPTS)]
+#PYSPARK_TESTS += [("python-agg-by-key", "tests.py", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKey")] + SPARK_KV_OPTS)]
 
 # Scale the input for this test by 2x since ints are smaller.
-PYSPARK_TESTS += [("python-agg-by-key-int", "tests.py", SCALE_FACTOR * 2,
-    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyInt")] + SPARK_KV_OPTS)]
+#PYSPARK_TESTS += [("python-agg-by-key-int", "tests.py", SCALE_FACTOR * 2,
+#    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyInt")] + SPARK_KV_OPTS)]
 
-PYSPARK_TESTS += [("python-agg-by-key-naive", "tests.py", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyNaive")] + SPARK_KV_OPTS)]
+#PYSPARK_TESTS += [("python-agg-by-key-naive", "tests.py", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyNaive")] + SPARK_KV_OPTS)]
 
-# Scale the input for this test by 0.10.
-PYSPARK_TESTS += [("python-sort-by-key", "tests.py", SCALE_FACTOR * 0.1,
-    COMMON_JAVA_OPTS, [ConstantOption("SortByKey")] + SPARK_KV_OPTS)]
+## Scale the input for this test by 0.10.
+#PYSPARK_TESTS += [("python-sort-by-key", "tests.py", SCALE_FACTOR * 0.1,
+#    COMMON_JAVA_OPTS, [ConstantOption("SortByKey")] + SPARK_KV_OPTS)]
 
-PYSPARK_TESTS += [("python-sort-by-key-int", "tests.py", SCALE_FACTOR * 0.2,
-    COMMON_JAVA_OPTS, [ConstantOption("SortByKeyInt")] + SPARK_KV_OPTS)]
+#PYSPARK_TESTS += [("python-sort-by-key-int", "tests.py", SCALE_FACTOR * 0.2,
+#    COMMON_JAVA_OPTS, [ConstantOption("SortByKeyInt")] + SPARK_KV_OPTS)]
 
-PYSPARK_TESTS += [("python-count", "tests.py", SCALE_FACTOR,
-                 COMMON_JAVA_OPTS, [ConstantOption("Count")] + SPARK_KV_OPTS)]
+#PYSPARK_TESTS += [("python-count", "tests.py", SCALE_FACTOR,
+#                 COMMON_JAVA_OPTS, [ConstantOption("Count")] + SPARK_KV_OPTS)]
 
-PYSPARK_TESTS += [("python-count-w-fltr", "tests.py", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("CountWithFilter")] + SPARK_KV_OPTS)]
+#PYSPARK_TESTS += [("python-count-w-fltr", "tests.py", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("CountWithFilter")] + SPARK_KV_OPTS)]
 
 
 

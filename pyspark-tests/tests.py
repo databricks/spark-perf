@@ -143,7 +143,7 @@ if __name__ == "__main__":
 
     options, cases = parser.parse_args()
 
-    sc = pyspark.SparkContext("local[*]", "TestRunner")
+    sc = pyspark.SparkContext(appName="TestRunner")
     for name in cases:
         test = globals()[name](sc)
         test.initialize(options)
