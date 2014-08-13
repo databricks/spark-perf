@@ -5,10 +5,7 @@ import os
 import os.path
 import socket
 
-from config_utils import FlagSet
-from config_utils import JavaOptionSet
-from config_utils import OptionSet
-from config_utils import ConstantOption
+from sparkperf.config_utils import FlagSet, JavaOptionSet, OptionSet, ConstantOption
 
 # Standard Configuration Options
 # --------------------------------------------------------------------------------------------------
