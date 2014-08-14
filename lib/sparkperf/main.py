@@ -3,10 +3,16 @@
 import argparse
 import imp
 import time
+import logging
+
+logger = logging.getLogger("sparkperf")
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler())
 
 from sparkperf.commands import *
 from sparkperf.cluster import Cluster
 from sparkperf.testsuites import *
+from sparkperf.build import SparkBuildManager
 
 
 parser = argparse.ArgumentParser(description='Run Spark or Shark peformance tests. Before running, '
@@ -32,7 +38,7 @@ with open(args.config_file) as cf:
 # Spark will always be built, assuming that any possible test run of this program is going to depend
 # on Spark.
 has_spark_tests = not config.SPARK_SKIP_TESTS and (len(config.SPARK_TESTS) > 0)
-should_prep_spark = (not config.SPARK_SKIP_PREP) and (not config.USE_CLUSTER_SPARK)
+should_prep_spark = not config.USE_CLUSTER_SPARK
 
 # Since Spark is always going to prepared, streaming and mllib do not require extra preparation
 has_streaming_tests = not config.STREAMING_SKIP_TESTS and (len(config.STREAMING_TESTS) > 0)
@@ -55,10 +61,14 @@ if should_prep_spark:
 if os.path.exists(config.SPARK_HOME_DIR):
     Cluster(spark_home=config.SPARK_HOME_DIR).stop()
 
+spark_build_manager = SparkBuildManager("%s/spark-build-cache" % PROJ_DIR, config.SPARK_GIT_REPO)
+
 if config.USE_CLUSTER_SPARK:
     cluster = Cluster(spark_home=config.SPARK_HOME_DIR, spark_conf_dir=config.SPARK_CONF_DIR)
 else:
-    cluster = Cluster(spark_home="%s/spark" % PROJ_DIR, spark_conf_dir=config.SPARK_CONF_DIR)
+    cluster = spark_build_manager.get_cluster(config.SPARK_COMMIT_ID, config.SPARK_CONF_DIR,
+                                              config.SPARK_MERGE_COMMIT_INTO_MASTER)
+    cluster.sync_spark()
 
 # If a cluster is already running from an earlier test, try shutting it down.
 if os.path.exists(cluster.spark_home):
@@ -68,57 +78,6 @@ if os.path.exists(cluster.spark_home):
 cluster.ensure_spark_stopped_on_slaves()
 # Allow some extra time for slaves to fully terminate.
 time.sleep(5)
-
-# Prepare Spark.
-if should_prep_spark:
-    # Assumes that the preexisting 'spark' directory is valid.
-    if not os.path.isdir("spark"):
-        # Clone Spark.
-        print("Git cloning Spark...")
-        run_cmd("git clone %s spark" % config.SPARK_GIT_REPO)
-        run_cmd("cd spark; git config --add remote.origin.fetch "
-            "'+refs/pull/*/head:refs/remotes/origin/pr/*'")
-        run_cmd("cd spark; git config --add remote.origin.fetch "
-            "'+refs/tags/*:refs/remotes/origin/tag/*'")
-
-    # Fetch updates.
-    os.chdir("spark")
-    print("Updating Spark repo...")
-    run_cmd("git fetch")
-
-    # Build Spark.
-    print("Cleaning Spark and building branch %s. This may take a while...\n" %
-        config.SPARK_COMMIT_ID)
-    run_cmd("git clean -f -d -x")
-
-    if config.SPARK_MERGE_COMMIT_INTO_MASTER:
-        run_cmd("git reset --hard master")
-        run_cmd("git merge %s -m ='Merging %s into master.'" %
-            (config.SPARK_COMMIT_ID, config.SPARK_COMMIT_ID))
-    else:
-        run_cmd("git reset --hard %s" % config.SPARK_COMMIT_ID)
-
-    run_cmd("%s clean assembly/assembly" % SBT_CMD)
-
-    # Copy Spark configuration files to new directory.
-    print("Copying all files from %s to %s/spark/conf/" % (config.SPARK_CONF_DIR, PROJ_DIR))
-    assert os.path.exists("%s/spark-env.sh" % config.SPARK_CONF_DIR), \
-        "Could not find required file %s/spark-env.sh" % config.SPARK_CONF_DIR
-    assert os.path.exists("%s/slaves" % config.SPARK_CONF_DIR), \
-        "Could not find required file %s/slaves" % config.SPARK_CONF_DIR
-    run_cmd("cp %s/* %s/spark/conf/" % (config.SPARK_CONF_DIR, PROJ_DIR))
-
-    # Change back to 'PROJ_DIR' directory.
-    os.chdir("..")
-
-    # Sync the whole directory to the slaves.
-    print("Syncing Spark directory to the slaves.")
-
-    make_PROJ_DIR = [(make_ssh_cmd("mkdir -p %s" % PROJ_DIR , s), True) for s in cluster.slaves]
-    run_cmds_parallel(make_PROJ_DIR)
- 
-    copy_spark = [(make_rsync_cmd("%s/spark" % PROJ_DIR , s), True) for s in cluster.slaves]
-    run_cmds_parallel(copy_spark)
 
 # Build the tests for each project.
 spark_work_dir = "%s/work" % cluster.spark_home

@@ -1,5 +1,6 @@
-from sparkperf.commands import run_cmd, make_ssh_cmd, run_cmds_parallel, clear_dir
+from sparkperf.commands import run_cmd, make_ssh_cmd, make_rsync_cmd, run_cmds_parallel, clear_dir
 import re
+import os
 import sys
 import time
 
@@ -16,6 +17,15 @@ class Cluster(object):
         # Get a list of slaves by parsing the slaves file in SPARK_CONF_DIR.
         slaves_file_raw = open("%s/slaves" % self.spark_conf_dir, 'r').read().split("\n")
         self.slaves = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
+
+    def sync_spark(self):
+        print("Syncing Spark directory to the slaves")
+        path = os.path.abspath(self.spark_home)
+        make_parent_dir = [(make_ssh_cmd("mkdir -p %s" % path, s), True) for s in self.slaves]
+        run_cmds_parallel(make_parent_dir)
+
+        copy_spark = [(make_rsync_cmd(path, s), True) for s in self.slaves]
+        run_cmds_parallel(copy_spark)
 
     def stop(self):
         print "Stopping Spark cluster"
