@@ -144,9 +144,20 @@ SPARK_KEY_VAL_TEST_OPTS = [
 SPARK_KV_OPTS = COMMON_OPTS + SPARK_KEY_VAL_TEST_OPTS
 SPARK_TESTS = []
 
+SCHEDULING_THROUGHPUT_OPTS = [
+    # The number of tasks that should be launched in each job:
+    OptionSet("num-tasks", [10 * 1000]),
+    # The number of jobs that should be run:
+    OptionSet("num-jobs", [1]),
+    # The size of the task closure (in bytes):
+    OptionSet("closure-size", [0]),
+    # A random seed to make tests reproducible:
+    OptionSet("random-seed", [5]),
+]
+
 #SPARK_TESTS += [("scheduling-throughput", "spark.perf.TestRunner",
 #    SCALE_FACTOR, COMMON_JAVA_OPTS, 
-#    [ConstantOption("scheduling-throughput"), OptionSet("num-tasks", [10 * 1000])] + COMMON_OPTS)]
+#    [ConstantOption("scheduling-throughput")] + COMMON_OPTS + SCHEDULING_THROUGHPUT_OPTS)]
 
 #SPARK_TESTS += [("scala-agg-by-key", "spark.perf.TestRunner", SCALE_FACTOR,
 #    COMMON_JAVA_OPTS, [ConstantOption("aggregate-by-key")] + SPARK_KV_OPTS)]
