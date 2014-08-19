@@ -1,67 +1,76 @@
 package streaming.perf
 
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
-import org.apache.spark.Logging
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkConf
+import org.apache.spark.{SparkContext, SparkConf, Logging}
 import joptsimple.{OptionSet, OptionParser}
 
 abstract class PerfTest extends Logging {
 
-  /** Int-type command line options expected for this test */
-  def intOptions: Seq[(String, String, Boolean)] = Seq(PerfTest.BATCH_DURATION)
+  val BATCH_DURATION = ("batch-duration", "duration of the batch size in milliseconds")
+  val TOTAL_DURATION = ("total-duration", "Total duration of the test in seconds")
+  val HDFS_URL = ("hdfs-url", "URL of the HDFS directory that is to be used for this test")
+
+  val parser = new OptionParser()
+  var optionSet: OptionSet = _
+  var testName: String = _
+  var batchDurationMs: Long = _
+  var totalDurationSec: Long = _
+  var hdfsUrl: String = _
+  var checkpointDirectory: String = _
+  var ssc: StreamingContext = _
+  var sc: SparkContext = _
+
+  /** Long-type command line options expected for this test */
+  def longOptions: Seq[(String, String)] = Seq(BATCH_DURATION, TOTAL_DURATION)
 
   /** String-type command line options expected for this test */
-  def stringOptions: Seq[(String, String, Boolean)] = Seq()
+  def stringOptions: Seq[(String, String)] = Seq(HDFS_URL)
 
   /** Boolean-type ("true" / "false") command line options expected for this test */
-  def booleanOptions: Seq[(String, String, Boolean)] = Seq()
+  def booleanOptions: Seq[(String, String)] = Seq()
 
   /** Initialize internal state based on arguments */
   def initialize(testName_ : String, otherArgs: Array[String]) {
+    // add all the options to parser
+    longOptions.map{case (opt, desc) =>
+      println("Registering long option " + opt)
+      parser.accepts(opt, desc).withRequiredArg().ofType(classOf[Long]).required()
+    }
+    stringOptions.map{case (opt, desc) =>
+      println("Registering string option " + opt)
+      parser.accepts(opt, desc).withRequiredArg().ofType(classOf[String]).required()
+    }
+    booleanOptions.map{case (opt, desc) =>
+      println("Registering boolean option " + opt)
+      parser.accepts(opt, desc).withRequiredArg().ofType(classOf[Boolean]).required()
+    }
+
     testName = testName_
     optionSet = parser.parse(otherArgs:_*)
-    batchDuration = optionSet.valueOf(PerfTest.BATCH_DURATION._1).asInstanceOf[Int]
+    batchDurationMs = longOptionValue(BATCH_DURATION)
+    totalDurationSec = longOptionValue(TOTAL_DURATION)
+    hdfsUrl = stringOptionValue(HDFS_URL)
+    checkpointDirectory = hdfsUrl + "/checkpoint/"
     ssc = createContext()
+    ssc.checkpoint(checkpointDirectory)
+    sc = ssc.sparkContext
   }
 
   /** Runs the test and returns a series of results, along with values of any parameters */
   def run(): String
 
-  val parser = new OptionParser()
-  var optionSet: OptionSet = _
-  var testName: String = _
-  var batchDuration: Int = _
-  var ssc: StreamingContext = _
-
-  // add all the options to parser
-  intOptions.map{case (opt, desc, reqd) =>
-    val temp = parser.accepts(opt, desc).withRequiredArg().ofType(classOf[Int])
-    if (reqd)  temp.required()
-  }
-  stringOptions.map{case (opt, desc, reqd) =>
-    val temp = parser.accepts(opt, desc).withRequiredArg().ofType(classOf[String])
-    if (reqd)  temp.required()
-  }
-  booleanOptions.map{case (opt, desc, reqd) =>
-    val temp = parser.accepts(opt, desc).withRequiredArg().ofType(classOf[Boolean])
-    if (reqd)  temp.required()
-  }
-
   protected def createContext() = {
     val conf = new SparkConf().setAppName(testName)
-    val sparkContext = new SparkContext(new SparkConf())
-    new StreamingContext(sparkContext,
-      Milliseconds(batchDuration))
+    val sparkContext = new SparkContext(conf)    
+    new StreamingContext(sparkContext, Milliseconds(batchDurationMs))
   }
 
-  def intOptionValue(option: (String, String, Boolean)) = optionSet.valueOf(option._1).asInstanceOf[Int]
+  /** Get value of long-type command line option */
+  def longOptionValue(option: (String, String)) = optionSet.valueOf(option._1).asInstanceOf[Long]
 
-  def stringOptionValue(option: (String, String, Boolean)) = optionSet.valueOf(option._1).asInstanceOf[String]
+  /** Get value of string-type command line option */
+  def stringOptionValue(option: (String, String)) = optionSet.valueOf(option._1).asInstanceOf[String]
 
-  def booleanOptionValue(option: (String, String, Boolean)) = optionSet.valueOf(option._1).asInstanceOf[Boolean]
-}
-
-object PerfTest {
-  val BATCH_DURATION = ("batch-duration", "duration of the batch size in milliseconds", true)
+  /** Get value of boolean-type ("true" / "false") command line option */
+  def booleanOptionValue(option: (String, String)) = optionSet.valueOf(option._1).asInstanceOf[Boolean]
 }
