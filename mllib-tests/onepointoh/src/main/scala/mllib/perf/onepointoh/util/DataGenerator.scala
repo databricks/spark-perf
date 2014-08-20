@@ -1,17 +1,17 @@
-package mllib.perf.util
+package mllib.perf.onepointoh.util
+
+import mllib.perf.onepointoh.util.random._
 
 import scala.collection.mutable
 
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
-import org.apache.spark.mllib.random.{RandomDataGenerator, RandomRDDGenerators}
 import org.apache.spark.mllib.recommendation.Rating
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.configuration.{Algo, FeatureType}
 import org.apache.spark.mllib.tree.model.{Split, DecisionTreeModel, Node}
 import org.apache.spark.rdd.{PairRDDFunctions, RDD}
 import org.apache.spark.SparkContext
-
 
 object DataGenerator {
 
@@ -49,12 +49,12 @@ object DataGenerator {
       threshold: Double,
       scaleFactor: Double,
       numPartitions: Int,
-      seed: Long = System.currentTimeMillis()): RDD[LabeledPoint] = {
+      seed: Long = System.currentTimeMillis(),
+      chiSq: Boolean = false): RDD[LabeledPoint] = {
 
-    RandomRDDGenerators.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, scaleFactor),
+    RandomRDDGenerators.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, scaleFactor,chiSq),
       numRows, numPartitions, seed)
   }
-
 
   /**
    * @param labelType  0 = regression with labels in [0,1].  Values >= 2 indicate classification.
@@ -314,14 +314,15 @@ class RatingGenerator(
 class ClassLabelGenerator(
     private val numFeatures: Int,
     private val threshold: Double,
-    private val scaleFactor: Double) extends RandomDataGenerator[LabeledPoint] {
+    private val scaleFactor: Double,
+    private val chiSq: Boolean) extends RandomDataGenerator[LabeledPoint] {
 
   private val rng = new java.util.Random()
 
   override def nextValue(): LabeledPoint = {
     val y = if (rng.nextDouble() < threshold) 0.0 else 1.0
     val x = Array.fill[Double](numFeatures) {
-      rng.nextGaussian() + (y * scaleFactor)
+      if (!chiSq) rng.nextGaussian() + (y * scaleFactor) else rng.nextInt(6)*1.0
     }
 
     LabeledPoint(y, Vectors.dense(x))
@@ -332,7 +333,7 @@ class ClassLabelGenerator(
   }
 
   override def copy(): ClassLabelGenerator =
-    new ClassLabelGenerator(numFeatures, threshold, scaleFactor)
+    new ClassLabelGenerator(numFeatures, threshold, scaleFactor, chiSq)
 }
 
 class LinearDataGenerator(
@@ -340,14 +341,17 @@ class LinearDataGenerator(
     val intercept: Double,
     val seed: Long,
     val eps: Double,
-    val problem: String = "") extends RandomDataGenerator[LabeledPoint] {
+    val problem: String = "",
+    val sparsity: Double = 1.0) extends RandomDataGenerator[LabeledPoint] {
 
   private val rng = new java.util.Random(seed)
 
   private val weights = Array.fill(numFeatures)(rng.nextDouble())
+  private val nnz: Int = math.ceil(numFeatures*sparsity).toInt
 
   override def nextValue(): LabeledPoint = {
-    val x = Array.fill[Double](numFeatures)(2*rng.nextDouble()-1)
+    val x = Array.fill[Double](nnz)(2*rng.nextDouble()-1)
+
     val y = weights.zip(x).map(p => p._1 * p._2).sum + intercept + eps*rng.nextGaussian()
     val yD =
       if (problem == "SVM"){
@@ -364,7 +368,7 @@ class LinearDataGenerator(
   }
 
   override def copy(): LinearDataGenerator =
-    new LinearDataGenerator(numFeatures, intercept, seed, eps, problem)
+    new LinearDataGenerator(numFeatures, intercept, seed, eps, problem, sparsity)
 }
 
 
@@ -432,13 +436,12 @@ class FeaturesGenerator(val categoricalArities: Array[Int], val numContinuous: I
 
   private val rng = new java.util.Random()
 
-  private var arr = new Array[Double](numFeatures)
-
   /**
    * Generates vector with categorical features first, and continuous features in [0,1] second.
    */
   override def nextValue(): Vector = {
     // Feature ordering matches getCategoricalFeaturesInfo.
+    val arr = new Array[Double](numFeatures)
     var j = 0
     while (j < categoricalArities.size) {
       arr(j) = rng.nextInt(categoricalArities(j))
@@ -485,7 +488,7 @@ class KMeansDataGenerator(
     val randSum = rand.sum
     val scaled = rand.map(x => x / randSum)
 
-    (0 until numCenters).map{i =>
+    (1 to numCenters).map{i =>
       scaled.slice(0, i).sum
     }
   }

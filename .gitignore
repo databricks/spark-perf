@@ -16,6 +16,7 @@ target
 # Compiled sources
 *.pyc
 *.class
+*.jar
 
 # Tmp files
 *.swp

@@ -8,14 +8,6 @@ organization := "org.spark-project"
 
 scalaVersion := "2.10.4"
 
-libraryDependencies += "net.sf.jopt-simple" % "jopt-simple" % "4.5"
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1" % "test"
-
-libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.2"
-
-libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.1.1-SNAPSHOT" % "provided"
-
 assemblySettings
 
 test in assembly := {}
