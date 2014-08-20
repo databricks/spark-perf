@@ -108,10 +108,6 @@ class JVMPerfTestSuite(PerfTestSuite):
             spark_submit, main_class_or_script, config.SPARK_CLUSTER_URL,
             config.SPARK_DRIVER_MEMORY, cls.test_jar_path, " ".join(opt_list),
             stdout_filename, stderr_filename)
-        print("Spark Submit command")
-        print("--------------------")
-        print(cmd)
-        print("--------------------")
         return cmd
 
 
