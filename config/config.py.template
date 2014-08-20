@@ -24,19 +24,8 @@ SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip() 
 # copy configurations from your existing Spark install.
 USE_CLUSTER_SPARK = True
 
-# This default setting assumes we are running on the Spark EC2 AMI, which has the HDFS_URL
-# environment variable set. To run locally, uncomment the line after it.
 HDFS_URL = os.getenv("HDFS_URL")
 # HDFS_URL = "%s/test/" % os.getcwd()
-
-if HDFS_URL == None:
-    raise Exception(
-        '''
-        Environment variable HDFS_URL is not set.
-        If you are running in a cluster, set HDFS_URL.
-        If you are running locally, edit the config file to set HDFS_URL = "%s/test/" % os.getcwd()
-        '''
-    )
 
 ############## If not using existing Spark installation  ############
 # Commit id and repo used if you are not using an existing Spark cluster
