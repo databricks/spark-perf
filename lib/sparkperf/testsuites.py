@@ -66,10 +66,12 @@ class PerfTestSuite(object):
                     cluster.ensure_spark_stopped_on_slaves()
                     append_config_to_file(stdout_filename, java_opt_list, opt_list)
                     append_config_to_file(stderr_filename, java_opt_list, opt_list)
-                    test_env["SPARK_SUBMIT_OPTS"] = " ".join(java_opt_list)
+                    java_opts_str = " ".join(java_opt_list)
                     cmd = cls.get_spark_submit_cmd(cluster, config, main_class_or_script, opt_list,
                                                    stdout_filename, stderr_filename)
-                    print("\nRunning command: %s\n" % cmd)
+                    print("\nSetting env var SPARK_SUBMIT_OPTS: %s" % java_opts_str)
+                    test_env["SPARK_SUBMIT_OPTS"] = java_opts_str
+                    print("Running command: %s\n" % cmd)
                     Popen(cmd, shell=True, env=test_env).wait()
                     result_string = cls.process_output(config, short_name, opt_list,
                                                        stdout_filename, stderr_filename)
