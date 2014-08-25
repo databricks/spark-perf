@@ -1,10 +1,10 @@
 package streaming.perf
 
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
-import org.apache.spark.{SparkContext, SparkConf, Logging}
+import org.apache.spark.{SparkContext, SparkConf}
 import joptsimple.{OptionSet, OptionParser}
 
-abstract class PerfTest extends Logging {
+abstract class PerfTest {
 
   val BATCH_DURATION = ("batch-duration", "duration of the batch size in milliseconds")
   val TOTAL_DURATION = ("total-duration", "Total duration of the test in seconds")

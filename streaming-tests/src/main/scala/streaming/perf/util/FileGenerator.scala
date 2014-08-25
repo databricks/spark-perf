@@ -1,18 +1,15 @@
 package streaming.perf.util
 
-import org.apache.spark.{Logging, SparkContext}
-import org.apache.hadoop.fs.{PathFilter, Path, FileSystem}
-import org.apache.hadoop.conf.Configuration
-import com.google.common.io.Files
-import java.io.{IOException, File}
-import java.text.SimpleDateFormat
+import java.io.{BufferedReader, File, FileReader, IOException}
 import java.nio.charset.Charset
+import java.text.SimpleDateFormat
 import java.util.Calendar
-import scala.util.Random
-import java.io.{BufferedReader, FileReader}
 
+import com.google.common.io.Files
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path, PathFilter}
 
-class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Long, cleanerDelay: Long) extends Logging {
+class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Long, cleanerDelay: Long) {
 
   val MAX_TRIES = 100
   val MAX_KEYS = 1000
@@ -48,14 +45,14 @@ class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Lon
     deletingThread.setDaemon(true)
     generatingThread.start()
     deletingThread.start()
-    logInfo("Started")
+    println("FileGenerator started")
   }
 
   /** Stop generating files */
   def stop() {
     generatingThread.interrupt()
     deletingThread.interrupt()
-    logInfo("Interrupted")
+    println("FileGenerator Interrupted")
   }
 
   /** Delete test directory */

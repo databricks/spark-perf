@@ -4,7 +4,6 @@ import org.apache.spark.streaming.receiver.Receiver
 import org.apache.spark.storage.StorageLevel
 import scala.util.Random
 import scala.annotation.tailrec
-import org.apache.spark.Logging
 import java.util.concurrent.TimeUnit._
 
 class DataGeneratingReceiver(
@@ -12,7 +11,7 @@ class DataGeneratingReceiver(
     uniqueKeys: Long,
     uniqueValues: Long,
     storageLevel: StorageLevel
-  ) extends Receiver[(String, String)](storageLevel) with Logging {
+  ) extends Receiver[(String, String)](storageLevel) {
 
   private class DataGeneratorThread extends Thread {
     private val SYNC_INTERVAL = NANOSECONDS.convert(100, MILLISECONDS)
@@ -22,7 +21,7 @@ class DataGeneratingReceiver(
     override def run() {
       val effectiveSeed = streamId
       val r = new Random(effectiveSeed)
-      logInfo("Generating with seed " + r)
+      println("Generating with seed " + r)
       while (!isStopped()) {
         waitToWrite()
         val key = r.nextLong % uniqueKeys
@@ -42,7 +41,7 @@ class DataGeneratingReceiver(
         if (now > lastSyncTime + SYNC_INTERVAL) {
           // Sync interval has passed; let's resync
           val actualRate = recordsWrittenSinceSync.toDouble / MILLISECONDS.convert(SYNC_INTERVAL, NANOSECONDS) * 1000.0
-          logInfo("Generated data at "  + actualRate + " records / sec")
+          println("Generated data at "  + actualRate + " records / sec")
           lastSyncTime = now
           recordsWrittenSinceSync = 0
         }
@@ -52,8 +51,8 @@ class DataGeneratingReceiver(
         val elapsedTimeInMillis = elapsedNanosecs / 1000000
         val sleepTimeInMillis = targetTimeInMillis - elapsedTimeInMillis
         if (sleepTimeInMillis > 0) {
-          logTrace("Natural rate is " + rate + " per second but desired rate is " +
-            recordsPerSec + ", sleeping for " + sleepTimeInMillis + " ms to compensate.")
+          /*println(s"Natural rate is $rate per second but desired rate is " +
+            s"$recordsPerSec, sleeping for $sleepTimeInMillis ms to compensate.") */
           Thread.sleep(sleepTimeInMillis)
         }
         if (!isStopped()) {
@@ -67,7 +66,7 @@ class DataGeneratingReceiver(
     val thread = new DataGeneratorThread
     thread.setDaemon(true)
     thread.start()
-    logInfo("Started")
+    println("Started data generating receiver")
   }
 
   def onStop() { }
