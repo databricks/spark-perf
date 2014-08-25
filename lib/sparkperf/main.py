@@ -34,12 +34,13 @@ with open(args.config_file) as cf:
 
 # Spark will always be built, assuming that any possible test run of this program is going to depend
 # on Spark.
-has_spark_tests = (len(config.SPARK_TESTS) > 0)
+has_spark_tests = not config.SPARK_SKIP_TESTS and (len(config.SPARK_TESTS) > 0)
 should_prep_spark = (not config.SPARK_SKIP_PREP) and (not config.USE_CLUSTER_SPARK)
 
 # Since Spark is always going to prepared, streaming and mllib do not require extra preparation
-has_streaming_tests = (len(config.STREAMING_TESTS) > 0)
-has_mllib_tests = (len(config.MLLIB_TESTS) > 0)
+has_streaming_tests = not config.STREAMING_SKIP_TESTS and (len(config.STREAMING_TESTS) > 0)
+has_mllib_tests = not config.MLLIB_SKIP_TESTS and (len(config.MLLIB_TESTS) > 0)
+
 # Only build the perf test sources that will be used.
 should_prep_spark_tests = has_spark_tests and not config.SPARK_SKIP_TEST_PREP
 should_prep_streaming_tests = has_streaming_tests and not config.STREAMING_SKIP_TEST_PREP

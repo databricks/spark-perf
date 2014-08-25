@@ -1,7 +1,7 @@
 package streaming.perf.util
 
 import org.apache.spark.{Logging, SparkContext}
-import org.apache.hadoop.fs.{PathFilter, Path}
+import org.apache.hadoop.fs.{PathFilter, Path, FileSystem}
 import org.apache.hadoop.conf.Configuration
 import com.google.common.io.Files
 import java.io.{IOException, File}
@@ -9,34 +9,43 @@ import java.text.SimpleDateFormat
 import java.nio.charset.Charset
 import java.util.Calendar
 import scala.util.Random
+import java.io.{BufferedReader, FileReader}
 
 
-class FileGenerator(sc: SparkContext, testDir: String, maxRecordsPerFile: Int, cleanerDelay: Long) extends Logging {
+class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxRecordsPerFile: Long, cleanerDelay: Long) extends Logging {
 
   val MAX_TRIES = 100
   val MAX_KEYS = 1000
-  val INTERVAL = 100
+  val INTERVAL = 50
+  val VERIFY_LOCAL_FILES = false
 
-  val testDirectory = new Path(testDir)
+  val dataDirectory = new Path(dataDir)
+  val tempDataDirectory = new Path(tempDataDir)
+  val localFile = new File(Files.createTempDir(), "temp")
+  val tempFile = new Path(tempDataDirectory, "temp-file")
   val conf = new Configuration()
-  val initFile = new Path(testDirectory, "test")
+  // val initFile = new Path(dataDirectory, "test")
   val generatingThread = new Thread() { override def run() { generateFiles() }}
   val deletingThread = new Thread() { override def run() { deleteOldFiles() }}
-  val localTestDir = Files.createTempDir()
-  val localFile = new File(localTestDir, "temp")
   val df = new SimpleDateFormat("MM-dd-HH-mm-ss-SSS")
 
-  var fs = testDirectory.getFileSystem(conf)
+  var fs_ : FileSystem = null
 
   def initialize() {
-    if (fs.exists(testDirectory)) {
-      fs.delete(testDirectory, true)
-      fs.mkdirs(testDirectory)
+    if (fs.exists(dataDirectory)) {
+      fs.delete(dataDirectory, true)
     }
+    fs.mkdirs(dataDirectory)
+    if (fs.exists(tempDataDirectory)) {
+      fs.delete(tempDataDirectory, true)
+    }
+    fs.mkdirs(tempDataDirectory)
   }
 
   /** Start generating files */
   def start() {
+    generatingThread.setDaemon(true)
+    deletingThread.setDaemon(true)
     generatingThread.start()
     deletingThread.start()
     logInfo("Started")
@@ -46,14 +55,12 @@ class FileGenerator(sc: SparkContext, testDir: String, maxRecordsPerFile: Int, c
   def stop() {
     generatingThread.interrupt()
     deletingThread.interrupt()
-    generatingThread.join()
     logInfo("Interrupted")
-    fs.close()
   }
 
   /** Delete test directory */
   def cleanup() {
-    fs.delete(testDirectory, true)
+    fs.delete(dataDirectory, true)
   }
 
   /**
@@ -65,10 +72,13 @@ class FileGenerator(sc: SparkContext, testDir: String, maxRecordsPerFile: Int, c
     try {
       for (key <- 1 to MAX_KEYS) {
         if (localFile.exists()) localFile.delete()
-        for (count <- 1 to maxRecordsPerFile) {
-          Files.append("word" + key + " ", localFile, Charset.defaultCharset())
+        for (count <- 1L to maxRecordsPerFile) {
+          val word = "word" + key
+          val newLine = if (count % 10 == 0) "\n" else ""
+          Files.append(word + " " + newLine, localFile, Charset.defaultCharset())
+          if (VERIFY_LOCAL_FILES) verifyLocalFile(word, count)
           val time = df.format(Calendar.getInstance().getTime())
-          val finalFile = new Path(testDir, "file-" + time + "-" + key + "-" + count)
+          val finalFile = new Path(dataDir, "file-" + time + "-" + key + "-" + count)
           val generated = copyFile(localFile, finalFile)
           if (generated) {
             logInfo("Generated file #" + count + " at " + System.currentTimeMillis() + ": " + finalFile)
@@ -95,12 +105,18 @@ class FileGenerator(sc: SparkContext, testDir: String, maxRecordsPerFile: Int, c
     while (!done && tries < MAX_TRIES) {
       tries += 1
       try {
-        fs.copyFromLocalFile(new Path(localFile.toString), finalFile)
+        logInfo("Copying from " + localFile + " to " + tempFile)
+        fs.copyFromLocalFile(new Path(localFile.toString), tempFile)
+        if (fs.exists(tempFile)) logInfo("" + tempFile + " exists") else logInfo("" + tempFile + " does not exist")
+        logInfo("Renaming from " + tempFile + " to " + finalFile)
+        if (!fs.rename(tempFile, finalFile)) throw new Exception("Could not rename " + tempFile + " to " + finalFile)
         done = true
       } catch {
         case ioe: IOException =>
-          fs = testDirectory.getFileSystem(conf)
           logWarning("Attempt " + tries + " at generating file " + finalFile + " failed.", ioe)
+          reset()
+      } finally {
+        // if (fs.exists(tempFile)) fs.delete(tempFile, true)
       }
     }
     done
@@ -120,7 +136,7 @@ class FileGenerator(sc: SparkContext, testDir: String, maxRecordsPerFile: Int, c
           }
         }
         logInfo("Finding files older than " + (System.currentTimeMillis() - cleanerDelay * 1000))
-        val oldFiles = fs.listStatus(testDirectory, newFilter).map(_.getPath)
+        val oldFiles = fs.listStatus(dataDirectory, newFilter).map(_.getPath)
         oldFiles.foreach(file => {
           logInfo("Deleting file " + file)
           fs.delete(file, true)
@@ -131,7 +147,34 @@ class FileGenerator(sc: SparkContext, testDir: String, maxRecordsPerFile: Int, c
           logInfo("File deleting thread interrupted")
         case e: Exception =>
           logWarning("Deleting files gave error ", e)
+          reset()
       }
     }
+  }
+
+  private def verifyLocalFile(expectedWord: String, expectedCount: Long) {
+    val br = new BufferedReader(new FileReader(localFile))
+    var line = ""
+    var count = 0L
+    var wordMatch = true
+    line = br.readLine()
+    while (line != null) {
+      val words = line.split(" ").filter(_.size != 0)
+      wordMatch = wordMatch && words.forall(_ == expectedWord)
+      count += words.size
+      line = br.readLine()
+    }
+    br.close()
+    logInfo("Local file has " + count + " occurrences of " + expectedWord +
+      (if (count != expectedCount)  ", expected was " + expectedCount else ""))
+  }
+
+  private def fs: FileSystem = synchronized {
+    if (fs_ == null) fs_ = dataDirectory.getFileSystem(new Configuration())
+    fs_
+  }
+
+  private def reset() {
+    fs_ = null
   }
 }

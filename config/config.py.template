@@ -24,6 +24,10 @@ SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip() 
 # copy configurations from your existing Spark install.
 USE_CLUSTER_SPARK = True
 
+# URL of the HDFS installation in the Spark EC2 cluster
+HDFS_URL = "hdfs://%s:9000/test/" % socket.gethostname()
+# HDFS_URL = "%s/test/" % os.getcwd()
+
 ############## If not using existing Spark installation  ############
 # Commit id and repo used if you are not using an existing Spark cluster
 # custom version of Spark. The remote name in your git repo is assumed 
@@ -200,33 +204,67 @@ PYSPARK_TESTS = []
 
 
 
-# Spark Streaming tests #
+# Spark Streaming tests
 STREAMING_TESTS = []
 
 # The following function generates options for setting batch duration in streaming tests
 def streaming_batch_duration_opts(duration):
     return [OptionSet("batch-duration", [duration])]
 
-# The following Java options apply to the streaming tests
-STREAMING_COMMON_JAVA_OPTS = COMMON_JAVA_OPTS + [
-    JavaOptionSet("spark.cleaner.ttl", [1800])
+# The following function generates options for setting window duration in streaming tests
+def streaming_window_duration_opts(duration):
+    return [OptionSet("window-duration", [duration])]
+
+STREAMING_COMMON_OPTS = [
+    OptionSet("total-duration", [60]),
+    OptionSet("hdfs-url", [HDFS_URL]),
 ]
 
-STREAMING_COMMON_OPTS = streaming_batch_duration_opts(1000) 
 
-#STREAMING_TESTS += [("basic", "streaming.perf.TestRunner", SCALE_FACTOR, 
-#    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("basic")] + STREAMING_COMMON_OPTS)]
+STREAMING_COMMON_JAVA_OPTS = [
+    # Fraction of JVM memory used for caching RDDs.
+    JavaOptionSet("spark.storage.memoryFraction", [0.66]),
+    JavaOptionSet("spark.serializer", ["org.apache.spark.serializer.JavaSerializer"]),
+    JavaOptionSet("spark.executor.memory", ["9g"]),
+    JavaOptionSet("spark.executor.extraJavaOptions", [" -XX:+UseConcMarkSweepGC "])
+]
+STREAMING_KEY_VAL_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(2000) + [
+    # Number of input streams.
+    OptionSet("num-streams", [1], can_scale=True),
+    # Number of records per second per input stream
+    OptionSet("records-per-sec", [10 * 1000]),
+    # Number of reduce tasks.
+    OptionSet("reduce-tasks", [10], can_scale=True),
+    # memory serialization ("true" or "false").
+    OptionSet("memory-serialization", ["true"]),
+    # Number of unique keys to sample from.
+    OptionSet("unique-keys",[100 * 1000], can_scale=True),
+    # Length in characters of each key.
+    OptionSet("unique-values", [1000 * 1000], can_scale=True),
+]
 
-#STREAMING_HDFS_RECOVERY_TEST_OPTS = streaming_batch_duration_opts(5000) + [
-#    OptionSet("hdfs-url", ["%s/test/" % os.getcwd()]),
-#    OptionSet("total-duration", [3600 * 5]),
-#    OptionSet("records-per-file", [10000]),
-#    OptionSet("file-cleaner-delay", [300])
-#]
+STREAMING_HDFS_RECOVERY_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(5000) + [
+    OptionSet("records-per-file", [10000]),
+    OptionSet("file-cleaner-delay", [300])
+]
 
-#STREAMING_TESTS += [("hdfs-recovery", "streaming.perf.TestRunner", SCALE_FACTOR, 
-#    STREAMING_COMMON_JAVA_OPTS, 
-#    [ConstantOption("hdfs-recovery")] + STREAMING_HDFS_RECOVERY_TEST_OPTS)]
+# this test is just to see if everything is setup properly
+STREAMING_TESTS += [("basic", "streaming.perf.TestRunner", SCALE_FACTOR,
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("basic")] + STREAMING_COMMON_OPTS + streaming_batch_duration_opts(1000))] 
+
+STREAMING_TESTS += [("state-by-key", "streaming.perf.TestRunner", SCALE_FACTOR,
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("state-by-key")] + STREAMING_KEY_VAL_TEST_OPTS)]
+
+STREAMING_TESTS += [("group-by-key-and-window", "streaming.perf.TestRunner", SCALE_FACTOR,
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("group-by-key-and-window")] + STREAMING_KEY_VAL_TEST_OPTS + streaming_window_duration_opts(10000) )]
+
+STREAMING_TESTS += [("reduce-by-key-and-window", "streaming.perf.TestRunner", SCALE_FACTOR,
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("reduce-by-key-and-window")] + STREAMING_KEY_VAL_TEST_OPTS + streaming_window_duration_opts(10000) )]
+
+ STREAMING_TESTS += [("hdfs-recovery", "streaming.perf.TestRunner hdfs-recovery", SCALE_FACTOR,
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("hdfs-recovery")] + STREAMING_HDFS_RECOVERY_TEST_OPTS)]
+
+
 
 # MLlib Tests #
 MLLIB_TESTS = []
@@ -409,6 +447,10 @@ MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS + [
 
 # Skip downloading and building Spark
 SPARK_SKIP_PREP = False
+
+SPARK_SKIP_TESTS = False
+STREAMING_SKIP_TESTS = False
+MLLIB_SKIP_TESTS = False
 
 # Skip building and packaging project tests (requires respective perf tests to already be packaged
 # in the project's target directory).

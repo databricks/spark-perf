@@ -1,9 +1,5 @@
 package streaming.perf
 
-import org.apache.spark.streaming.StreamingContext
-
-import streaming.perf
-
 object TestRunner {
 
   def main(args: Array[String]) {
