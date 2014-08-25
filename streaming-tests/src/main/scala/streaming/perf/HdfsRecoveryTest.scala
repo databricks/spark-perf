@@ -43,10 +43,10 @@ class HdfsRecoveryTest extends PerfTest {
       val partitionCounts = rdd.sparkContext.runJob(rdd.mapPartitions(iter => 
           iter.toSeq.groupBy(_._1).toSeq.map(x => (x._1, x._2.map(_._2).sum)).toIterator
           ), (iter: Iterator[(String, Long)]) => iter.toArray)
-      println("New partition counts (" + partitionCounts.size + ") at " + time + " = " + 
+      println(s"New partition counts ${partitionCounts.size}) at $time = " +
         partitionCounts.map(_.mkString("[", ", ", "]")).mkString("[", ", ", "]"))
       val counts = rdd.reduceByKey(_ + _, 1).collect()
-      println("New total count at " + time + " = " + counts.mkString("[", ", ", "]"))
+      println(s"New total count at $time = " + counts.mkString("[", ", ", "]"))
     })
     runningCountStream.foreach((rdd: RDD[(String, Long)], time: Time) => {
       val counts = rdd.collect()
