@@ -1,6 +1,6 @@
-package mllib.perf
+package mllib.perf.onepointoh
 
-import mllib.perf.util.DataGenerator
+import mllib.perf.onepointoh.util.DataGenerator
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 
@@ -40,7 +40,6 @@ abstract class LinearAlgebraTests(sc: SparkContext) extends PerfTest {
 
     (time, 0.0, 0.0)
   }
-
 }
 
 
@@ -53,6 +52,7 @@ class SVDTest(sc: SparkContext) extends LinearAlgebraTests(sc) {
 class PCATest(sc: SparkContext) extends LinearAlgebraTests(sc) {
   override def runTest(data: RowMatrix, rank: Int) {
     val principal = data.computePrincipalComponents(rank)
+    sc.broadcast(principal)
     data.multiply(principal)
   }
 }
