@@ -12,11 +12,11 @@ import scala.util.Random
 import java.io.{BufferedReader, FileReader}
 
 
-class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxRecordsPerFile: Long, cleanerDelay: Long) extends Logging {
+class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Long, cleanerDelay: Long) extends Logging {
 
   val MAX_TRIES = 100
   val MAX_KEYS = 1000
-  val INTERVAL = 50
+  val INTERVAL = 100
   val VERIFY_LOCAL_FILES = false
 
   val dataDirectory = new Path(dataDir)
@@ -105,10 +105,10 @@ class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxR
     while (!done && tries < MAX_TRIES) {
       tries += 1
       try {
-        logInfo("Copying from " + localFile + " to " + tempFile)
+        logDebug("Copying from " + localFile + " to " + tempFile)
         fs.copyFromLocalFile(new Path(localFile.toString), tempFile)
-        if (fs.exists(tempFile)) logInfo("" + tempFile + " exists") else logInfo("" + tempFile + " does not exist")
-        logInfo("Renaming from " + tempFile + " to " + finalFile)
+        if (fs.exists(tempFile)) logDebug("" + tempFile + " exists") else logDebug("" + tempFile + " does not exist")
+        logDebug("Renaming from " + tempFile + " to " + finalFile)
         if (!fs.rename(tempFile, finalFile)) throw new Exception("Could not rename " + tempFile + " to " + finalFile)
         done = true
       } catch {
@@ -128,15 +128,17 @@ class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxR
     while (!interrupted) {
       try {
         Thread.sleep(cleanerDelay * 1000 / 5)
+        val oldFileThreshTime = System.currentTimeMillis - cleanerDelay * 1000
         val newFilter = new PathFilter() {
           def accept(path: Path): Boolean = {
             val modTime = fs.getFileStatus(path).getModificationTime()
-            logInfo("Mod time for " + path + " is " + modTime)
-            modTime < (System.currentTimeMillis() - cleanerDelay * 1000)
+            logDebug("Mod time for " + path + " is " + modTime)
+            modTime < oldFileThreshTime
           }
         }
-        logInfo("Finding files older than " + (System.currentTimeMillis() - cleanerDelay * 1000))
+        logInfo("Finding files older than " + oldFileThreshTime)
         val oldFiles = fs.listStatus(dataDirectory, newFilter).map(_.getPath)
+        logInfo("Found " + oldFiles.size + " old files")
         oldFiles.foreach(file => {
           logInfo("Deleting file " + file)
           fs.delete(file, true)

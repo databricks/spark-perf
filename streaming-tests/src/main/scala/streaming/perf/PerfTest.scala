@@ -11,6 +11,9 @@ abstract class PerfTest extends Logging {
   val HDFS_URL = ("hdfs-url", "URL of the HDFS directory that is to be used for this test")
 
   val parser = new OptionParser()
+  val jarFile = System.getProperty("user.dir", "..") + "/streaming-tests/target/streaming-perf-tests-assembly.jar"
+  val sparkDir = Option(System.getenv("SPARK_HOME")).getOrElse("../spark/")
+
   var optionSet: OptionSet = _
   var testName: String = _
   var batchDurationMs: Long = _
