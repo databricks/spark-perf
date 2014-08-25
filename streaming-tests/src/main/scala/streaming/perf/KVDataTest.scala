@@ -79,7 +79,6 @@ abstract class KVDataTest extends PerfTest {
   def setupInputStreams(numStreams: Int): DStream[(String, String)] = {
     val dataGenerators = (1 to numStreams).map { streamIndex => new DataGenerator(
       ssc, batchDurationMs, recordsPerSec, uniqueKeys, uniqueValues, streamIndex, useReceiver, storageLevel) }
-    logInfo("use receiver = " + useReceiver)
     val inputStreams = dataGenerators.map(_.createInputDStream())
     ssc.union(inputStreams)
   }
