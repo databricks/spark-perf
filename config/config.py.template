@@ -426,6 +426,8 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     OptionSet("tree-depth", [5], can_scale=False),
     # Maximum number of bins for the decision tree learning algorithm.
     OptionSet("max-bins", [100], can_scale=False),
+    # Number of trees. If 1, then run DecisionTree. If >1, then run RandomForest.
+    OptionSet("num-trees", [1], can_scale=False),
     # (unused parameter)
     OptionSet("num-iterations", [0], can_scale=False),
     # (unused parameter)
