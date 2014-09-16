@@ -6,11 +6,11 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.mllib.classification._
 import org.apache.spark.mllib.regression._
-import org.apache.spark.mllib.tree.DecisionTree
+import org.apache.spark.mllib.tree.{RandomForest, DecisionTree}
 import org.apache.spark.mllib.tree.configuration.Algo._
 import org.apache.spark.mllib.tree.configuration.QuantileStrategy
 import org.apache.spark.mllib.tree.impurity._
-import org.apache.spark.mllib.tree.model.DecisionTreeModel
+import org.apache.spark.mllib.tree.model.{RandomForestModel, DecisionTreeModel}
 import org.apache.spark.rdd.RDD
 
 abstract class ClassificationTest[M](sc: SparkContext)
@@ -110,7 +110,7 @@ class LogisticRegressionWithLBFGSTest(sc: SparkContext)
  */
 abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
 
-  def runTest(rdd: RDD[LabeledPoint]): DecisionTreeModel
+  def runTest(rdd: RDD[LabeledPoint]): RandomForestModel
 
   val NUM_EXAMPLES = ("num-examples", "number of examples for regression tests")
   val NUM_FEATURES = ("num-features", "number of features of each example for regression tests")
@@ -124,8 +124,9 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
       "Others have 20 categories.")
   val TREE_DEPTH = ("tree-depth", "Depth of true decision tree model used to label examples.")
   val MAX_BINS = ("max-bins", "Maximum number of bins for the decision tree learning algorithm.")
+  val NUM_TREES = ("num-trees", "Number of trees to train.  If 1, run DecisionTree.  If >1, run RandomForest.")
 
-  intOptions = intOptions ++ Seq(NUM_FEATURES, LABEL_TYPE, TREE_DEPTH, MAX_BINS)
+  intOptions = intOptions ++ Seq(NUM_FEATURES, LABEL_TYPE, TREE_DEPTH, MAX_BINS, NUM_TREES)
   longOptions = longOptions ++ Seq(NUM_EXAMPLES)
 
   doubleOptions = doubleOptions ++ Seq(FRAC_CATEGORICAL_FEATURES, FRAC_BINARY_FEATURES)
@@ -137,7 +138,7 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
   var testRdd: RDD[LabeledPoint] = _
   var categoricalFeaturesInfo: Map[Int, Int] = Map.empty
 
-  def computeRMSE(model: DecisionTreeModel, rdd: RDD[LabeledPoint]): Double = {
+  def computeRMSE(model: RandomForestModel, rdd: RDD[LabeledPoint]): Double = {
     val numExamples = rdd.count()
 
     val predictions: RDD[(Double, Double)] = rdd.map { example =>
@@ -152,7 +153,7 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
 
   // When we have a general Model in the new API, we won't need these anymore. We can just move both
   // to PerfTest
-  def computeAccuracy(model: DecisionTreeModel, rdd: RDD[LabeledPoint]): Double = {
+  def computeAccuracy(model: RandomForestModel, rdd: RDD[LabeledPoint]): Double = {
     val numExamples = rdd.count()
 
     val predictions: RDD[(Double, Double)] = rdd.map { example =>
@@ -163,7 +164,7 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
     }.sum() * 100.0 / numExamples
   }
 
-  def validate(model: DecisionTreeModel, rdd: RDD[LabeledPoint]): Double = {
+  def validate(model: RandomForestModel, rdd: RDD[LabeledPoint]): Double = {
     val labelType: Int = intOptionValue(LABEL_TYPE)
     rdd.cache()
     if (labelType == 0) {
@@ -178,6 +179,7 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
     val start = System.currentTimeMillis()
     val model = runTest(rdd)
     val end = System.currentTimeMillis()
+    println("Learned model:\n" + model)
     val time = (end - start).toDouble / 1000.0
     val trainError = validate(model, rdd)
     val testError = validate(model, testRdd)
@@ -216,18 +218,19 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     println("Num Examples: " + rdd.count())
   }
 
-  override def runTest(rdd: RDD[LabeledPoint]): DecisionTreeModel = {
+  override def runTest(rdd: RDD[LabeledPoint]): RandomForestModel = {
     val labelType: Int = intOptionValue(LABEL_TYPE)
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
     val maxBins: Int = intOptionValue(MAX_BINS)
+    val numTrees: Int = intOptionValue(NUM_TREES)
     if (labelType == 0) {
       // Regression
-      DecisionTree.train(rdd, Regression, Variance, treeDepth, 0, maxBins, QuantileStrategy.Sort,
-        categoricalFeaturesInfo)
+      RandomForest.trainRegressor(rdd, categoricalFeaturesInfo, numTrees, "all", "variance", treeDepth, maxBins,
+        this.getRandomSeed)
     } else if (labelType >= 2) {
       // Classification
-      DecisionTree.train(rdd, Classification, Gini, treeDepth, labelType,
-        maxBins, QuantileStrategy.Sort, categoricalFeaturesInfo)
+      RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees, "all", "gini", treeDepth, maxBins,
+        this.getRandomSeed)
     } else {
       throw new IllegalArgumentException(s"Bad label-type parameter " +
         s"given to DecisionTreeTest: $labelType")
