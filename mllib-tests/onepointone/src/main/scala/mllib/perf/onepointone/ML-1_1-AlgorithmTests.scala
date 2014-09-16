@@ -125,11 +125,13 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
   val TREE_DEPTH = ("tree-depth", "Depth of true decision tree model used to label examples.")
   val MAX_BINS = ("max-bins", "Maximum number of bins for the decision tree learning algorithm.")
   val NUM_TREES = ("num-trees", "Number of trees to train.  If 1, run DecisionTree.  If >1, run RandomForest.")
+  val FEATURE_SUBSET_STRATEGY =
+    ("feature-subset-strategy", "Strategy for feature subset sampling. Supported: auto, all, sqrt, log2, onethird.")
 
   intOptions = intOptions ++ Seq(NUM_FEATURES, LABEL_TYPE, TREE_DEPTH, MAX_BINS, NUM_TREES)
   longOptions = longOptions ++ Seq(NUM_EXAMPLES)
-
   doubleOptions = doubleOptions ++ Seq(FRAC_CATEGORICAL_FEATURES, FRAC_BINARY_FEATURES)
+  stringOptions = stringOptions ++ Seq(FEATURE_SUBSET_STRATEGY)
 
   val options = intOptions ++ stringOptions ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
@@ -223,14 +225,15 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
     val maxBins: Int = intOptionValue(MAX_BINS)
     val numTrees: Int = intOptionValue(NUM_TREES)
+    val featureSubsetStrategy: String = stringOptionValue(FEATURE_SUBSET_STRATEGY)
     if (labelType == 0) {
       // Regression
-      RandomForest.trainRegressor(rdd, categoricalFeaturesInfo, numTrees, "all", "variance", treeDepth, maxBins,
-        this.getRandomSeed)
+      RandomForest.trainRegressor(rdd, categoricalFeaturesInfo, numTrees, featureSubsetStrategy, "variance",
+        treeDepth, maxBins, this.getRandomSeed)
     } else if (labelType >= 2) {
       // Classification
-      RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees, "all", "gini", treeDepth, maxBins,
-        this.getRandomSeed)
+      RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees, featureSubsetStrategy, "gini",
+        treeDepth, maxBins, this.getRandomSeed)
     } else {
       throw new IllegalArgumentException(s"Bad label-type parameter " +
         s"given to DecisionTreeTest: $labelType")

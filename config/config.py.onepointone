@@ -358,6 +358,8 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     OptionSet("max-bins", [100], can_scale=False),
     # Number of trees. If 1, then run DecisionTree. If >1, then run RandomForest.
     OptionSet("num-trees", [1, 2, 3], can_scale=False),
+    # Feature subset sampling strategy: auto, all, sqrt, log2, onethird
+    OptionSet("feature-subset-strategy", ["auto"]),
     # (unused parameter)
     OptionSet("num-iterations", [0], can_scale=False),
     # (unused parameter)

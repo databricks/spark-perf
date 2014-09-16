@@ -45,7 +45,7 @@ abstract class PerfTest extends Logging {
   var doubleOptions: Seq[(String, String)] = Seq(REGULARIZATION)
   var longOptions: Seq[(String, String)] = Seq()
 
-  val stringOptions: Seq[(String, String)] = Seq()
+  var stringOptions: Seq[(String, String)] = Seq()
   var booleanOptions: Seq[(String, String)] = Seq()
 
   def addOptionsToParser() {
