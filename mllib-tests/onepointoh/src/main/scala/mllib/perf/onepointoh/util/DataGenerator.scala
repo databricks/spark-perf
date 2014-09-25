@@ -440,7 +440,7 @@ class FeaturesGenerator(val categoricalArities: Array[Int], val numContinuous: I
    * Generates vector with categorical features first, and continuous features in [0,1] second.
    */
   override def nextValue(): Vector = {
-    val arr = new Array[Double](numFeatures)
+
     // Feature ordering matches getCategoricalFeaturesInfo.
     val arr = new Array[Double](numFeatures)
     var j = 0
