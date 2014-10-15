@@ -3,6 +3,8 @@ package mllib.perf.onepointone
 import org.apache.spark.Logging
 import joptsimple.{OptionSet, OptionParser}
 
+import scala.reflect.ClassTag
+
 abstract class PerfTest extends Logging {
 
   val NUM_TRIALS =          ("num-trials",    "number of trials to run")
@@ -27,7 +29,7 @@ abstract class PerfTest extends Logging {
   }
 
   def getWait: Int = {
-    intOptionValue(INTER_TRIAL_WAIT)*1000
+    intOptionValue(INTER_TRIAL_WAIT) * 1000
   }
 
   def createInputData(seed: Long)
@@ -67,6 +69,10 @@ abstract class PerfTest extends Logging {
     }
   }
 
+  def addOptionalOptionToParser[T](opt: String, desc: String, default: T, clazz: Class[T]): Unit = {
+    parser.accepts(opt, desc).withOptionalArg().ofType(clazz).defaultsTo(default)
+  }
+
   def intOptionValue(option: (String, String)) =
     optionSet.valueOf(option._1).asInstanceOf[Int]
 
@@ -81,4 +87,7 @@ abstract class PerfTest extends Logging {
 
   def longOptionValue(option: (String, String)) =
     optionSet.valueOf(option._1).asInstanceOf[Long]
+
+  def optionValue[T](option: String) =
+    optionSet.valueOf(option).asInstanceOf[T]
 }

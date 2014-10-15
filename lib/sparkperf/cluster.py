@@ -16,8 +16,11 @@ class Cluster(object):
         self.commit_sha = commit_sha
 
         # Get a list of slaves by parsing the slaves file in SPARK_CONF_DIR.
-        slaves_file_raw = open("%s/slaves" % self.spark_conf_dir, 'r').read().split("\n")
-        self.slaves = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
+        try:
+            slaves_file_raw = open("%s/slaves" % self.spark_conf_dir, 'r').read().split("\n")
+            self.slaves = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
+        except:
+            self.slaves = []
 
     def sync_spark(self):
         print("Syncing Spark directory to the slaves")

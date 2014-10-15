@@ -11,6 +11,7 @@ import org.apache.spark.mllib.tree.configuration.Algo._
 import org.apache.spark.mllib.tree.configuration.QuantileStrategy
 import org.apache.spark.mllib.tree.impurity._
 import org.apache.spark.mllib.tree.model.{RandomForestModel, DecisionTreeModel}
+import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
 
 abstract class ClassificationTest[M](sc: SparkContext)
@@ -112,6 +113,8 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
 
   def runTest(rdd: RDD[LabeledPoint]): RandomForestModel
 
+  val TEST_DATA_FRACTION =
+    ("test-data-fraction",  "fraction of data to hold out for testing (ignored if given training and test dataset)")
   val NUM_EXAMPLES = ("num-examples", "number of examples for regression tests")
   val NUM_FEATURES = ("num-features", "number of features of each example for regression tests")
   val LABEL_TYPE =
@@ -130,15 +133,20 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
 
   intOptions = intOptions ++ Seq(NUM_FEATURES, LABEL_TYPE, TREE_DEPTH, MAX_BINS, NUM_TREES)
   longOptions = longOptions ++ Seq(NUM_EXAMPLES)
-  doubleOptions = doubleOptions ++ Seq(FRAC_CATEGORICAL_FEATURES, FRAC_BINARY_FEATURES)
+  doubleOptions = doubleOptions ++ Seq(TEST_DATA_FRACTION, FRAC_CATEGORICAL_FEATURES, FRAC_BINARY_FEATURES)
   stringOptions = stringOptions ++ Seq(FEATURE_SUBSET_STRATEGY)
 
   val options = intOptions ++ stringOptions ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
+  addOptionalOptionToParser("training-data", "path to training dataset (if not given, use random data)", "", classOf[String])
+  addOptionalOptionToParser("test-data", "path to test dataset (only used if training dataset given)" +
+      " (if not given, hold out part of training data for validation)", "", classOf[String])
 
   var rdd: RDD[LabeledPoint] = _
   var testRdd: RDD[LabeledPoint] = _
   var categoricalFeaturesInfo: Map[Int, Int] = Map.empty
+
+  protected var labelType = -1
 
   def computeRMSE(model: RandomForestModel, rdd: RDD[LabeledPoint]): Double = {
     val numExamples = rdd.count()
@@ -167,7 +175,6 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
   }
 
   def validate(model: RandomForestModel, rdd: RDD[LabeledPoint]): Double = {
-    val labelType: Int = intOptionValue(LABEL_TYPE)
     rdd.cache()
     if (labelType == 0) {
       computeRMSE(model, rdd)
@@ -190,12 +197,164 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
   }
 }
 
+// For DecisionTreeTest: PartitionLabelStats tracks the stats for each partition.
+class PartitionLabelStats(var min: Double, var max: Double, var distinct: Long, var nonInteger: Boolean)
+  extends Serializable
+
+object PartitionLabelStats extends Serializable {
+  /** Max categories allowed for categorical label (for inferring labelType) */
+  val MAX_CATEGORIES = 1000
+
+  def labelSeqOp(lps: Iterator[LabeledPoint]): Iterator[PartitionLabelStats] = {
+    val stats = new PartitionLabelStats(Double.MaxValue, Double.MinValue, 0, false)
+    val labelSet = new scala.collection.mutable.HashSet[Double]()
+    lps.foreach { lp =>
+      if (lp.label.toInt != lp.label) {
+        stats.nonInteger = true
+      }
+      stats.min = Math.min(lp.label, stats.min)
+      stats.max = Math.max(lp.label, stats.max)
+      if (labelSet.size <= MAX_CATEGORIES) {
+        labelSet.add(lp.label)
+      }
+    }
+    stats.distinct = labelSet.size
+    Iterator(stats)
+    Iterator(new PartitionLabelStats(0,0,0,false))
+  }
+
+  def labelCombOp(labelStatsA: PartitionLabelStats, labelStatsB: PartitionLabelStats): PartitionLabelStats = {
+    labelStatsA.min = Math.min(labelStatsA.min, labelStatsB.min)
+    labelStatsA.max = Math.max(labelStatsA.max, labelStatsB.max)
+    labelStatsA.distinct = Math.max(labelStatsB.distinct, labelStatsB.distinct)
+    labelStatsA
+  }
+}
+
 class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
 
-  override def createInputData(seed: Long) = {
-    // Generic test options
-    
+  def getTestDataFraction: Double = {
+    val testDataFraction: Double = doubleOptionValue(TEST_DATA_FRACTION)
+    assert(testDataFraction >= 0 && testDataFraction <= 1, s"Bad testDataFraction: $testDataFraction")
+    testDataFraction
+  }
+
+  /** Infer label type from data */
+  private def isClassification(data: RDD[LabeledPoint]): Boolean = {
+    val labelStats =
+      data.mapPartitions(PartitionLabelStats.labelSeqOp)
+        .fold(new PartitionLabelStats(Double.MaxValue, Double.MinValue, 0, false))(PartitionLabelStats.labelCombOp)
+    labelStats.distinct <= PartitionLabelStats.MAX_CATEGORIES && !labelStats.nonInteger
+  }
+
+  /**
+   * Load training and test LibSVM-format data files.
+   * @return (trainTestDatasets, categoricalFeaturesInfo, numClasses) where
+   *          trainTestDatasets = Array(trainingData, testData),
+   *          categoricalFeaturesInfo is a map of categorical feature arities, and
+   *          numClasses = number of classes label can take.
+   */
+  private def loadLibSVMFiles(sc: SparkContext, seed: Long): (Array[RDD[LabeledPoint]], Map[Int, Int], Int) = {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
+    val trainingDataPath: String = optionValue[String]("training-data")
+    val testDataPath: String = optionValue[String]("test-data")
+    val testDataFraction: Double = getTestDataFraction
+    val trainingData: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, trainingDataPath, -1, numPartitions)
+
+    val (rdds, categoricalFeaturesInfo_) = if (testDataPath == "") {
+      // randomly split trainingData into train, test
+      val splits = trainingData.randomSplit(Array(1.0 - testDataFraction, testDataFraction), seed)
+      (splits, Map.empty[Int, Int])
+    } else {
+      // load test data
+      val numFeatures = trainingData.take(1)(0).features.size
+      val testData: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, trainingDataPath, numFeatures, numPartitions)
+      (Array(trainingData, testData), Map.empty[Int, Int])
+    }
+
+    // For classification, re-index classes if needed.
+    val (finalDatasets, classIndexMap, numClasses) = if (isClassification(rdds(0)) && isClassification(rdds(1))) {
+      // classCounts: class --> # examples in class
+      val classCounts: Map[Double, Long] = {
+        val trainClassCounts = rdds(0).map(_.label).countByValue()
+        val testClassCounts = rdds(1).map(_.label).countByValue()
+        val mutableClassCounts = new scala.collection.mutable.HashMap[Double, Long]()
+        trainClassCounts.foreach { case (label, cnt) =>
+          mutableClassCounts(label) = mutableClassCounts.getOrElseUpdate(label, 0) + cnt
+        }
+        testClassCounts.foreach { case (label, cnt) =>
+          mutableClassCounts(label) = mutableClassCounts.getOrElseUpdate(label, 0) + cnt
+        }
+        mutableClassCounts.toMap
+      }
+      val sortedClasses = classCounts.keys.toList.sorted
+      val numClasses = classCounts.size
+      // classIndexMap: class --> index in 0,...,numClasses-1
+      val classIndexMap = {
+        if (classCounts.keySet != Set(0.0, 1.0)) {
+          sortedClasses.zipWithIndex.toMap
+        } else {
+          Map[Double, Int]()
+        }
+      }
+      val indexedRdds = {
+        if (classIndexMap.isEmpty) {
+          rdds
+        } else {
+          rdds.map { rdd =>
+            rdd.map(lp => LabeledPoint(classIndexMap(lp.label), lp.features))
+          }
+        }
+      }
+      val numTrain = indexedRdds(0).count()
+      val numTest = indexedRdds(1).count()
+      val numTotalInstances = numTrain + numTest
+      println(s"numTrain: $numTrain")
+      println(s"numTest: $numTest")
+      println(s"numClasses: $numClasses")
+      println(s"Per-class example fractions, counts:")
+      println(s"Class\tFrac\tCount")
+      sortedClasses.foreach { c =>
+        val frac = classCounts(c) / numTotalInstances.toDouble
+        println(s"$c\t$frac\t${classCounts(c)}")
+      }
+      (indexedRdds, classIndexMap, numClasses)
+    } else {
+      (rdds, null, 0)
+    }
+
+    (finalDatasets, categoricalFeaturesInfo_, numClasses)
+  }
+
+  override def createInputData(seed: Long) = {
+    val trainingDataPath: String = optionValue[String]("training-data")
+    val (rdds, categoricalFeaturesInfo_, numClasses) = if (trainingDataPath != "") {
+      println(s"LOADING FILE: $trainingDataPath")
+      loadLibSVMFiles(sc, seed)
+    } else {
+      createSyntheticInputData(seed)
+    }
+    assert(rdds.length == 2)
+    rdd = rdds(0).cache()
+    testRdd = rdds(1)
+    categoricalFeaturesInfo = categoricalFeaturesInfo_
+    this.labelType = numClasses
+
+    // Materialize rdd
+    println("Num Examples: " + rdd.count())
+  }
+
+  /**
+   * Create synthetic training and test datasets.
+   * @return (trainTestDatasets, categoricalFeaturesInfo, numClasses) where
+   *          trainTestDatasets = Array(trainingData, testData),
+   *          categoricalFeaturesInfo is a map of categorical feature arities, and
+   *          numClasses = number of classes label can take.
+   */
+  private def createSyntheticInputData(seed: Long): (Array[RDD[LabeledPoint]], Map[Int, Int], Int) = {
+    // Generic test options
+    val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
+    val testDataFraction: Double = getTestDataFraction
     // Data dimensions and type
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
     val numFeatures: Int = intOptionValue(NUM_FEATURES)
@@ -210,18 +369,11 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
         numFeatures, numPartitions, labelType,
         fracCategoricalFeatures, fracBinaryFeatures, treeDepth, seed)
 
-    val splits = rdd_.randomSplit(Array(0.8, 0.2), seed)
-
-    rdd = splits(0).cache()
-    testRdd = splits(1)
-    categoricalFeaturesInfo = categoricalFeaturesInfo_
-
-    // Materialize rdd
-    println("Num Examples: " + rdd.count())
+    val splits = rdd_.randomSplit(Array(1.0 - testDataFraction, testDataFraction), seed)
+    (splits, categoricalFeaturesInfo_, labelType)
   }
 
   override def runTest(rdd: RDD[LabeledPoint]): RandomForestModel = {
-    val labelType: Int = intOptionValue(LABEL_TYPE)
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
     val maxBins: Int = intOptionValue(MAX_BINS)
     val numTrees: Int = intOptionValue(NUM_TREES)
