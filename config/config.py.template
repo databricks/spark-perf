@@ -340,6 +340,13 @@ MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
 # Decision Trees #
 
 MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
+    # Fraction of data to hold out for testing (ignored if given training and test dataset).
+    OptionSet("test-data-fraction", [0.2], can_scale=False),
+    # Path to training dataset (if not given, use random data).
+    OptionSet("training-data", [""]),
+    # Path to test dataset (only used if training dataset given).
+    # If not given, hold out part of training data for validation.
+    OptionSet("test-data", [""]),
     # The number of rows or examples
     OptionSet("num-examples", [2000000], can_scale=True),
     # The number of features per example
