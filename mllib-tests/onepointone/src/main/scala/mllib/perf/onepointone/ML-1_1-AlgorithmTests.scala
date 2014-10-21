@@ -268,7 +268,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     } else {
       // load test data
       val numFeatures = trainingData.take(1)(0).features.size
-      val testData: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, trainingDataPath, numFeatures, numPartitions)
+      val testData: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, testDataPath, numFeatures, numPartitions)
       (Array(trainingData, testData), Map.empty[Int, Int])
     }
 
