@@ -3,10 +3,27 @@ import os.path
 from subprocess import Popen
 import sys
 import threading
-
+from contextlib import contextmanager
 
 SBT_CMD = "sbt/sbt"
 
+@contextmanager
+def cd(target_dir):
+    """
+    Context manager for switching directories and automatically changing back to the old one.
+    >>> x = os.getcwd()
+    >>> with cd("/"):
+    ...     print os.getcwd()
+    /
+    >>> os.getcwd() == x
+    True
+    """
+    old_wd = os.getcwd()
+    try:
+        os.chdir(target_dir)
+        yield
+    finally:
+        os.chdir(old_wd)
 
 def run_cmd(cmd, exit_on_fail=True):
     """

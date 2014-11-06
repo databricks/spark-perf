@@ -34,16 +34,17 @@ The script assumes you already have a binary distribution of Spark 1.0+ installe
 
 ## Running on a spark-ec2 cluster with a custom Spark version
 1. Launch an EC2 cluster with [spark-ec2 scripts](https://github.com/mesos/spark-ec2).
-2. Git clone spark-perf (this repo) and cd spark-perf
-3. Copy config/config.py.template to config/config.py
-4. Set config.py options:
+2. [Install Maven](https://gist.github.com/JoshRosen/a6deaf936590c13c9345)
+3. Git clone spark-perf (this repo) and cd spark-perf
+4. Copy config/config.py.template to config/config.py
+5. Set config.py options:
  * USE_CLUSTER_SPARK = False
  * SPARK_COMMIT_ID = <what you want test>
  * SCALE_FACTOR = <depends on your hardware>
  * SPARK_DRIVER_MEMORY = <depends on your hardware>
  * spark.executor.memory = <depends on your hardware>
  * uncomment at least one SPARK_TESTS entry
-5. Execute bin/run
+6. Execute bin/run
 
 ## Requirements
 The script requires Python 2.7. For earlier versions of Python, argparse might need to be installed, 
