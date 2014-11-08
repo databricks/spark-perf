@@ -1,5 +1,7 @@
 # Spark Performance Tests
 
+[![Build Status](https://travis-ci.org/databricks/spark-perf.svg?branch=master)](https://travis-ci.org/databricks/spark-perf)
+
 This is a framework for repeatedly running a suite of performance tests for the [Spark cluster computing framework](http://spark-project.org).
 
 The script assumes you already have a binary distribution of Spark 1.0+ installed. It can optionally checkout a new version of Spark and copy configurations over from your existing installation.

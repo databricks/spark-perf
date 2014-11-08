@@ -21,6 +21,7 @@ target
 
 # Tmp files
 *.swp
+.DS_Store
 
 # Test files
 shark_perf_output_*
