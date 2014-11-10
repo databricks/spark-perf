@@ -2,6 +2,7 @@ import itertools
 import os
 from subprocess import Popen, PIPE
 import sys
+import json
 
 from sparkperf import PROJ_DIR
 from sparkperf.commands import run_cmd, SBT_CMD
@@ -67,6 +68,7 @@ class PerfTestSuite(object):
                     append_config_to_file(stdout_filename, java_opt_list, opt_list)
                     append_config_to_file(stderr_filename, java_opt_list, opt_list)
                     java_opts_str = " ".join(java_opt_list)
+                    java_opts_str += " -Dsparkperf.commitSHA=" + cluster.commit_sha
                     cmd = cls.get_spark_submit_cmd(cluster, config, main_class_or_script, opt_list,
                                                    stdout_filename, stderr_filename)
                     print("\nSetting env var SPARK_SUBMIT_OPTS: %s" % java_opts_str)
@@ -130,15 +132,16 @@ class SparkTests(JVMPerfTestSuite):
             print(output)
             sys.exit(1)
         result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
-        result_list = result_line.replace(results_token, "").split(",")
+        result_json = result_line.replace(results_token, "")
+        result_dict = json.loads(result_json)
+        times = [r['time'] for r in result_dict['results']]
         err_msg = ("Expecting at least %s results "
-                   "but only found %s" % (config.IGNORED_TRIALS + 1, len(result_list)))
-        assert len(result_list) > config.IGNORED_TRIALS, err_msg
-        result_list = result_list[config.IGNORED_TRIALS:]
+                   "but only found %s" % (config.IGNORED_TRIALS + 1, len(times)))
+        assert len(times) > config.IGNORED_TRIALS, err_msg
+        times = times[config.IGNORED_TRIALS:]
 
         result_string = "%s, %s, " % (short_name, " ".join(opt_list))
-
-        result_string += "%s, %.3f, %s, %s, %s\n" % stats_for_results(result_list)
+        result_string += "%s, %.3f, %s, %s, %s\n" % stats_for_results(times)
 
         sys.stdout.flush()
         return result_string
