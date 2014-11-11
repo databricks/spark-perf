@@ -1,10 +1,17 @@
 language: scala
 scala:
   - 2.10.4
+python:
+  - 2.7
 jdk:
   - openjdk7
+before_install:
+  - sudo pip install nose
 script:
+  - ./run-tests.sh
   - cd spark-tests
-  - sbt/sbt test
+  - sbt/sbt assembly test
   - cd ../streaming-tests
-  - sbt/sbt test
+  - sbt/sbt assembly test
+  - cd ../mllib-tests
+  - sbt/sbt assembly test

@@ -1,4 +1,4 @@
-package mllib.perf
+package mllib.perf.onepointoh
 
 import org.apache.spark.Logging
 import joptsimple.{OptionSet, OptionParser}
