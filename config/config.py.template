@@ -348,11 +348,11 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # If not given, hold out part of training data for validation.
     OptionSet("test-data", [""]),
     # The number of rows or examples
-    OptionSet("num-examples", [2000000], can_scale=True),
+    OptionSet("num-examples", [2000, 200000], can_scale=True),
     # The number of features per example
-    OptionSet("num-features", [1000], can_scale=True),
+    OptionSet("num-features", [10, 500], can_scale=True),
     # Type of label: 0 indicates regression, 2+ indicates classification with this many classes
-    OptionSet("label-type", [2], can_scale=False),
+    OptionSet("label-type", [0, 2, 3], can_scale=False),
     # Fraction of features which are categorical
     OptionSet("frac-categorical-features", [0.5], can_scale=False),
     # Fraction of categorical features which are binary. Others have 20 categories.
@@ -360,11 +360,11 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # Depth of true decision tree model used to label examples.
     # WARNING: The meaning of depth changed from Spark 1.0 to Spark 1.1:
     #          depth=N for Spark 1.0 should be depth=N-1 for Spark 1.1
-    OptionSet("tree-depth", [5], can_scale=False),
+    OptionSet("tree-depth", [1, 5, 10], can_scale=False),
     # Maximum number of bins for the decision tree learning algorithm.
     OptionSet("max-bins", [100], can_scale=False),
     # Number of trees. If 1, then run DecisionTree. If >1, then run RandomForest.
-    OptionSet("num-trees", [1], can_scale=False),
+    OptionSet("num-trees", [1, 10], can_scale=False),
     # Feature subset sampling strategy: auto, all, sqrt, log2, onethird
     OptionSet("feature-subset-strategy", ["auto"]),
     # (unused parameter)
