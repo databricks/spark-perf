@@ -10,7 +10,7 @@ import org.apache.spark.mllib.tree.{RandomForest, DecisionTree}
 import org.apache.spark.mllib.tree.configuration.Algo._
 import org.apache.spark.mllib.tree.configuration.QuantileStrategy
 import org.apache.spark.mllib.tree.impurity._
-import org.apache.spark.mllib.tree.model.{RandomForestModel, DecisionTreeModel}
+import org.apache.spark.mllib.tree.model.WeightedEnsembleModel
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
 
@@ -111,7 +111,7 @@ class LogisticRegressionWithLBFGSTest(sc: SparkContext)
  */
 abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
 
-  def runTest(rdd: RDD[LabeledPoint]): RandomForestModel
+  def runTest(rdd: RDD[LabeledPoint]): WeightedEnsembleModel
 
   val TEST_DATA_FRACTION =
     ("test-data-fraction",  "fraction of data to hold out for testing (ignored if given training and test dataset)")
@@ -148,7 +148,7 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
 
   protected var labelType = -1
 
-  def computeRMSE(model: RandomForestModel, rdd: RDD[LabeledPoint]): Double = {
+  def computeRMSE(model: WeightedEnsembleModel, rdd: RDD[LabeledPoint]): Double = {
     val numExamples = rdd.count()
 
     val predictions: RDD[(Double, Double)] = rdd.map { example =>
@@ -163,7 +163,7 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
 
   // When we have a general Model in the new API, we won't need these anymore. We can just move both
   // to PerfTest
-  def computeAccuracy(model: RandomForestModel, rdd: RDD[LabeledPoint]): Double = {
+  def computeAccuracy(model: WeightedEnsembleModel, rdd: RDD[LabeledPoint]): Double = {
     val numExamples = rdd.count()
 
     val predictions: RDD[(Double, Double)] = rdd.map { example =>
@@ -174,7 +174,7 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
     }.sum() * 100.0 / numExamples
   }
 
-  def validate(model: RandomForestModel, rdd: RDD[LabeledPoint]): Double = {
+  def validate(model: WeightedEnsembleModel, rdd: RDD[LabeledPoint]): Double = {
     rdd.cache()
     if (labelType == 0) {
       computeRMSE(model, rdd)
@@ -373,7 +373,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     (splits, categoricalFeaturesInfo_, labelType)
   }
 
-  override def runTest(rdd: RDD[LabeledPoint]): RandomForestModel = {
+  override def runTest(rdd: RDD[LabeledPoint]): WeightedEnsembleModel = {
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
     val maxBins: Int = intOptionValue(MAX_BINS)
     val numTrees: Int = intOptionValue(NUM_TREES)

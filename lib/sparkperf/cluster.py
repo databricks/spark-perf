@@ -16,10 +16,13 @@ class Cluster(object):
         self.commit_sha = commit_sha
 
         # Get a list of slaves by parsing the slaves file in SPARK_CONF_DIR.
-        try:
-            slaves_file_raw = open("%s/slaves" % self.spark_conf_dir, 'r').read().split("\n")
+        slaves_file_path = "%s/slaves" % self.spark_conf_dir
+        if os.path.isfile(slaves_file_path):
+            slaves_file_raw = open(slaves_file_path, 'r').read().split("\n")
             self.slaves = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
-        except:
+        else:
+            print "WARNING: No slaves file found at path: %s" % slaves_file_path + "\n" \
+                + "\t...We will assume no slaves exist."
             self.slaves = []
 
     def sync_spark(self):
