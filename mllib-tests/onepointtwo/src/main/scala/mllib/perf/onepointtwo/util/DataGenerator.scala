@@ -1,15 +1,14 @@
-package mllib.perf.onepointoh.util
-
-import mllib.perf.onepointoh.util.random._
+package mllib.perf.onepointtwo.util
 
 import scala.collection.mutable
 
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
+import org.apache.spark.mllib.random._
 import org.apache.spark.mllib.recommendation.Rating
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.configuration.{Algo, FeatureType}
-import org.apache.spark.mllib.tree.model.{Split, DecisionTreeModel, Node}
+import org.apache.spark.mllib.tree.model.{Split, DecisionTreeModel, Node, Predict}
 import org.apache.spark.rdd.{PairRDDFunctions, RDD}
 import org.apache.spark.SparkContext
 
@@ -25,7 +24,7 @@ object DataGenerator {
       seed: Long = System.currentTimeMillis(),
       problem: String = ""): RDD[LabeledPoint] = {
 
-    RandomRDDGenerators.randomRDD(sc,
+    RandomRDDs.randomRDD(sc,
       new LinearDataGenerator(numCols,intercept, seed, eps, problem), numRows, numPartitions, seed)
 
   }
@@ -37,7 +36,7 @@ object DataGenerator {
       numPartitions: Int,
       seed: Long = System.currentTimeMillis()): RowMatrix = {
 
-    val data: RDD[Vector] = RandomRDDGenerators.normalVectorRDD(sc, m, n, numPartitions, seed)
+    val data: RDD[Vector] = RandomRDDs.normalVectorRDD(sc, m, n, numPartitions, seed)
 
     new RowMatrix(data,m,n)
   }
@@ -52,7 +51,7 @@ object DataGenerator {
       seed: Long = System.currentTimeMillis(),
       chiSq: Boolean = false): RDD[LabeledPoint] = {
 
-    RandomRDDGenerators.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, scaleFactor,chiSq),
+    RandomRDDs.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, scaleFactor,chiSq),
       numRows, numPartitions, seed)
   }
 
@@ -97,7 +96,7 @@ object DataGenerator {
       Array.fill(numHighArity)(highArity))
 
     val featuresGenerator = new FeaturesGenerator(categoricalArities, numContinuous)
-    val featureMatrix = RandomRDDGenerators.randomRDD(sc, featuresGenerator,
+    val featureMatrix = RandomRDDs.randomRDD(sc, featuresGenerator,
       numRows, numPartitions, seed)
 
     // Create random DecisionTree.
@@ -112,6 +111,7 @@ object DataGenerator {
     val categoricalFeaturesInfo = featuresGenerator.getCategoricalFeaturesInfo
     (data, categoricalFeaturesInfo)
   }
+
 
   def randomBalancedDecisionTree(
       depth: Int,
@@ -168,7 +168,7 @@ object DataGenerator {
 
     if (subtreeDepth == 0) {
       // This case only happens for a depth 0 tree.
-      return new Node(id = nodeIndex, predict = 0, isLeaf = true,
+      return new Node(id = nodeIndex, predict = new Predict(0), impurity = 0, isLeaf = true,
         split = None, leftNode = None, rightNode = None, stats = None)
     }
 
@@ -204,13 +204,13 @@ object DataGenerator {
     if (subtreeDepth == 1) {
       // Add leaf nodes.
       val predictions = labelGenerator.nextValue()
-      new Node(id = nodeIndex, predict = 0, isLeaf = false, split = Some(split),
-        leftNode = Some(new Node(id = leftChildIndex, predict = predictions._1, isLeaf = true,
+      new Node(id = nodeIndex, predict = new Predict(0), impurity = 0, isLeaf = false, split = Some(split),
+        leftNode = Some(new Node(id = leftChildIndex, predict = new Predict(predictions._1), impurity = 0, isLeaf = true,
           split = None, leftNode = None, rightNode = None, stats = None)),
-        rightNode = Some(new Node(id = rightChildIndex, predict = predictions._2, isLeaf = true,
+        rightNode = Some(new Node(id = rightChildIndex, predict = new Predict(predictions._2), impurity = 0, isLeaf = true,
           split = None, leftNode = None, rightNode = None, stats = None)), stats = None)
     } else {
-      new Node(id = nodeIndex, predict = 0, isLeaf = false, split = Some(split),
+      new Node(id = nodeIndex, predict = new Predict(0), impurity = 0, isLeaf = false, split = Some(split),
         leftNode = Some(randomBalancedDecisionTreeHelper(leftChildIndex, subtreeDepth - 1,
           featureArity, labelGenerator, usedFeatures + feature, rng)),
         rightNode = Some(randomBalancedDecisionTreeHelper(rightChildIndex, subtreeDepth - 1,
@@ -226,7 +226,7 @@ object DataGenerator {
       numPartitions: Int,
       seed: Long = System.currentTimeMillis()): RDD[Vector] = {
 
-    RandomRDDGenerators.randomRDD(sc, new KMeansDataGenerator(numCenters, numCols, seed),
+    RandomRDDs.randomRDD(sc, new KMeansDataGenerator(numCenters, numCols, seed),
       numRows, numPartitions, seed)
   }
 
@@ -242,11 +242,11 @@ object DataGenerator {
       numPartitions: Int,
       seed: Long = System.currentTimeMillis()): (RDD[Rating],RDD[Rating]) = {
 
-    val train = RandomRDDGenerators.randomRDD(sc,
+    val train = RandomRDDs.randomRDD(sc,
       new RatingGenerator(numUsers, numProducts,implicitPrefs),
       numRatings, numPartitions, seed).cache()
 
-    val test = RandomRDDGenerators.randomRDD(sc,
+    val test = RandomRDDs.randomRDD(sc,
       new RatingGenerator(numUsers, numProducts,implicitPrefs),
       math.ceil(numRatings * 0.25).toLong, numPartitions, seed + 24)
 
@@ -321,7 +321,7 @@ class ClassLabelGenerator(
   override def nextValue(): LabeledPoint = {
     val y = if (rng.nextDouble() < threshold) 0.0 else 1.0
     val x = Array.fill[Double](numFeatures) {
-      if (!chiSq) rng.nextGaussian() + (y * scaleFactor) else rng.nextInt(6)*1.0
+      if (!chiSq) rng.nextGaussian() + (y * scaleFactor) else rng.nextInt(6) * 1.0
     }
 
     LabeledPoint(y, Vectors.dense(x))
@@ -439,7 +439,6 @@ class FeaturesGenerator(val categoricalArities: Array[Int], val numContinuous: I
    * Generates vector with categorical features first, and continuous features in [0,1] second.
    */
   override def nextValue(): Vector = {
-
     // Feature ordering matches getCategoricalFeaturesInfo.
     val arr = new Array[Double](numFeatures)
     var j = 0

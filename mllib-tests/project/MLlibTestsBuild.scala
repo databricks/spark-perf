@@ -44,7 +44,16 @@ object MLlibTestsBuild extends Build {
         case PathList("application.conf", xs@_*) => MergeStrategy.concat
         case _ => MergeStrategy.first
       }
-    )).aggregate(onepointoh, onepointone).dependsOn(onepointoh, onepointone)
+    )).aggregate(onepointtwo).dependsOn(onepointtwo) //aggregate(onepointoh, onepointone, onepointtwo).dependsOn(onepointoh, onepointone, onepointtwo)
+
+  lazy val onepointtwo = Project(
+    "onepointtwo",
+    file("onepointtwo"),
+    settings = commonSettings ++ Seq(
+      //should be set to 1.2.0 or higher
+      libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.2.0-SNAPSHOT" % "provided"
+    )
+  )
 
   lazy val onepointone = Project(
     "onepointone",

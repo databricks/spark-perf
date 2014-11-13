@@ -1,4 +1,4 @@
-package mllib.perf.onepointone
+package mllib.perf.onepointtwo
 
 import scala.util.Random
 
@@ -9,7 +9,8 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.Statistics
 import org.apache.spark.rdd.RDD
 
-import mllib.perf.onepointone.util.DataGenerator
+import mllib.perf.onepointtwo.util.DataGenerator
+
 
 /**
  * Parent class for the tests for the statistics toolbox

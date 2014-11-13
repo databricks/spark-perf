@@ -3,16 +3,12 @@ package mllib.perf.onepointone
 import org.apache.spark.Logging
 import joptsimple.{OptionSet, OptionParser}
 
-import scala.reflect.ClassTag
-
 abstract class PerfTest extends Logging {
 
   val NUM_TRIALS =          ("num-trials",    "number of trials to run")
   val INTER_TRIAL_WAIT =    ("inter-trial-wait",   "seconds to sleep between trials")
   val NUM_PARTITIONS =      ("num-partitions", "number of input partitions")
   val RANDOM_SEED =         ("random-seed", "seed for random number generator")
-  val NUM_ITERATIONS =      ("num-iterations",   "number of iterations for the algorithm")
-  val REGULARIZATION =      ("reg-param",   "the regularization parameter against overfitting")
 
   /** Initialize internal state based on arguments */
   def initialize(testName_ : String, otherArgs: Array[String]) {
@@ -42,9 +38,9 @@ abstract class PerfTest extends Logging {
   var testName: String = _
 
   var intOptions: Seq[(String, String)] = Seq(NUM_TRIALS, INTER_TRIAL_WAIT, NUM_PARTITIONS,
-    RANDOM_SEED, NUM_ITERATIONS)
+    RANDOM_SEED)
 
-  var doubleOptions: Seq[(String, String)] = Seq(REGULARIZATION)
+  var doubleOptions: Seq[(String, String)] = Seq()
   var longOptions: Seq[(String, String)] = Seq()
 
   var stringOptions: Seq[(String, String)] = Seq()
@@ -69,10 +65,6 @@ abstract class PerfTest extends Logging {
     }
   }
 
-  def addOptionalOptionToParser[T](opt: String, desc: String, default: T, clazz: Class[T]): Unit = {
-    parser.accepts(opt, desc).withOptionalArg().ofType(clazz).defaultsTo(default)
-  }
-
   def intOptionValue(option: (String, String)) =
     optionSet.valueOf(option._1).asInstanceOf[Int]
 
@@ -87,7 +79,4 @@ abstract class PerfTest extends Logging {
 
   def longOptionValue(option: (String, String)) =
     optionSet.valueOf(option._1).asInstanceOf[Long]
-
-  def optionValue[T](option: String) =
-    optionSet.valueOf(option).asInstanceOf[T]
 }
