@@ -366,9 +366,9 @@ MLLIB_TESTS += [("naive-bayes", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".Test
 # Decision Trees #
 MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # The number of rows or examples
-    OptionSet("num-examples", [2000], can_scale=True),
+    OptionSet("num-examples", [1000000], can_scale=True),
     # The number of features per example
-    OptionSet("num-features", [10], can_scale=True),
+    OptionSet("num-features", [500], can_scale=True),
     # Type of label: 0 indicates regression, 2+ indicates classification with this many classes
     # Note: multi-class (>2) is not supported in Spark 1.0.
     OptionSet("label-type", [0, 2], can_scale=False),
