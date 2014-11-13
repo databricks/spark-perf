@@ -1,4 +1,4 @@
-package mllib.perf.onepointone
+package mllib.perf.onepointtwo
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext

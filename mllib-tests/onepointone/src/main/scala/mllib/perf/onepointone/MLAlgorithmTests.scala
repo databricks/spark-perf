@@ -1,19 +1,17 @@
-package mllib.perf.onepointoh
+package mllib.perf.onepointone
 
-import mllib.perf.onepointoh.util.DataGenerator
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.mllib.classification._
-import org.apache.spark.mllib.clustering._
-import org.apache.spark.mllib.linalg._
+import org.apache.spark.mllib.clustering.{KMeans, KMeansModel}
+import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.mllib.recommendation.{ALS, MatrixFactorizationModel, Rating}
 import org.apache.spark.mllib.regression._
 import org.apache.spark.mllib.tree.DecisionTree
-import org.apache.spark.mllib.tree.configuration.Algo._
-import org.apache.spark.mllib.tree.configuration.QuantileStrategy
-import org.apache.spark.mllib.tree.impurity.{Gini, Variance}
 import org.apache.spark.mllib.tree.model.DecisionTreeModel
 import org.apache.spark.rdd.RDD
+
+import mllib.perf.onepointone.util.DataGenerator
 
 /** Parent class for tests which run on a large dataset. */
 abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends PerfTest {
@@ -22,13 +20,11 @@ abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends Per
 
   def validate(model: M, rdd: RDD[LabeledPoint]): Double
 
-  val NUM_EXAMPLES =
-    ("num-examples", "number of examples for regression and classification tests")
-  val NUM_FEATURES =
-    ("num-features", "number of features of each example for regression and classification tests")
+  val NUM_EXAMPLES =  ("num-examples",   "number of examples for regression tests")
+  val NUM_FEATURES =  ("num-features",   "number of features of each example for regression tests")
 
   intOptions = intOptions ++ Seq(NUM_FEATURES)
-  longOptions = longOptions ++ Seq(NUM_EXAMPLES)
+  longOptions = Seq(NUM_EXAMPLES)
 
   var rdd: RDD[LabeledPoint] = _
   var testRdd: RDD[LabeledPoint] = _
@@ -72,14 +68,15 @@ abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends Per
 abstract class GLMTests(sc: SparkContext)
   extends RegressionAndClassificationTests[GeneralizedLinearModel](sc) {
 
-  val STEP_SIZE =     ("step-size",   "step size for SGD")
-  val NUM_ITERATIONS =      ("num-iterations",   "number of iterations for the algorithm")
-  val REG_TYPE =      ("reg-type",   "type of regularization: none, L1, L2")
+  val STEP_SIZE =      ("step-size",   "step size for SGD")
+  val NUM_ITERATIONS = ("num-iterations",   "number of iterations for the algorithm")
+  val REG_TYPE =       ("reg-type",   "type of regularization: none, L1, L2")
   val REG_PARAM =      ("reg-param",   "the regularization parameter against overfitting")
+  val OPTIMIZER =      ("optimizer", "optimization algorithm: sgd, lbfgs")
 
   intOptions = intOptions ++ Seq(NUM_ITERATIONS)
   doubleOptions = doubleOptions ++ Seq(STEP_SIZE, REG_PARAM)
-  stringOptions = stringOptions ++ Seq(REG_TYPE)
+  stringOptions = stringOptions ++ Seq(REG_TYPE, OPTIMIZER)
 }
 
 class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
@@ -98,7 +95,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
     val numFeatures: Int = intOptionValue(NUM_FEATURES)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    
+
     val intercept: Double = doubleOptionValue(INTERCEPT)
     val eps: Double = doubleOptionValue(EPS)
 
@@ -128,6 +125,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     val regType = stringOptionValue(REG_TYPE)
     val regParam = doubleOptionValue(REG_PARAM)
     val numIterations = intOptionValue(NUM_ITERATIONS)
+    val optimizer = stringOptionValue(OPTIMIZER)
 
     if (!Array("L2").contains(loss)) {
       throw new IllegalArgumentException(
@@ -136,6 +134,10 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     if (!Array("none", "L1", "L2").contains(regType)) {
       throw new IllegalArgumentException(
         s"GLMRegressionTest run with unknown regType ($regType).  Supported values: none, L1, L2.")
+    }
+    if (!Array("sgd").contains(optimizer)) { // only SGD supported in Spark 1.1
+      throw new IllegalArgumentException(
+        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd.")
     }
 
     (loss, regType) match {
@@ -179,7 +181,7 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
     val numFeatures: Int = intOptionValue(NUM_FEATURES)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    
+
     val threshold: Double = doubleOptionValue(THRESHOLD)
     val sf: Double = doubleOptionValue(SCALE)
 
@@ -201,6 +203,7 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
     val regType = stringOptionValue(REG_TYPE)
     val regParam = doubleOptionValue(REG_PARAM)
     val numIterations = intOptionValue(NUM_ITERATIONS)
+    val optimizer = stringOptionValue(OPTIMIZER)
 
     if (!Array("logistic", "hinge").contains(loss)) {
       throw new IllegalArgumentException(
@@ -210,16 +213,24 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
       throw new IllegalArgumentException(s"GLMClassificationTest run with unknown regType" +
         s" ($regType).  Supported values: none, L1, L2.")
     }
+    if (!Array("sgd", "lbfgs").contains(optimizer)) {
+      throw new IllegalArgumentException(
+        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs.")
+    }
 
-    (loss, regType) match {
-      case ("logistic", "none") =>
+    (loss, regType, optimizer) match {
+      case ("logistic", "none", "sgd") =>
         LogisticRegressionWithSGD.train(rdd, numIterations, stepSize)
-      case ("hinge", "L2") =>
+      case ("logistic", "none", "lbfgs") =>
+        println("WARNING: LogisticRegressionWithLBFGS ignores numIterations, stepSize" +
+          " in this Spark version.")
+        new LogisticRegressionWithLBFGS().run(rdd)
+      case ("hinge", "L2", "sgd") =>
         SVMWithSGD.train(rdd, numIterations, stepSize, regParam)
       case _ =>
         throw new IllegalArgumentException(
           s"GLMClassificationTest given incompatible (loss, regType) = ($loss, $regType)." +
-          s" Note the set of supported combinations increases in later Spark versions.")
+            s" Note the set of supported combinations increases in later Spark versions.")
     }
   }
 }
@@ -248,7 +259,7 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
 
   override def createInputData(seed: Long) = {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    
+
     val numUsers: Int = intOptionValue(NUM_USERS)
     val numProducts: Int = intOptionValue(NUM_PRODUCTS)
     val numRatings: Long = longOptionValue(NUM_RATINGS)
@@ -321,7 +332,7 @@ abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
 
   override def createInputData(seed: Long) = {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    
+
     val numPoints: Long = longOptionValue(NUM_POINTS)
     val numColumns: Int = intOptionValue(NUM_COLUMNS)
     val numCenters: Int = intOptionValue(NUM_CENTERS)
@@ -458,11 +469,7 @@ abstract class DecisionTreeTests(sc: SparkContext)
     if (labelType == 0) {
       calculateRMSE(predictions, numExamples)
     } else {
-      val thresholdedPredictions = predictions.map { case (pred, truth) =>
-        val pred01 = if (pred > 0.5) 1.0 else 0.0 // only needed for Spark 1.0, not later versions
-        (pred01, truth)
-      }
-      calculateAccuracy(thresholdedPredictions, numExamples)
+      calculateAccuracy(predictions, numExamples)
     }
   }
 }
@@ -501,13 +508,10 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
     val maxBins: Int = intOptionValue(MAX_BINS)
     if (labelType == 0) {
-      // Regression
-      DecisionTree.train(rdd, Regression, Variance, treeDepth, maxBins, QuantileStrategy.Sort,
-        categoricalFeaturesInfo)
+      DecisionTree.trainRegressor(rdd, categoricalFeaturesInfo, "variance", treeDepth, maxBins)
     } else if (labelType == 2) {
-      // Classification
-      DecisionTree.train(rdd, Classification, Gini, treeDepth,
-        maxBins, QuantileStrategy.Sort, categoricalFeaturesInfo)
+      DecisionTree.trainClassifier(rdd, labelType, categoricalFeaturesInfo, "gini", treeDepth,
+        maxBins)
     } else {
       throw new IllegalArgumentException(
         s"Bad label-type parameter given to DecisionTreeTest: $labelType." +

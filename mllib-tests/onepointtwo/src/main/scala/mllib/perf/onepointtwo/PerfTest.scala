@@ -1,4 +1,4 @@
-package mllib.perf.onepointoh
+package mllib.perf.onepointtwo
 
 import org.apache.spark.Logging
 import joptsimple.{OptionSet, OptionParser}
@@ -65,6 +65,10 @@ abstract class PerfTest extends Logging {
     }
   }
 
+  def addOptionalOptionToParser[T](opt: String, desc: String, default: T, clazz: Class[T]): Unit = {
+    parser.accepts(opt, desc).withOptionalArg().ofType(clazz).defaultsTo(default)
+  }
+
   def intOptionValue(option: (String, String)) =
     optionSet.valueOf(option._1).asInstanceOf[Int]
 
@@ -79,4 +83,7 @@ abstract class PerfTest extends Logging {
 
   def longOptionValue(option: (String, String)) =
     optionSet.valueOf(option._1).asInstanceOf[Long]
+
+  def optionValue[T](option: String) =
+    optionSet.valueOf(option).asInstanceOf[T]
 }

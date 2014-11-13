@@ -8,7 +8,7 @@ import org.apache.spark.mllib.random._
 import org.apache.spark.mllib.recommendation.Rating
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.configuration.{Algo, FeatureType}
-import org.apache.spark.mllib.tree.model.{Split, DecisionTreeModel, Node, Predict}
+import org.apache.spark.mllib.tree.model.{Split, DecisionTreeModel, Node}
 import org.apache.spark.rdd.{PairRDDFunctions, RDD}
 import org.apache.spark.SparkContext
 
@@ -168,7 +168,7 @@ object DataGenerator {
 
     if (subtreeDepth == 0) {
       // This case only happens for a depth 0 tree.
-      return new Node(id = nodeIndex, predict = new Predict(0), impurity = 0, isLeaf = true,
+      return new Node(id = nodeIndex, predict = 0, isLeaf = true,
         split = None, leftNode = None, rightNode = None, stats = None)
     }
 
@@ -204,13 +204,13 @@ object DataGenerator {
     if (subtreeDepth == 1) {
       // Add leaf nodes.
       val predictions = labelGenerator.nextValue()
-      new Node(id = nodeIndex, predict = new Predict(0), impurity = 0, isLeaf = false, split = Some(split),
-        leftNode = Some(new Node(id = leftChildIndex, predict = new Predict(predictions._1), impurity = 0, isLeaf = true,
+      new Node(id = nodeIndex, predict = 0, isLeaf = false, split = Some(split),
+        leftNode = Some(new Node(id = leftChildIndex, predict = predictions._1, isLeaf = true,
           split = None, leftNode = None, rightNode = None, stats = None)),
-        rightNode = Some(new Node(id = rightChildIndex, predict = new Predict(predictions._2), impurity = 0, isLeaf = true,
+        rightNode = Some(new Node(id = rightChildIndex, predict = predictions._2, isLeaf = true,
           split = None, leftNode = None, rightNode = None, stats = None)), stats = None)
     } else {
-      new Node(id = nodeIndex, predict = new Predict(0), impurity = 0, isLeaf = false, split = Some(split),
+      new Node(id = nodeIndex, predict = 0, isLeaf = false, split = Some(split),
         leftNode = Some(randomBalancedDecisionTreeHelper(leftChildIndex, subtreeDepth - 1,
           featureArity, labelGenerator, usedFeatures + feature, rng)),
         rightNode = Some(randomBalancedDecisionTreeHelper(rightChildIndex, subtreeDepth - 1,
@@ -321,7 +321,7 @@ class ClassLabelGenerator(
   override def nextValue(): LabeledPoint = {
     val y = if (rng.nextDouble() < threshold) 0.0 else 1.0
     val x = Array.fill[Double](numFeatures) {
-      if (!chiSq) rng.nextGaussian() + (y * scaleFactor) else rng.nextInt(6)*1.0
+      if (!chiSq) rng.nextGaussian() + (y * scaleFactor) else rng.nextInt(6) * 1.0
     }
 
     LabeledPoint(y, Vectors.dense(x))

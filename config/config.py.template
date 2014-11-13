@@ -409,43 +409,59 @@ MLLIB_TESTS += [("svm", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
 
 # Decision Trees #
 
+# Set MLLIB_DECISION_TREE_TEST_CHOICE to 1.0, 1.1, 1.2 to run a test.  Any other value means skip test.
+MLLIB_DECISION_TREE_TEST_CHOICE = 1.0
+
 MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
-    # Fraction of data to hold out for testing (ignored if given training and test dataset).
-    OptionSet("test-data-fraction", [0.2], can_scale=False),
-    # Path to training dataset (if not given, use random data).
-    OptionSet("training-data", [""]),
-    # Path to test dataset (only used if training dataset given).
-    # If not given, hold out part of training data for validation.
-    OptionSet("test-data", [""]),
     # The number of rows or examples
     OptionSet("num-examples", [2000, 200000], can_scale=True),
     # The number of features per example
     OptionSet("num-features", [10, 500], can_scale=True),
     # Type of label: 0 indicates regression, 2+ indicates classification with this many classes
-    OptionSet("label-type", [0, 2, 3], can_scale=False),
+    OptionSet("label-type", [0, 2], can_scale=False),
     # Fraction of features which are categorical
     OptionSet("frac-categorical-features", [0.5], can_scale=False),
     # Fraction of categorical features which are binary. Others have 20 categories.
-    OptionSet("frac-binary-features", [0.5], can_scale=False),
+    OptionSet("frac-binary-features", [1.0], can_scale=False),
     # Depth of true decision tree model used to label examples.
     # WARNING: The meaning of depth changed from Spark 1.0 to Spark 1.1:
     #          depth=N for Spark 1.0 should be depth=N-1 for Spark 1.1
     OptionSet("tree-depth", [1, 5, 10], can_scale=False),
     # Maximum number of bins for the decision tree learning algorithm.
     OptionSet("max-bins", [100], can_scale=False),
-    # Number of trees. If 1, then run DecisionTree. If >1, then run RandomForest.
-    OptionSet("num-trees", [1, 10], can_scale=False),
-    # Feature subset sampling strategy: auto, all, sqrt, log2, onethird
-    OptionSet("feature-subset-strategy", ["auto"]),
     # (unused parameter)
     OptionSet("num-iterations", [0], can_scale=False),
     # (unused parameter)
     OptionSet("reg-param", [0], can_scale=False)
 ]
 
-MLLIB_TESTS += [("decision-tree-1.1", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("decision-tree")] +
-    MLLIB_DECISION_TREE_TEST_OPTS)]
+if MLLIB_DECISION_TREE_TEST_CHOICE >= 1.2:
+    MLLIB_DECISION_TREE_TEST_OPTS += [
+        # Path to training dataset (if not given, use random data).
+        OptionSet("training-data", [""]),
+        # Path to test dataset (only used if training dataset given).
+        # If not given, hold out part of training data for validation.
+        OptionSet("test-data", [""]),
+        # Fraction of data to hold out for testing (ignored if given training and test dataset).
+        OptionSet("test-data-fraction", [0.2], can_scale=False),
+        # Number of trees. If 1, then run DecisionTree. If >1, then run RandomForest.
+        OptionSet("num-trees", [1, 10], can_scale=False),
+        # Feature subset sampling strategy: auto, all, sqrt, log2, onethird
+        OptionSet("feature-subset-strategy", ["auto"])
+    ]
+
+if MLLIB_DECISION_TREE_TEST_CHOICE == 1.0:
+    MLLIB_TESTS += [("decision-tree-1.0", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
+        COMMON_JAVA_OPTS, [ConstantOption("decision-tree")] +
+        MLLIB_DECISION_TREE_TEST_OPTS)]
+elif MLLIB_DECISION_TREE_TEST_CHOICE == 1.1:
+    MLLIB_TESTS += [("decision-tree-1.1", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
+                     COMMON_JAVA_OPTS, [ConstantOption("decision-tree")] +
+                     MLLIB_DECISION_TREE_TEST_OPTS)]
+elif MLLIB_DECISION_TREE_TEST_CHOICE == 1.2:
+    MLLIB_TESTS += [("decision-tree-1.2", "mllib.perf.onepointtwo.TestRunner", SCALE_FACTOR,
+                     COMMON_JAVA_OPTS, [ConstantOption("decision-tree")] +
+                     MLLIB_DECISION_TREE_TEST_OPTS)]
 
 # Recommendation Tests #
 MLLIB_RECOMMENDATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
