@@ -304,7 +304,7 @@ MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
 # Generalized Linear Model (GLM) Tests #
 MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # The number of iterations for SGD
-    OptionSet("num-iterations", [100]),
+    OptionSet("num-iterations", [20]),
     # The step size for SGD
     OptionSet("step-size", [0.05]),
     # Regularization type: none, L1, L2
@@ -490,7 +490,7 @@ if MLLIB_SPARK_VERSION >= 1.1:
 
     MLLIB_TESTS += [("chi-sq-mat", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
         COMMON_JAVA_OPTS, [ConstantOption("chi-sq-mat"),
-        OptionSet("num-rows", [50000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
+        OptionSet("num-rows", [20000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
         MLLIB_STATS_TEST_OPTS)]
 
 # Skip downloading and building Spark
