@@ -54,7 +54,8 @@ object TestRunner {
         data
       }
 
-      println("results: " + results.map(r => "%.3f;%.3f;%.3f".format(r._1, r._2, r._3)).mkString(","))
+      println("results: "
+        + results.map(r => "%.3f;%.3f;%.3f".format(r._1, r._2, r._3)).mkString(","))
 
       sc.stop()
   }
