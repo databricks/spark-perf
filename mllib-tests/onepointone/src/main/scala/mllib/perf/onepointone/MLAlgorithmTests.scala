@@ -424,7 +424,8 @@ class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
     val regParam = doubleOptionValue(REG_PARAM)
     val seed = intOptionValue(RANDOM_SEED)+12
 
-    new ALS().setIterations(numIterations).setRank(rank).setSeed(seed).setLambda(regParam).run(rdd)
+    new ALS().setIterations(numIterations).setRank(rank).setSeed(seed).setLambda(regParam)
+      .setBlocks(rdd.partitions.size).run(rdd)
   }
 }
 

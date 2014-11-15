@@ -420,7 +420,7 @@ class RealLabelPairGenerator() extends RandomDataGenerator[Pair[Double, Double]]
 
 /**
  * Generator for a feature vector which can include a mix of categorical and continuous features.
- * @param categoricalArities  Specifies the number of categories for each categorical features.
+ * @param categoricalArities  Specifies the number of categories for each categorical feature.
  * @param numContinuous  Number of continuous features.  Feature values are in range [0,1].
  */
 class FeaturesGenerator(val categoricalArities: Array[Int], val numContinuous: Int)
