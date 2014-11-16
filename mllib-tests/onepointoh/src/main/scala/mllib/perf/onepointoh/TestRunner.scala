@@ -17,13 +17,10 @@ object TestRunner {
       // Unfortunate copy of code because there are Perf Tests in both projects and the compiler doesn't like it
       val test: PerfTest =
         testName match {
-          case "linear-regression" => new LinearRegressionTest(sc)
-          case "ridge-regression" => new RidgeRegressionTest(sc)
-          case "lasso" => new LassoTest(sc)
+          case "glm-regression" => new GLMRegressionTest(sc)
+          case "glm-classification" => new GLMClassificationTest(sc)
           case "als" => new ALSTest(sc)
-          case "logistic-regression" => new LogisticRegressionTest(sc)
           case "naive-bayes" => new NaiveBayesTest(sc)
-          case "svm" => new SVMTest(sc)
           case "kmeans" => new KMeansTest(sc)
           case "decision-tree" => new DecisionTreeTest(sc)
           case "svd" => new SVDTest(sc)

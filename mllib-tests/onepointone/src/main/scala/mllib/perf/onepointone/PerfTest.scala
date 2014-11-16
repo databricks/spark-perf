@@ -9,8 +9,6 @@ abstract class PerfTest extends Logging {
   val INTER_TRIAL_WAIT =    ("inter-trial-wait",   "seconds to sleep between trials")
   val NUM_PARTITIONS =      ("num-partitions", "number of input partitions")
   val RANDOM_SEED =         ("random-seed", "seed for random number generator")
-  val NUM_ITERATIONS =      ("num-iterations",   "number of iterations for the algorithm")
-  val REGULARIZATION =      ("reg-param",   "the regularization parameter against overfitting")
 
   /** Initialize internal state based on arguments */
   def initialize(testName_ : String, otherArgs: Array[String]) {
@@ -27,7 +25,7 @@ abstract class PerfTest extends Logging {
   }
 
   def getWait: Int = {
-    intOptionValue(INTER_TRIAL_WAIT)*1000
+    intOptionValue(INTER_TRIAL_WAIT) * 1000
   }
 
   def createInputData(seed: Long)
@@ -40,12 +38,12 @@ abstract class PerfTest extends Logging {
   var testName: String = _
 
   var intOptions: Seq[(String, String)] = Seq(NUM_TRIALS, INTER_TRIAL_WAIT, NUM_PARTITIONS,
-    RANDOM_SEED, NUM_ITERATIONS)
+    RANDOM_SEED)
 
-  var doubleOptions: Seq[(String, String)] = Seq(REGULARIZATION)
+  var doubleOptions: Seq[(String, String)] = Seq()
   var longOptions: Seq[(String, String)] = Seq()
 
-  val stringOptions: Seq[(String, String)] = Seq()
+  var stringOptions: Seq[(String, String)] = Seq()
   var booleanOptions: Seq[(String, String)] = Seq()
 
   def addOptionsToParser() {
