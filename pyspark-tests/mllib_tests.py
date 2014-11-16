@@ -4,6 +4,7 @@ import time
 import pyspark
 from pyspark.mllib.classification import *
 from pyspark.mllib.regression import *
+from pyspark.mllib.recommendation import *
 
 from mllib_data import *
 
@@ -142,6 +143,66 @@ class GLMRegressionTest(GLMTest):
         return numpy.sqrt(squaredError / n)
 
 
+class ALSTest(PerfTest):
+    def __init__(self, sc):
+        PerfTest.__init__(self, sc)
+
+    def createInputData(self):
+        options = self.options
+        numTrain = options.num_ratings
+        numTest = int(options.num_ratings * 0.2)
+        self.trainRDD = RatingGenerator.generateRatingData(
+            self.sc, options.num_users, options.num_products, numTrain,
+            options.implicit_prefs, options.num_partitions, options.random_seed)
+        self.testRDD = RatingGenerator.generateRatingData(
+            self.sc, options.num_users, options.num_products, numTest,
+            options.implicit_prefs, options.num_partitions, options.random_seed + 1)
+
+    def evaluate(self, model, rdd):
+        """
+        :return:  root mean squared error (RMSE) for model on the given ratings.
+        """
+        implicit_prefs = self.options.implicit_prefs
+        predictions = model.predictAll(rdd.map(lambda r: (r[0], r[1])))
+        def mapPrediction(r):
+            return max(min(r, 1.0), 0.0) if implicit_prefs else r
+        predictionsAndRatings = \
+            predictions.map(mapPrediction).join(rdd.map(lambda r: ((r[0], r[1]), r[2]))).values()
+        return numpy.sqrt(predictionsAndRatings.map(lambda ab: numpy.square(ab[0] - ab[1])).mean())
+
+    def runTest(self):
+        # Learn model
+        start = time.time()
+        if options.implicit_prefs:
+            model = ALS.trainImplicit(self.trainRDD, rank=options.rank,
+                                      iterations=options.num_iterations,
+                                      lambda_=options.reg_param, blocks=options.num_partitions)
+        else:
+            model = ALS.train(self.trainRDD, rank=options.rank,
+                              iterations=options.num_iterations,
+                              lambda_=options.reg_param, blocks=options.num_partitions)
+        trainingTime = time.time() - start
+        # Measure test time on training set since it is probably larger.
+        start = time.time()
+        trainingMetric = self.evaluate(model, self.trainRDD)
+        testTime = time.time() - start
+        # Test
+        testMetric = self.evaluate(model, self.testRDD)
+        return [trainingTime, testTime, trainingMetric, testMetric]
+
+    def run(self):
+        """
+        :return: List of [trainingTime, testTime, trainingMetric, testMetric] tuples
+        """
+        options = self.options
+        results = []
+        for i in range(options.num_trials):
+            r = self.runTest()
+            results.append(r)
+            time.sleep(options.inter_trial_wait)
+        return results
+
+
 if __name__ == "__main__":
     import optparse
     parser = optparse.OptionParser(usage="Usage: %prog [options] test_names")
@@ -151,14 +212,14 @@ if __name__ == "__main__":
     # MLLIB_COMMON_OPTS
     parser.add_option("--num-partitions", type="int", default=10)
     parser.add_option("--random-seed", type="int", default=5)
+    parser.add_option("--num-iterations", type="int", default=20)
+    parser.add_option("--reg-param", type="float", default=0.1)
     # MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS
     parser.add_option("--num-examples", type="int", default=1024)
     parser.add_option("--num-features", type="int", default=50)
     # MLLIB_GLM_TEST_OPTS
-    parser.add_option("--num-iterations", type="int", default=20)
     parser.add_option("--step-size", type="float", default=0.1)
     parser.add_option("--reg-type", type="string", default="none")
-    parser.add_option("--reg-param", type="float", default=0.1)
     parser.add_option("--loss", type="string", default="L2")
     parser.add_option("--optimizer", type="string", default="sgd")
     # MLLIB_GLM_REGRESSION_TEST_OPTS
@@ -169,6 +230,12 @@ if __name__ == "__main__":
     # NAIVE_BAYES_TEST_OPTS
     parser.add_option("--per-negative", type="float", default=0.3)
     parser.add_option("--nb-lambda", type="float", default=1.0)
+    # MLLIB_RECOMMENDATION_TEST_OPTS
+    parser.add_option("--num-users", type="int", default=60)
+    parser.add_option("--num-products", type="int", default=50)
+    parser.add_option("--num-ratings", type="int", default=500)
+    parser.add_option("--rank", type="int", default=2)
+    parser.add_option("--implicit-prefs", type="int", default=0)
 
     options, cases = parser.parse_args()
 

@@ -266,7 +266,7 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
 
     val data = DataGenerator.generateRatings(sc, numUsers, numProducts,
-      math.ceil(numRatings*1.25).toLong, implicitRatings,numPartitions,seed)
+      math.ceil(numRatings * 1.25).toLong, implicitRatings,numPartitions,seed)
 
     rdd = data._1.cache()
     testRdd = data._2
