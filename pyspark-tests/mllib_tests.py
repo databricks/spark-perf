@@ -165,7 +165,8 @@ class ALSTest(PerfTest):
         implicit_prefs = self.options.implicit_prefs
         predictions = model.predictAll(rdd.map(lambda r: (r[0], r[1])))
         def mapPrediction(r):
-            return max(min(r, 1.0), 0.0) if implicit_prefs else r
+            mappedRating = max(min(r.rating, 1.0), 0.0) if implicit_prefs else r.rating
+            return ((r.user, r.product), mappedRating)
         predictionsAndRatings = \
             predictions.map(mapPrediction).join(rdd.map(lambda r: ((r[0], r[1]), r[2]))).values()
         return numpy.sqrt(predictionsAndRatings.map(lambda ab: numpy.square(ab[0] - ab[1])).mean())

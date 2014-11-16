@@ -77,5 +77,5 @@ class RatingGenerator:
                     pair = (rng.randint(numUsers), rng.randint(numProducts))
                 observed.add(pair)
                 rating = float(rng.randint(2)) if implicitPrefs else rng.rand() * 5
-                yield [pair[0], pair[1], rating]
+                yield (pair[0], pair[1], rating)
         return sc.parallelize(range(numPartitions), numPartitions).flatMap(gen)
