@@ -52,6 +52,8 @@ STREAMING_OUTPUT_FILENAME = "results/streaming_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 MLLIB_OUTPUT_FILENAME = "results/mllib_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
+PYSPARK_MLLIB_OUTPUT_FILENAME = "results/python_mllib_perf_output_%s_%s" % (
+    SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 
 # Test Configuration
 # --------------------------------------------------------------------------------------------------
