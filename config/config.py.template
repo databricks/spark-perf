@@ -72,6 +72,7 @@ RUN_SPARK_TESTS = True
 RUN_PYSPARK_TESTS = False
 RUN_STREAMING_TESTS = False
 RUN_MLLIB_TESTS = False
+RUN_PYSPARK_MLLIB_TESTS = False
 
 # Which tests to prepare. Set this to true for the first
 # installation or whenever you make a change to the tests.
@@ -559,12 +560,22 @@ if MLLIB_SPARK_VERSION >= 1.1:
         OptionSet("num-rows", [20000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
         MLLIB_STATS_TEST_OPTS)]
 
+# PySpark MLlib tests
+PYSPARK_MLLIB_TESTS = []
+
+PYSPARK_MLLIB_TESTS += [("python-glm-classification", "mllib_tests.py", SCALE_FACTOR,
+                         COMMON_JAVA_OPTS, [ConstantOption("GLMClassificationTest")] +
+                         MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
+
+
 # Skip downloading and building Spark
 SPARK_SKIP_PREP = False
 
-SPARK_SKIP_TESTS = False
-STREAMING_SKIP_TESTS = False
-MLLIB_SKIP_TESTS = False
+#SPARK_SKIP_TESTS = False
+#STREAMING_SKIP_TESTS = False
+#MLLIB_SKIP_TESTS = False
+#PYSPARK_CORE_SKIP_TESTS = False
+#PYSPARK_MLLIB_SKIP_TESTS = False
 
 # Skip building and packaging project tests (requires respective perf tests to already be packaged
 # in the project's target directory).

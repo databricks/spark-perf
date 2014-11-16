@@ -42,7 +42,10 @@ run_spark_tests = config.RUN_SPARK_TESTS and (len(config.SPARK_TESTS) > 0)
 run_pyspark_tests = config.RUN_PYSPARK_TESTS and (len(config.PYSPARK_TESTS) > 0)
 run_streaming_tests = config.RUN_STREAMING_TESTS and (len(config.STREAMING_TESTS) > 0)
 run_mllib_tests = config.RUN_MLLIB_TESTS and (len(config.MLLIB_TESTS) > 0)
-run_tests = run_spark_tests or run_pyspark_tests or run_streaming_tests or run_mllib_tests
+run_pyspark_mllib_tests = config.RUN_PYSPARK_MLLIB_TESTS and (len(config.PYSPARK_MLLIB_TESTS) > 0)
+run_tests = run_spark_tests or run_pyspark_tests or run_streaming_tests or run_mllib_tests \
+    or run_pyspark_mllib_tests
+
 
 # Only build the perf test sources that will be used.
 should_prep_spark = not config.USE_CLUSTER_SPARK and config.PREP_SPARK
@@ -129,6 +132,10 @@ if run_spark_tests:
 if run_pyspark_tests:
     PythonTests.run_tests(cluster, config, config.PYSPARK_TESTS, "PySpark-Tests",
                           config.PYSPARK_OUTPUT_FILENAME)
+
+if run_pyspark_mllib_tests:
+    PythonTests.run_tests(cluster, config, config.PYSPARK_MLLIB_TESTS, "PySpark-MLlib-Tests",
+                          config.PYSPARK_MLLIB_OUTPUT_FILENAME)
 
 if run_streaming_tests:
     StreamingTests.run_tests(cluster, config, config.STREAMING_TESTS, "Streaming-Tests",

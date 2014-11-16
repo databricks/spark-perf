@@ -410,13 +410,13 @@ MLLIB_RECOMMENDATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
      # The number of products
      OptionSet("num-products", [5000000], can_scale=True),
      # The number of ratings
-     OptionSet("num-ratings", [100000000], can_scale=True),
+     OptionSet("num-ratings", [50000000], can_scale=True),
      # The number of iterations for ALS
-     OptionSet("num-iterations", [20]),
+     OptionSet("num-iterations", [10]),
      # The rank of the factorized matrix model
-     OptionSet("rank", [20]),
+     OptionSet("rank", [10]),
      # The regularization parameter
-     OptionSet("reg-param", [1.0]),
+     OptionSet("reg-param", [0.1]),
      # Whether to use implicit preferences or not
      FlagSet("implicit-prefs", [False])
 ]

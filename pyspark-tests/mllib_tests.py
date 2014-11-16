@@ -64,7 +64,7 @@ class GLMClassificationTest(PredictionTest):
     def createInputData(self):
         options = self.options
         numTrain = options.num_examples
-        numTest = options.num_examples * 0.2
+        numTest = int(options.num_examples * 0.2)
         self.trainRDD = LabeledDataGenerator.generateGLMData(
             self.sc, numTrain, options.num_features,
             options.num_partitions, options.random_seed, labelType=2)
@@ -98,9 +98,11 @@ class GLMClassificationTest(PredictionTest):
 
     def evaluate(self, model, rdd):
         """
-        :return:  0/1 classification accuracy for model on the given data.
+        :return:  0/1 classification accuracy as percentage for model on the given data.
         """
-        return rdd.map(lambda lp: 1.0 if lp.label == model.predict(lp.features) else 0.0).sum()
+        n = rdd.count()
+        acc = rdd.map(lambda lp: 1.0 if lp.label == model.predict(lp.features) else 0.0).sum()
+        return 100.0 * (acc / n)
 
 
 if __name__ == "__main__":
@@ -117,21 +119,19 @@ if __name__ == "__main__":
     parser.add_option("--num-features", type="int", default=50)
     # MLLIB_GLM_TEST_OPTS
     parser.add_option("--num-iterations", type="int", default=20)
-    parser.add_option("--step-size", type="int", default=0.1)
+    parser.add_option("--step-size", type="float", default=0.1)
     parser.add_option("--reg-type", type="string", default="none")
     parser.add_option("--reg-param", type="float", default=0.1)
     parser.add_option("--loss", type="string", default="L2")
     parser.add_option("--optimizer", type="string", default="sgd")
     # MLLIB_GLM_REGRESSION_TEST_OPTS
-    parser.add_option("--intercept", type="double", default=0.0)
-    parser.add_option("--epsilon", type="double", default=0.1)
+    parser.add_option("--intercept", type="float", default=0.0)
+    parser.add_option("--epsilon", type="float", default=0.1)
     # MLLIB_CLASSIFICATION_TEST_OPTS
-    parser.add_option("--per-negative", type="double", default=0.3)
-    parser.add_option("--scale-factor", type="double", default=1.0)
+    parser.add_option("--scale-factor", type="float", default=1.0)
     # NAIVE_BAYES_TEST_OPTS
-    parser.add_option("--per-negative", type="double", default=0.3)
-    parser.add_option("--scale-factor", type="double", default=1.0)
-    parser.add_option("--nb-lambda", type="double", default=1.0)
+    parser.add_option("--per-negative", type="float", default=0.3)
+    parser.add_option("--nb-lambda", type="float", default=1.0)
 
     options, cases = parser.parse_args()
 
