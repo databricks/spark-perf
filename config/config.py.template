@@ -375,7 +375,7 @@ MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
 # Generalized Linear Model (GLM) Tests #
 MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # The number of iterations for SGD
-    OptionSet("num-iterations", [100]),
+    OptionSet("num-iterations", [20]),
     # The step size for SGD
     OptionSet("step-size", [0.05]),
     # Regularization type: none, l1, l2
@@ -433,9 +433,9 @@ MLLIB_TESTS += [("naive-bayes", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".Test
 # Decision Trees #
 MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # The number of rows or examples
-    OptionSet("num-examples", [2000], can_scale=True),
+    OptionSet("num-examples", [1000000], can_scale=True),
     # The number of features per example
-    OptionSet("num-features", [10], can_scale=True),
+    OptionSet("num-features", [500], can_scale=True),
     # Type of label: 0 indicates regression, 2+ indicates classification with this many classes
     # Note: multi-class (>2) is not supported in Spark 1.0.
     OptionSet("label-type", [0, 2], can_scale=False),
@@ -446,9 +446,9 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # Depth of true decision tree model used to label examples.
     # WARNING: The meaning of depth changed from Spark 1.0 to Spark 1.1:
     #          depth=N for Spark 1.0 should be depth=N-1 for Spark 1.1
-    OptionSet("tree-depth", [1, 5], can_scale=False),
+    OptionSet("tree-depth", [1, 10], can_scale=False),
     # Maximum number of bins for the decision tree learning algorithm.
-    OptionSet("max-bins", [100], can_scale=False),
+    OptionSet("max-bins", [32], can_scale=False),
 ]
 
 if MLLIB_SPARK_VERSION >= 1.2:
