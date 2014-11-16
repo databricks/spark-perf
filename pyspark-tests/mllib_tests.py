@@ -1,7 +1,9 @@
+import numpy
 import time
 
 import pyspark
 from pyspark.mllib.classification import *
+from pyspark.mllib.regression import *
 
 from mllib_data import *
 
@@ -56,8 +58,7 @@ class PredictionTest(PerfTest):
             time.sleep(options.inter_trial_wait)
         return results
 
-
-class GLMClassificationTest(PredictionTest):
+class GLMTest(PredictionTest):
     def __init__(self, sc):
         PredictionTest.__init__(self, sc)
 
@@ -71,6 +72,10 @@ class GLMClassificationTest(PredictionTest):
         self.testRDD = LabeledDataGenerator.generateGLMData(
             self.sc, numTest, options.num_features,
             options.num_partitions, options.random_seed + 1, labelType=2)
+
+class GLMClassificationTest(GLMTest):
+    def __init__(self, sc):
+        GLMTest.__init__(self, sc)
 
     def train(self, rdd):
         """
@@ -103,6 +108,38 @@ class GLMClassificationTest(PredictionTest):
         n = rdd.count()
         acc = rdd.map(lambda lp: 1.0 if lp.label == model.predict(lp.features) else 0.0).sum()
         return 100.0 * (acc / n)
+
+
+class GLMRegressionTest(GLMTest):
+    def __init__(self, sc):
+        GLMTest.__init__(self, sc)
+
+    def train(self, rdd):
+        """
+        :return:  Trained model to be passed to test.
+        """
+        options = self.options
+        if options.loss == "L2":
+            if options.optimizer == "sgd":
+                return LinearRegressionWithSGD.train(data=rdd,
+                                                     iterations=options.num_iterations,
+                                                     step=options.step_size,
+                                                     miniBatchFraction=1.0,
+                                                     regParam=options.reg_param,
+                                                     regType=options.reg_type)
+            else:
+                raise Exception("GLMRegressionTest cannot run with loss = %s, optimizer = %s" \
+                                % (options.loss, options.optimizer))
+        else:
+            raise Exception("GLMRegressionTest does not recognize loss: %s" % options.loss)
+
+    def evaluate(self, model, rdd):
+        """
+        :return:  root mean squared error (RMSE) for model on the given data.
+        """
+        n = rdd.count()
+        squaredError = rdd.map(lambda lp: numpy.square(lp.label - model.predict(lp.features))).sum()
+        return numpy.sqrt(squaredError / n)
 
 
 if __name__ == "__main__":
@@ -141,8 +178,11 @@ if __name__ == "__main__":
         test.initialize(options)
         test.createInputData()
         ts = test.run()
+        results = []
         print "Results from each trial:"
         print "trial\ttrainTime\ttestTime\ttrainMetric\ttestMetric"
         for trial in range(test.options.num_trials):
             t = ts[trial]
             print "%d\t%.3f\t%.3f\t%.3f\t%.3f" % (trial, t[0], t[1], t[2], t[3])
+            results.append("%.3f;%.3f;%.3f;%.3f" % (t[0], t[1], t[2], t[3]))
+        print "results: " + ",".join(results)

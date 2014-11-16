@@ -378,8 +378,8 @@ MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     OptionSet("num-iterations", [100]),
     # The step size for SGD
     OptionSet("step-size", [0.05]),
-    # Regularization type: none, L1, L2
-    OptionSet("reg-type", ["none", "L1", "L2"]),
+    # Regularization type: none, l1, l2
+    OptionSet("reg-type", ["none", "l1", "l2"]),
     # Regularization parameter
     OptionSet("reg-param", [0.1])
 ]
@@ -395,8 +395,8 @@ MLLIB_GLM_REGRESSION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
     OptionSet("intercept", [0.0]),
     # The scale factor for the noise
     OptionSet("epsilon", [0.1]),
-    # Loss to minimize: L2 (squared error)
-    OptionSet("loss", ["L2"])
+    # Loss to minimize: l2 (squared error)
+    OptionSet("loss", ["l2"])
 ]
 
 MLLIB_TESTS += [("glm-regression", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
@@ -566,6 +566,10 @@ PYSPARK_MLLIB_TESTS = []
 PYSPARK_MLLIB_TESTS += [("python-glm-classification", "mllib_tests.py", SCALE_FACTOR,
                          COMMON_JAVA_OPTS, [ConstantOption("GLMClassificationTest")] +
                          MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
+
+PYSPARK_MLLIB_TESTS += [("python-glm-regression", "mllib_tests.py", SCALE_FACTOR,
+                         COMMON_JAVA_OPTS, [ConstantOption("GLMRegressionTest")] +
+                         MLLIB_GLM_REGRESSION_TEST_OPTS)]
 
 
 # Skip downloading and building Spark

@@ -226,6 +226,47 @@ class MLlibTests(JVMPerfTestSuite):
         return result_string
 
 
+class PythonMLlibTests(PerfTestSuite):
+
+    @classmethod
+    def get_spark_submit_cmd(cls, cluster, config, main_class_or_script, opt_list, stdout_filename,
+                             stderr_filename):
+        spark_submit = "%s/bin/spark-submit" % cluster.spark_home
+        cmd = "%s --master %s pyspark-tests/%s %s 1>> %s 2>> %s" % (
+            spark_submit, config.SPARK_CLUSTER_URL, main_class_or_script, " ".join(opt_list),
+            stdout_filename, stderr_filename)
+        return cmd
+
+    @classmethod
+    def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
+        with open(stdout_filename, "r") as stdout_file:
+            output = stdout_file.read()
+        results_token = "results: "
+        result = ""
+        if results_token not in output:
+            result = "FAILED"
+        else:
+            result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
+            result_list = result_line.replace(results_token, "").split(",")
+            err_msg = ("Expecting at least %s results "
+                       "but only found %s" % (config.IGNORED_TRIALS + 1, len(result_list)))
+            assert len(result_list) > config.IGNORED_TRIALS, err_msg
+            result_list = result_list[config.IGNORED_TRIALS:]
+            result += "Runtime: %s, %.3f, %s, %s, %s\n" % \
+                      stats_for_results([x.split(";")[0] for x in result_list])
+            result += "Test time: %s, %.3f, %s, %s, %s\n" % \
+                      stats_for_results([x.split(";")[1] for x in result_list])
+            result += "Train Set Metric: %s, %.3f, %s, %s, %s\n" % \
+                      stats_for_results([x.split(";")[2] for x in result_list])
+            result += "Test Set Metric: %s, %.3f, %s, %s, %s" % \
+                      stats_for_results([x.split(";")[3] for x in result_list])
+
+        result_string = "%s, %s\n%s" % (short_name, " ".join(opt_list), result)
+
+        sys.stdout.flush()
+        return result_string
+
+
 class PythonTests(PerfTestSuite):
 
     @classmethod

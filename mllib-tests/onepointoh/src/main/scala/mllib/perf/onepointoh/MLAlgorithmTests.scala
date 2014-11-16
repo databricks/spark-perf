@@ -74,7 +74,7 @@ abstract class GLMTests(sc: SparkContext)
 
   val STEP_SIZE =     ("step-size",   "step size for SGD")
   val NUM_ITERATIONS =      ("num-iterations",   "number of iterations for the algorithm")
-  val REG_TYPE =      ("reg-type",   "type of regularization: none, L1, L2")
+  val REG_TYPE =      ("reg-type",   "type of regularization: none, l1, l2")
   val REG_PARAM =      ("reg-param",   "the regularization parameter against overfitting")
 
   intOptions = intOptions ++ Seq(NUM_ITERATIONS)
@@ -86,7 +86,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
 
   val INTERCEPT =  ("intercept",   "intercept for random data generation")
   val EPS =  ("epsilon",   "scale factor for the noise during data generation")
-  val LOSS =  ("loss",   "loss to minimize. Supported: L2 (squared error).")
+  val LOSS =  ("loss",   "loss to minimize. Supported: l2 (squared error).")
 
   doubleOptions = doubleOptions ++ Seq(INTERCEPT, EPS)
   stringOptions = stringOptions ++ Seq(LOSS)
@@ -129,25 +129,25 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     val regParam = doubleOptionValue(REG_PARAM)
     val numIterations = intOptionValue(NUM_ITERATIONS)
 
-    if (!Array("L2").contains(loss)) {
+    if (!Array("l2").contains(loss)) {
       throw new IllegalArgumentException(
-        s"GLMRegressionTest run with unknown loss ($loss).  Supported values: L2.")
+        s"GLMRegressionTest run with unknown loss ($loss).  Supported values: l2.")
     }
-    if (!Array("none", "L1", "L2").contains(regType)) {
+    if (!Array("none", "l1", "l2").contains(regType)) {
       throw new IllegalArgumentException(
-        s"GLMRegressionTest run with unknown regType ($regType).  Supported values: none, L1, L2.")
+        s"GLMRegressionTest run with unknown regType ($regType).  Supported values: none, l1, l2.")
     }
 
     (loss, regType) match {
-      case ("L2", "none") =>
+      case ("l2", "none") =>
         val lr = new LinearRegressionWithSGD().setIntercept(addIntercept = true)
         lr.optimizer.setNumIterations(numIterations).setStepSize(stepSize)
         lr.run(rdd)
-      case ("L2", "L1") =>
+      case ("l2", "l1") =>
         val lasso = new LassoWithSGD().setIntercept(addIntercept = true)
         lasso.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
         lasso.run(rdd)
-      case ("L2", "L2") =>
+      case ("l2", "l2") =>
         val rr = new RidgeRegressionWithSGD().setIntercept(addIntercept = true)
         rr.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
         rr.run(rdd)
@@ -206,15 +206,15 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
       throw new IllegalArgumentException(
         s"GLMClassificationTest run with unknown loss ($loss).  Supported values: logistic, hinge.")
     }
-    if (!Array("none", "L1", "L2").contains(regType)) {
+    if (!Array("none", "l1", "l2").contains(regType)) {
       throw new IllegalArgumentException(s"GLMClassificationTest run with unknown regType" +
-        s" ($regType).  Supported values: none, L1, L2.")
+        s" ($regType).  Supported values: none, l1, l2.")
     }
 
     (loss, regType) match {
       case ("logistic", "none") =>
         LogisticRegressionWithSGD.train(rdd, numIterations, stepSize)
-      case ("hinge", "L2") =>
+      case ("hinge", "l2") =>
         SVMWithSGD.train(rdd, numIterations, stepSize, regParam)
       case _ =>
         throw new IllegalArgumentException(
