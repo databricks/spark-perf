@@ -1,5 +1,8 @@
 package mllib.perf.onepointtwo
 
+import org.json4s.JsonAST.JValue
+import org.json4s.JsonDSL._
+
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 
@@ -31,7 +34,7 @@ abstract class LinearAlgebraTests(sc: SparkContext) extends PerfTest {
     rdd = DataGenerator.generateDistributedSquareMatrix(sc, m, n, numPartitions, seed)
   }
 
-  override def run(): (Double, Double, Double) = {
+  override def run(): JValue = {
     val rank = intOptionValue(RANK)
 
     val start = System.currentTimeMillis()
@@ -39,7 +42,7 @@ abstract class LinearAlgebraTests(sc: SparkContext) extends PerfTest {
     val end = System.currentTimeMillis()
     val time = (end - start).toDouble / 1000.0
 
-    (time, 0.0, 0.0)
+    Map("time" -> time)
   }
 }
 
