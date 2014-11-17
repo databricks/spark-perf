@@ -45,7 +45,7 @@ object MLlibTestsBuild extends Build {
         case PathList("application.conf", xs@_*) => MergeStrategy.concat
         case _ => MergeStrategy.first
       }
-    )).aggregate(onepointone).dependsOn(onepointone) //aggregate(onepointoh, onepointone, onepointtwo).dependsOn(onepointoh, onepointone, onepointtwo)
+    )).aggregate(onepointtwo).dependsOn(onepointtwo) //aggregate(onepointoh, onepointone, onepointtwo).dependsOn(onepointoh, onepointone, onepointtwo)
 
   lazy val onepointtwo = Project(
     "onepointtwo",

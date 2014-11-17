@@ -1,8 +1,12 @@
 package mllib.perf.onepointoh
 
-import mllib.perf.onepointoh.util.DataGenerator
+import org.json4s.JsonAST.JValue
+import org.json4s.JsonDSL._
+
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
+
+import mllib.perf.onepointoh.util.DataGenerator
 
 /** Parent class for linear algebra tests which run on a large dataset.
   * Generated this way so that SVD / PCA can be added easily
@@ -30,7 +34,7 @@ abstract class LinearAlgebraTests(sc: SparkContext) extends PerfTest {
     rdd = DataGenerator.generateDistributedSquareMatrix(sc, m, n, numPartitions, seed)
   }
 
-  override def run(): (Double, Double, Double) = {
+  override def run(): JValue = {
     val rank = intOptionValue(RANK)
 
     val start = System.currentTimeMillis()
@@ -38,7 +42,7 @@ abstract class LinearAlgebraTests(sc: SparkContext) extends PerfTest {
     val end = System.currentTimeMillis()
     val time = (end - start).toDouble / 1000.0
 
-    (time, 0.0, 0.0)
+    Map("time" -> time)
   }
 }
 
@@ -62,5 +66,3 @@ class ColumnSummaryStatisticsTest(sc: SparkContext) extends LinearAlgebraTests(s
     data.computeColumnSummaryStatistics()
   }
 }
-
-

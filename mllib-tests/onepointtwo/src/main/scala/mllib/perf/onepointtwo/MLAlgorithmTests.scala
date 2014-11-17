@@ -577,7 +577,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
           RandomForest.trainRegressor(rdd, categoricalFeaturesInfo, numTrees, featureSubsetStrategy,
             "variance", treeDepth, maxBins, this.getRandomSeed)
         case "GradientBoosting" =>
-          var boostingStrategy = BoostingStrategy.defaultParams("regression")
+          var boostingStrategy = BoostingStrategy.defaultParams("Regression")
           boostingStrategy.weakLearnerParams.setCategoricalFeaturesInfo(categoricalFeaturesInfo)
           boostingStrategy.setNumIterations(numTrees)
           boostingStrategy.weakLearnerParams.setImpurity(Variance)
@@ -592,7 +592,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
           RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees,
             featureSubsetStrategy, "gini", treeDepth, maxBins, this.getRandomSeed)
         case "GradientBoosting" =>
-          var boostingStrategy = BoostingStrategy.defaultParams("classification")
+          var boostingStrategy = BoostingStrategy.defaultParams("Classification")
           boostingStrategy.weakLearnerParams.setNumClassesForClassification(labelType)
           boostingStrategy.weakLearnerParams.setCategoricalFeaturesInfo(categoricalFeaturesInfo)
           boostingStrategy.setNumIterations(numTrees)

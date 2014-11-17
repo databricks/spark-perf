@@ -1,6 +1,8 @@
 package mllib.perf.onepointoh
 
-import mllib.perf.onepointoh.util.DataGenerator
+import org.json4s.JsonDSL._
+import org.json4s.JsonAST._
+
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.mllib.classification._
@@ -14,6 +16,8 @@ import org.apache.spark.mllib.tree.configuration.QuantileStrategy
 import org.apache.spark.mllib.tree.impurity.{Gini, Variance}
 import org.apache.spark.mllib.tree.model.DecisionTreeModel
 import org.apache.spark.rdd.RDD
+
+import mllib.perf.onepointoh.util.DataGenerator
 
 /** Parent class for tests which run on a large dataset. */
 abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends PerfTest {
@@ -33,15 +37,18 @@ abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends Per
   var rdd: RDD[LabeledPoint] = _
   var testRdd: RDD[LabeledPoint] = _
 
-  override def run(): (Double, Double, Double) = {
-    val start = System.currentTimeMillis()
+  override def run(): JValue = {
+    var start = System.currentTimeMillis()
     val model = runTest(rdd)
-    val end = System.currentTimeMillis()
-    val time = (end - start).toDouble / 1000.0
+    val trainingTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
-    val metricOnTrain = validate(model, rdd)
-    val metric = validate(model, testRdd)
-    (time, metricOnTrain, metric)
+    start = System.currentTimeMillis()
+    val trainingMetric = validate(model, rdd)
+    val testTime = (System.currentTimeMillis() - start).toDouble / 1000.0
+
+    val testMetric = validate(model, testRdd)
+    Map("trainingTime" -> trainingTime, "testTime" -> testTime,
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
   }
 
   /**
@@ -226,7 +233,7 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
 
 abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
 
-  def runTest(rdd: RDD[Rating], numIterations: Int, rank: Int): MatrixFactorizationModel
+  def runTest(rdd: RDD[Rating]): MatrixFactorizationModel
 
   val NUM_USERS =    ("num-users",   "number of users for recommendation tests")
   val NUM_PRODUCTS = ("num-products", "number of features of each example for recommendation tests")
@@ -255,7 +262,7 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
 
     val data = DataGenerator.generateRatings(sc, numUsers, numProducts,
-      math.ceil(numRatings*1.25).toLong, implicitRatings,numPartitions,seed)
+      math.ceil(numRatings * 1.25).toLong, implicitRatings,numPartitions,seed)
 
     rdd = data._1.cache()
     testRdd = data._2
@@ -266,8 +273,8 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
   }
 
   def validate(model: MatrixFactorizationModel,
-               data: RDD[Rating],
-               implicitPrefs: Boolean): Double = {
+               data: RDD[Rating]): Double = {
+    val implicitPrefs: Boolean = booleanOptionValue(IMPLICIT)
     val predictions: RDD[Rating] = model.predict(data.map(x => (x.user, x.product)))
     val predictionsAndRatings: RDD[(Double, Double)] = predictions.map{ x =>
       def mapPredictedRating(r: Double) = if (implicitPrefs) math.max(math.min(r, 1.0), 0.0) else r
@@ -277,26 +284,24 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     math.sqrt(predictionsAndRatings.map(x => (x._1 - x._2) * (x._1 - x._2)).mean())
   }
 
-  override def run(): (Double, Double, Double) = {
-    val numIterations: Int = intOptionValue(NUM_ITERATIONS)
-    val rank: Int = intOptionValue(RANK)
-    val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
+  override def run(): JValue = {
+    var start = System.currentTimeMillis()
+    val model = runTest(rdd)
+    val trainingTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
-    val start = System.currentTimeMillis()
-    val model = runTest(rdd, numIterations, rank)
-    val end = System.currentTimeMillis()
-    val time = (end - start).toDouble / 1000.0
+    start = System.currentTimeMillis()
+    val trainingMetric = validate(model, rdd)
+    val testTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
-    val trainError = validate(model, rdd, implicitRatings)
-    val testError = validate(model, testRdd, implicitRatings)
-    (time, trainError, testError)
-
+    val testMetric = validate(model, testRdd)
+    Map("trainingTime" -> trainingTime, "testTime" -> testTime,
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
   }
 }
 
 abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
 
-  def runTest(rdd: RDD[Vector], numIterations: Int, numCenters: Int): KMeansModel
+  def runTest(rdd: RDD[Vector]): KMeansModel
 
   val NUM_POINTS =    ("num-points",   "number of points for clustering tests")
   val NUM_COLUMNS =   ("num-columns",   "number of columns for each point for clustering tests")
@@ -338,18 +343,18 @@ abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
     println("Num Examples: " + rdd.count())
   }
 
-  override def run(): (Double, Double, Double) = {
-    val numIterations: Int = intOptionValue(NUM_ITERATIONS)
-    val k: Int = intOptionValue(NUM_CENTERS)
+  override def run(): JValue = {
+    var start = System.currentTimeMillis()
+    val model = runTest(rdd)
+    val trainingTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
-    val start = System.currentTimeMillis()
-    val model = runTest(rdd, numIterations, k)
-    val end = System.currentTimeMillis()
-    val time = (end - start).toDouble / 1000.0
-    val trainError = validate(model, rdd)
-    val testError = validate(model, testRdd)
+    start = System.currentTimeMillis()
+    val trainingMetric = validate(model, rdd)
+    val testTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
-    (time, trainError, testError)
+    val testMetric = validate(model, testRdd)
+    Map("trainingTime" -> trainingTime, "testTime" -> testTime,
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
   }
 }
 
@@ -407,11 +412,11 @@ class NaiveBayesTest(sc: SparkContext)
 
 // Recommendation
 class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
-  override def runTest(rdd: RDD[Rating],
-                       numIterations: Int,
-                       rank: Int): MatrixFactorizationModel = {
+  override def runTest(rdd: RDD[Rating]): MatrixFactorizationModel = {
+    val numIterations: Int = intOptionValue(NUM_ITERATIONS)
+    val rank: Int = intOptionValue(RANK)
     val regParam = doubleOptionValue(REG_PARAM)
-    val seed = intOptionValue(RANDOM_SEED)+12
+    val seed = intOptionValue(RANDOM_SEED) + 12
 
     new ALS().setIterations(numIterations).setRank(rank).setSeed(seed).setLambda(regParam).run(rdd)
   }
@@ -419,8 +424,10 @@ class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
 
 // Clustering
 class KMeansTest(sc: SparkContext) extends ClusteringTests(sc) {
-  override def runTest(rdd: RDD[Vector], numIterations: Int, numCenters: Int): KMeansModel = {
-    KMeans.train(rdd, numCenters, numIterations)
+  override def runTest(rdd: RDD[Vector]): KMeansModel = {
+    val numIterations: Int = intOptionValue(NUM_ITERATIONS)
+    val k: Int = intOptionValue(NUM_CENTERS)
+    KMeans.train(rdd, k, numIterations)
   }
 }
 
