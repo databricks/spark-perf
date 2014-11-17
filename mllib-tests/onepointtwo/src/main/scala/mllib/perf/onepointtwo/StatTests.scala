@@ -34,12 +34,10 @@ abstract class StatTests[T](sc: SparkContext) extends PerfTest {
   addOptionsToParser()
 
   override def run(): JValue = {
-
     val start = System.currentTimeMillis()
     runTest(rdd)
     val end = System.currentTimeMillis()
     val time = (end - start).toDouble / 1000.0
-
     Map("time" -> time)
   }
 }

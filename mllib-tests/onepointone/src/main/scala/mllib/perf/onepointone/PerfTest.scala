@@ -1,7 +1,12 @@
 package mllib.perf.onepointone
 
-import org.apache.spark.Logging
+import scala.collection.JavaConverters._
+
 import joptsimple.{OptionSet, OptionParser}
+
+import org.json4s._
+
+import org.apache.spark.Logging
 
 abstract class PerfTest extends Logging {
 
@@ -30,8 +35,31 @@ abstract class PerfTest extends Logging {
 
   def createInputData(seed: Long)
 
-  /** Runs the test and returns a series of results, along with values of any parameters */
-  def run(): (Double, Double, Double)
+  /**
+   * Runs the test and returns a JSON object that captures performance metrics, such as time taken,
+   * and values of any parameters.
+   *
+   * The rendered JSON will look like this (except it will be minified):
+   *
+   *    {
+   *       "options": {
+   *         "num-partitions": "10",
+   *         "unique-values": "10",
+   *         ...
+   *       },
+   *       "results": [
+   *         {
+   *           "trainingTime": 0.211,
+   *           "trainingMetric": 98.1,
+   *           ...
+   *         },
+   *         ...
+   *       ]
+   *     }
+   *
+   * @return metrics from run (e.g. ("time" -> time)
+   *  */
+  def run(): JValue
 
   val parser = new OptionParser()
   var optionSet: OptionSet = _
@@ -79,4 +107,14 @@ abstract class PerfTest extends Logging {
 
   def longOptionValue(option: (String, String)) =
     optionSet.valueOf(option._1).asInstanceOf[Long]
+
+  def getOptions: Map[String, String] = {
+    optionSet.asMap().asScala.flatMap { case (spec, values) =>
+      if (spec.options().size() == 1 && values.size() == 1) {
+        Some((spec.options().iterator().next(), values.iterator().next().toString))
+      } else {
+        None
+      }
+    }.toMap
+  }
 }

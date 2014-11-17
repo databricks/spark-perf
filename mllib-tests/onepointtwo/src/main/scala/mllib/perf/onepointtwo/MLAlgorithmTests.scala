@@ -274,7 +274,7 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
 
     val data = DataGenerator.generateRatings(sc, numUsers, numProducts,
-      math.ceil(numRatings*1.25).toLong, implicitRatings,numPartitions,seed)
+      math.ceil(numRatings * 1.25).toLong, implicitRatings,numPartitions,seed)
 
     rdd = data._1.cache()
     testRdd = data._2
@@ -449,8 +449,6 @@ class KMeansTest(sc: SparkContext) extends ClusteringTests(sc) {
  */
 abstract class DecisionTreeTests(sc: SparkContext)
   extends RegressionAndClassificationTests[WeightedEnsembleModel](sc) {
-
-  def runTest(rdd: RDD[LabeledPoint]): WeightedEnsembleModel
 
   val TEST_DATA_FRACTION =
     ("test-data-fraction",  "fraction of data to hold out for testing (ignored if given training and test dataset)")

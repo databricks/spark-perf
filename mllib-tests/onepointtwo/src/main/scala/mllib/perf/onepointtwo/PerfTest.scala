@@ -115,12 +115,13 @@ abstract class PerfTest extends Logging {
   def optionValue[T](option: String) =
     optionSet.valueOf(option).asInstanceOf[T]
 
-  def getOptions: Map[String, String] = optionSet.asMap().asScala.flatMap { case (spec, values) =>
-    if (spec.options().size() == 1 && values.size() == 1) {
-      Some((spec.options().iterator().next(), values.iterator().next().toString))
-    } else {
-      None
-    }
-  }.toMap
-
+  def getOptions: Map[String, String] = {
+    optionSet.asMap().asScala.flatMap { case (spec, values) =>
+      if (spec.options().size() == 1 && values.size() == 1) {
+        Some((spec.options().iterator().next(), values.iterator().next().toString))
+      } else {
+        None
+      }
+    }.toMap
+  }
 }
