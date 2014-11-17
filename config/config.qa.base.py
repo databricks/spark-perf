@@ -465,9 +465,18 @@ MLLIB_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
      # The number of top singular values wanted for SVD and PCA
      OptionSet("rank", [50], can_scale=True)
 ]
+# Linear Algebra Tests which take more time (slightly smaller settings) #
+MLLIB_BIG_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
+    # The number of rows for the matrix
+    OptionSet("num-rows", [800000], can_scale=True),
+    # The number of columns for the matrix
+    OptionSet("num-cols", [800], can_scale=True),
+    # The number of top singular values wanted for SVD and PCA
+    OptionSet("rank", [40], can_scale=True)
+]
 
 MLLIB_TESTS += [("svd", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_LINALG_TEST_OPTS)]
+    COMMON_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_BIG_LINALG_TEST_OPTS)]
 
 MLLIB_TESTS += [("pca", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("pca")] + MLLIB_LINALG_TEST_OPTS)]
