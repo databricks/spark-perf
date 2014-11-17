@@ -362,8 +362,11 @@ MLLIB_TESTS += [("glm-classification", "mllib.perf." + MLLIB_SPARK_VERSION_STR +
     COMMON_JAVA_OPTS, [ConstantOption("glm-classification")] +
     MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
 
-# Naive Bayes piggy-backs on classification for data generation.
-NAIVE_BAYES_TEST_OPTS = MLLIB_CLASSIFICATION_TEST_OPTS + [
+NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    # Expected fraction of examples which are negative
+    OptionSet("per-negative", [0.3]),
+    # The scale factor for the noise in feature values
+    OptionSet("scale-factor", [1.0]),
     # Naive Bayes smoothing lambda.
     OptionSet("nb-lambda", [1.0])
 ]

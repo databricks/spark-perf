@@ -120,7 +120,7 @@ class GLMRegressionTest(GLMTest):
         :return:  Trained model to be passed to test.
         """
         options = self.options
-        if options.loss == "L2":
+        if options.loss == "l2":
             if options.optimizer == "sgd":
                 return LinearRegressionWithSGD.train(data=rdd,
                                                      iterations=options.num_iterations,
