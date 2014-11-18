@@ -285,7 +285,7 @@ MLLIB_TESTS = []
 
 # Set this to 1.0, 1.1, 1.2 to test MLlib with a particular Spark version.
 # Note: You should also edit the dependency in MLlibTestsBuild.scala.
-MLLIB_SPARK_VERSION = 1.1
+MLLIB_SPARK_VERSION = 1.2
 if MLLIB_SPARK_VERSION == 1.0:
     MLLIB_SPARK_VERSION_STR = "onepointoh"
 elif MLLIB_SPARK_VERSION == 1.1:
@@ -535,7 +535,7 @@ SPARK_SKIP_TESTS = True
 STREAMING_SKIP_TESTS = True
 MLLIB_SKIP_TESTS = False
 PYSPARK_CORE_SKIP_TESTS = True
-PYSPARK_MLLIB_SKIP_TESTS = False
+PYSPARK_MLLIB_SKIP_TESTS = True
 
 # Skip building and packaging project tests (requires respective perf tests to already be packaged
 # in the project's target directory).

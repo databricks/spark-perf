@@ -316,9 +316,9 @@ MLLIB_COMMON_OPTS = COMMON_OPTS + [
 # Regression and Classification Tests #
 MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # The number of rows or examples
-    OptionSet("num-examples", [1000000], can_scale=True),
+    OptionSet("num-examples", [300000], can_scale=True),
     # The number of features per example
-    OptionSet("num-features", [10000], can_scale=True)
+    OptionSet("num-features", [3000], can_scale=True)
 ]
 
 # Generalized Linear Model (GLM) Tests #
@@ -542,9 +542,9 @@ SPARK_SKIP_PREP = False
 
 SPARK_SKIP_TESTS = True
 STREAMING_SKIP_TESTS = True
-MLLIB_SKIP_TESTS = False
+MLLIB_SKIP_TESTS = True
 PYSPARK_CORE_SKIP_TESTS = True
-PYSPARK_MLLIB_SKIP_TESTS = True
+PYSPARK_MLLIB_SKIP_TESTS = False
 
 # Skip building and packaging project tests (requires respective perf tests to already be packaged
 # in the project's target directory).
