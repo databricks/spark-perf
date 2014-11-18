@@ -295,6 +295,12 @@ elif MLLIB_SPARK_VERSION == 1.2:
 else:
     raise Exception("Bad MLLIB_SPARK_VERSION: %r" % MLLIB_SPARK_VERSION)
 
+if MLLIB_SPARK_VERSION >= 1.1:
+    COMMON_JAVA_OPTS = COMMON_JAVA_OPTS + [
+        # Shuffle manager: SORT, HASH
+        JavaOptionSet("spark.shuffle.manager", ["HASH"])
+    ]
+
 # The following options value sets are shared among all tests of
 # operations on MLlib algorithms.
 MLLIB_COMMON_OPTS = COMMON_OPTS + [
