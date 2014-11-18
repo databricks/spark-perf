@@ -96,7 +96,6 @@ class PerfTestSuite(object):
                     Popen(cmd, shell=True, env=test_env).wait()
                     result_string = cls.process_output(config, short_name, opt_list,
                                                        stdout_filename, stderr_filename)
-                    print "result_string AGAIN: %r" % result_string
                     print(OUTPUT_DIVIDER_STRING)
                     print("\nResult: " + result_string)
                     print(OUTPUT_DIVIDER_STRING)

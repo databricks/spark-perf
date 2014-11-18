@@ -2,15 +2,12 @@ import json
 import numpy
 import time
 
-from py4j.java_gateway import java_import
-
 import pyspark
 from pyspark.mllib.classification import *
 from pyspark.mllib.regression import *
 from pyspark.mllib.recommendation import *
 
 from mllib_data import *
-from mllib_api import _java2py
 
 class PerfTest:
     def __init__(self, sc):
@@ -167,9 +164,14 @@ class ALSTest(PerfTest):
         """
         implicit_prefs = self.options.implicit_prefs
         predictions = model.predictAll(rdd.map(lambda r: (r[0], r[1])))
+        sparkVersion = float(str(sc.version)[:3])
         def mapPrediction(r):
-            mappedRating = max(min(r.rating, 1.0), 0.0) if implicit_prefs else r.rating
-            return ((r.user, r.product), mappedRating)
+            if sparkVersion <= 1.1:
+                (user, product, rating) = (r[0], r[1], r[2])
+            else:
+                (user, product, rating) = (r.user, r.product, r.rating)
+            mappedRating = max(min(rating, 1.0), 0.0) if implicit_prefs else rating
+            return ((user, product), mappedRating)
         predictionsAndRatings = \
             predictions.map(mapPrediction).join(rdd.map(lambda r: ((r[0], r[1]), r[2]))).values()
         return numpy.sqrt(predictionsAndRatings.map(lambda ab: numpy.square(ab[0] - ab[1])).mean())
@@ -248,8 +250,7 @@ if __name__ == "__main__":
         test = globals()[name](sc)
         test.initialize(options)
         test.createInputData()
-        #java_import(sc._jvm, "mllib.perf.onepointtwo.util.PythonMLlibPerfAPI")
-        javaSystemProperties = _java2py(sc, sc._jvm.System.getProperties())
+        javaSystemProperties = sc._jvm.System.getProperties()
         systemProperties = {}
         for k in javaSystemProperties.keys():
             if type(javaSystemProperties[k]) != unicode:
