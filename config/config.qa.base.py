@@ -295,8 +295,9 @@ elif MLLIB_SPARK_VERSION == 1.2:
 else:
     raise Exception("Bad MLLIB_SPARK_VERSION: %r" % MLLIB_SPARK_VERSION)
 
+MLLIB_JAVA_OPTS = COMMON_JAVA_OPTS
 if MLLIB_SPARK_VERSION >= 1.1:
-    COMMON_JAVA_OPTS = COMMON_JAVA_OPTS + [
+    MLLIB_JAVA_OPTS = MLLIB_JAVA_OPTS + [
         # Shuffle manager: SORT, HASH
         JavaOptionSet("spark.shuffle.manager", ["HASH"])
     ]
@@ -348,7 +349,7 @@ MLLIB_GLM_REGRESSION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
 ]
 
 MLLIB_TESTS += [("glm-regression", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("glm-regression")] + MLLIB_GLM_REGRESSION_TEST_OPTS)]
+    MLLIB_JAVA_OPTS, [ConstantOption("glm-regression")] + MLLIB_GLM_REGRESSION_TEST_OPTS)]
 
 # Classification Tests #
 MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
@@ -365,7 +366,7 @@ MLLIB_GLM_CLASSIFICATION_TEST_OPTS = MLLIB_CLASSIFICATION_TEST_OPTS + [
 ]
 
 MLLIB_TESTS += [("glm-classification", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("glm-classification")] +
+    MLLIB_JAVA_OPTS, [ConstantOption("glm-classification")] +
     MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
 
 NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
@@ -378,7 +379,7 @@ NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
 ]
 
 MLLIB_TESTS += [("naive-bayes", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("naive-bayes")] +
+    MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
     NAIVE_BAYES_TEST_OPTS)]
 
 # Decision Trees #
@@ -422,7 +423,7 @@ if MLLIB_SPARK_VERSION >= 1.2:
     ]
 
 MLLIB_TESTS += [("decision-tree", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("decision-tree")] +
+    MLLIB_JAVA_OPTS, [ConstantOption("decision-tree")] +
     MLLIB_DECISION_TREE_TEST_OPTS)]
 
 # Recommendation Tests #
@@ -444,7 +445,7 @@ MLLIB_RECOMMENDATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
 ]
 
 #MLLIB_TESTS += [("als", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("als")] +
+#    MLLIB_JAVA_OPTS, [ConstantOption("als")] +
 #    MLLIB_RECOMMENDATION_TEST_OPTS)]
 
 # Clustering Tests #
@@ -460,7 +461,7 @@ MLLIB_CLUSTERING_TEST_OPTS = MLLIB_COMMON_OPTS + [
 ]
 
 MLLIB_TESTS += [("kmeans", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("kmeans")] + MLLIB_CLUSTERING_TEST_OPTS)]
+    MLLIB_JAVA_OPTS, [ConstantOption("kmeans")] + MLLIB_CLUSTERING_TEST_OPTS)]
 
 # Linear Algebra Tests #
 MLLIB_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
@@ -482,13 +483,13 @@ MLLIB_BIG_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
 ]
 
 MLLIB_TESTS += [("svd", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_BIG_LINALG_TEST_OPTS)]
+    MLLIB_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_BIG_LINALG_TEST_OPTS)]
 
 MLLIB_TESTS += [("pca", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("pca")] + MLLIB_LINALG_TEST_OPTS)]
+    MLLIB_JAVA_OPTS, [ConstantOption("pca")] + MLLIB_LINALG_TEST_OPTS)]
 
 MLLIB_TESTS += [("summary-statistics", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("summary-statistics")] +
+    MLLIB_JAVA_OPTS, [ConstantOption("summary-statistics")] +
     MLLIB_LINALG_TEST_OPTS)]
 
 # Statistic Toolkit Tests #
@@ -496,27 +497,27 @@ if MLLIB_SPARK_VERSION >= 1.1:
     MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS
 
     MLLIB_TESTS += [("pearson", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        COMMON_JAVA_OPTS, [ConstantOption("pearson"),
+        MLLIB_JAVA_OPTS, [ConstantOption("pearson"),
         OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [1000], can_scale=True)] +
         MLLIB_STATS_TEST_OPTS)]
 
     MLLIB_TESTS += [("spearman", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        COMMON_JAVA_OPTS, [ConstantOption("spearman"),
+        MLLIB_JAVA_OPTS, [ConstantOption("spearman"),
         OptionSet("num-rows", [5000000], can_scale=True), OptionSet("num-cols", [100], can_scale=True)] +
         MLLIB_STATS_TEST_OPTS)]
 
     MLLIB_TESTS += [("chi-sq-feature", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        COMMON_JAVA_OPTS, [ConstantOption("chi-sq-feature"),
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-feature"),
         OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [500], can_scale=True)] +
         MLLIB_STATS_TEST_OPTS)]
 
     MLLIB_TESTS += [("chi-sq-gof", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        COMMON_JAVA_OPTS, [ConstantOption("chi-sq-gof"),
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-gof"),
         OptionSet("num-rows", [50000000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
         MLLIB_STATS_TEST_OPTS)]
 
     MLLIB_TESTS += [("chi-sq-mat", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        COMMON_JAVA_OPTS, [ConstantOption("chi-sq-mat"),
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-mat"),
         OptionSet("num-rows", [20000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
         MLLIB_STATS_TEST_OPTS)]
 
@@ -524,15 +525,15 @@ if MLLIB_SPARK_VERSION >= 1.1:
 PYSPARK_MLLIB_TESTS = []
 
 PYSPARK_MLLIB_TESTS += [("python-glm-classification", "mllib_tests.py", SCALE_FACTOR,
-                         COMMON_JAVA_OPTS, [ConstantOption("GLMClassificationTest")] +
+                         MLLIB_JAVA_OPTS, [ConstantOption("GLMClassificationTest")] +
                          MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
 
 PYSPARK_MLLIB_TESTS += [("python-glm-regression", "mllib_tests.py", SCALE_FACTOR,
-                         COMMON_JAVA_OPTS, [ConstantOption("GLMRegressionTest")] +
+                         MLLIB_JAVA_OPTS, [ConstantOption("GLMRegressionTest")] +
                          MLLIB_GLM_REGRESSION_TEST_OPTS)]
 
 #PYSPARK_MLLIB_TESTS += [("python-als", "mllib_tests.py", SCALE_FACTOR,
-#                         COMMON_JAVA_OPTS, [ConstantOption("ALSTest")] +
+#                         MLLIB_JAVA_OPTS, [ConstantOption("ALSTest")] +
 #                         MLLIB_RECOMMENDATION_TEST_OPTS)]
 
 
