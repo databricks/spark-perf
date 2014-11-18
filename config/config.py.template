@@ -525,9 +525,18 @@ MLLIB_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
      # The number of top singular values wanted for SVD and PCA
      OptionSet("rank", [50], can_scale=True)
 ]
+# Linear Algebra Tests which take more time (slightly smaller settings) #
+MLLIB_BIG_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
+     # The number of rows for the matrix
+     OptionSet("num-rows", [800000], can_scale=True),
+     # The number of columns for the matrix
+     OptionSet("num-cols", [800], can_scale=True),
+     # The number of top singular values wanted for SVD and PCA
+     OptionSet("rank", [40], can_scale=True)
+]
 
 MLLIB_TESTS += [("svd", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_LINALG_TEST_OPTS)]
+    COMMON_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_BIG_LINALG_TEST_OPTS)]
 
 MLLIB_TESTS += [("pca", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("pca")] + MLLIB_LINALG_TEST_OPTS)]
@@ -579,25 +588,6 @@ PYSPARK_MLLIB_TESTS += [("python-glm-regression", "mllib_tests.py", SCALE_FACTOR
 PYSPARK_MLLIB_TESTS += [("python-als", "mllib_tests.py", SCALE_FACTOR,
                          COMMON_JAVA_OPTS, [ConstantOption("ALSTest")] +
                          MLLIB_RECOMMENDATION_TEST_OPTS)]
-
-
-# Skip downloading and building Spark
-SPARK_SKIP_PREP = False
-
-#SPARK_SKIP_TESTS = False
-#STREAMING_SKIP_TESTS = False
-#MLLIB_SKIP_TESTS = False
-#PYSPARK_CORE_SKIP_TESTS = False
-#PYSPARK_MLLIB_SKIP_TESTS = False
-
-# Skip building and packaging project tests (requires respective perf tests to already be packaged
-# in the project's target directory).
-SPARK_SKIP_TEST_PREP = False
-STREAMING_SKIP_TEST_PREP = False
-MLLIB_SKIP_TEST_PREP = False
-
-# Skip warming up local disks (warm-up is only necesary on EC2).
-SKIP_DISK_WARMUP = True
 
 # Total number of bytes used to warm up each local directory.
 DISK_WARMUP_BYTES = 200 * 1024 * 1024

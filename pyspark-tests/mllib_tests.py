@@ -1,5 +1,8 @@
+import json
 import numpy
 import time
+
+from py4j.java_gateway import java_import
 
 import pyspark
 from pyspark.mllib.classification import *
@@ -7,7 +10,7 @@ from pyspark.mllib.regression import *
 from pyspark.mllib.recommendation import *
 
 from mllib_data import *
-
+from mllib_api import _java2py
 
 class PerfTest:
     def __init__(self, sc):
@@ -245,12 +248,42 @@ if __name__ == "__main__":
         test = globals()[name](sc)
         test.initialize(options)
         test.createInputData()
+        #java_import(sc._jvm, "mllib.perf.onepointtwo.util.PythonMLlibPerfAPI")
+        javaSystemProperties = _java2py(sc, sc._jvm.System.getProperties())
+        systemProperties = {}
+        for k in javaSystemProperties.keys():
+            if type(javaSystemProperties[k]) != unicode:
+                print "type(javaSystemProperties[k]) != unicode"
+                print "\t type(javaSystemProperties[k]) = %r" % type(javaSystemProperties[k])
+            systemProperties[k] = javaSystemProperties[k]
         ts = test.run()
+        if len(ts) != test.options.num_trials:
+            raise Exception("mllib_tests.py FAILED (got %d results instead of %d)" %
+                            (len(ts), test.options.num_trials))
         results = []
-        print "Results from each trial:"
-        print "trial\ttrainTime\ttestTime\ttrainMetric\ttestMetric"
-        for trial in range(test.options.num_trials):
-            t = ts[trial]
-            print "%d\t%.3f\t%.3f\t%.3f\t%.3f" % (trial, t[0], t[1], t[2], t[3])
-            results.append("%.3f;%.3f;%.3f;%.3f" % (t[0], t[1], t[2], t[3]))
-        print "results: " + ",".join(results)
+        if 'time' in ts[0]:
+            # results include: time
+            print "Results from each trial:"
+            print "trial\ttime"
+            for trial in range(test.options.num_trials):
+                t = ts[trial]
+                print "%d\t%.3f" % (trial, t[0])
+                results.append({"time": t[0]})
+        else:
+            # results include: trainingTime, testTime, trainingMetric, testMetric
+            print "Results from each trial:"
+            print "trial\ttrainingTime\ttestTime\ttrainingMetric\ttestMetric"
+            for trial in range(test.options.num_trials):
+                t = ts[trial]
+                print "%d\t%.3f\t%.3f\t%.3f\t%.3f" % (trial, t[0], t[1], t[2], t[3])
+                results.append({"trainingTime": t[0], "testTime": t[1],
+                                "trainingMetric": t[2], "testMetric": t[3]})
+        # JSON results
+        jsonResults = json.dumps({"testName": name,
+                                  "options": vars(options),
+                                  "sparkConf": sc._conf.getAll(),
+                                  "sparkVersion": sc.version,
+                                  "systemProperties": systemProperties,
+                                  "results": results},
+                                 separators=(',', ':'))  # use separators for compact encoding
+        print "results: " + jsonResults

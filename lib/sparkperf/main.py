@@ -46,12 +46,11 @@ run_pyspark_mllib_tests = config.RUN_PYSPARK_MLLIB_TESTS and (len(config.PYSPARK
 run_tests = run_spark_tests or run_pyspark_tests or run_streaming_tests or run_mllib_tests \
     or run_pyspark_mllib_tests
 
-
 # Only build the perf test sources that will be used.
 should_prep_spark = not config.USE_CLUSTER_SPARK and config.PREP_SPARK
 should_prep_spark_tests = run_spark_tests and config.PREP_SPARK_TESTS
 should_prep_streaming_tests = run_streaming_tests and config.PREP_STREAMING_TESTS
-should_prep_mllib_tests = run_mllib_tests and not config.PREP_MLLIB_TESTS
+should_prep_mllib_tests = (run_mllib_tests or run_pyspark_mllib_tests) and config.PREP_MLLIB_TESTS
 
 # Do disk warmup only if there are tests to run.
 should_warmup_disk = run_tests and config.DISK_WARMUP

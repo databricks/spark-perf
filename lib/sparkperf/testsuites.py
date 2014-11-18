@@ -96,6 +96,7 @@ class PerfTestSuite(object):
                     Popen(cmd, shell=True, env=test_env).wait()
                     result_string = cls.process_output(config, short_name, opt_list,
                                                        stdout_filename, stderr_filename)
+                    print "result_string AGAIN: %r" % result_string
                     print(OUTPUT_DIVIDER_STRING)
                     print("\nResult: " + result_string)
                     print(OUTPUT_DIVIDER_STRING)
@@ -191,12 +192,7 @@ class StreamingTests(JVMPerfTestSuite):
         return str(result_string)
 
 
-class MLlibTests(JVMPerfTestSuite):
-    test_jar_path = "%s/mllib-tests/target/spark-perf-tests-assembly.jar" % PROJ_DIR
-
-    @classmethod
-    def build(cls):
-        run_cmd("cd %s/mllib-tests; %s clean assembly" % (PROJ_DIR, SBT_CMD))
+class MLlibTestHelper(object):
 
     @classmethod
     def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
@@ -235,9 +231,9 @@ class MLlibTests(JVMPerfTestSuite):
                                  stats_for_results(trainingTimes)
                 result_string += "Test time: %s, %.3f, %s, %s, %s\n" % \
                                  stats_for_results(testTimes)
-                result_string += "Training Set Metric: %s, %.3f, %s, %s, %s\n" %\
+                result_string += "Training Set Metric: %s, %.3f, %s, %s, %s\n" % \
                                  stats_for_results(trainingMetrics)
-                result_string += "Test Set Metric: %s, %.3f, %s, %s, %s" %\
+                result_string += "Test Set Metric: %s, %.3f, %s, %s, %s" % \
                                  stats_for_results(testMetrics)
             else:
                 # non-prediction problem
@@ -252,45 +248,35 @@ class MLlibTests(JVMPerfTestSuite):
         return result_string
 
 
-class PythonMLlibTests(PerfTestSuite):
+class MLlibTests(JVMPerfTestSuite, MLlibTestHelper):
+    test_jar_path = "%s/mllib-tests/target/spark-perf-tests-assembly.jar" % PROJ_DIR
+
+    @classmethod
+    def build(cls):
+        run_cmd("cd %s/mllib-tests; %s clean assembly" % (PROJ_DIR, SBT_CMD))
+
+    @classmethod
+    def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
+        return MLlibTestHelper.process_output(config, short_name, opt_list,
+                                              stdout_filename, stderr_filename)
+
+
+class PythonMLlibTests(PerfTestSuite, MLlibTestHelper):
 
     @classmethod
     def get_spark_submit_cmd(cls, cluster, config, main_class_or_script, opt_list, stdout_filename,
                              stderr_filename):
         spark_submit = "%s/bin/spark-submit" % cluster.spark_home
         cmd = "%s --master %s pyspark-tests/%s %s 1>> %s 2>> %s" % (
-            spark_submit, config.SPARK_CLUSTER_URL, main_class_or_script, " ".join(opt_list),
+            spark_submit, config.SPARK_CLUSTER_URL,
+            main_class_or_script, " ".join(opt_list),
             stdout_filename, stderr_filename)
         return cmd
 
     @classmethod
     def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
-        with open(stdout_filename, "r") as stdout_file:
-            output = stdout_file.read()
-        results_token = "results: "
-        result = ""
-        if results_token not in output:
-            result = "FAILED"
-        else:
-            result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
-            result_list = result_line.replace(results_token, "").split(",")
-            err_msg = ("Expecting at least %s results "
-                       "but only found %s" % (config.IGNORED_TRIALS + 1, len(result_list)))
-            assert len(result_list) > config.IGNORED_TRIALS, err_msg
-            result_list = result_list[config.IGNORED_TRIALS:]
-            result += "Runtime: %s, %.3f, %s, %s, %s\n" % \
-                      stats_for_results([x.split(";")[0] for x in result_list])
-            result += "Test time: %s, %.3f, %s, %s, %s\n" % \
-                      stats_for_results([x.split(";")[1] for x in result_list])
-            result += "Train Set Metric: %s, %.3f, %s, %s, %s\n" % \
-                      stats_for_results([x.split(";")[2] for x in result_list])
-            result += "Test Set Metric: %s, %.3f, %s, %s, %s" % \
-                      stats_for_results([x.split(";")[3] for x in result_list])
-
-        result_string = "%s, %s\n%s" % (short_name, " ".join(opt_list), result)
-
-        sys.stdout.flush()
-        return result_string
+        return MLlibTestHelper.process_output(config, short_name, opt_list,
+                                              stdout_filename, stderr_filename)
 
 
 class PythonTests(PerfTestSuite):

@@ -496,7 +496,7 @@ if MLLIB_SPARK_VERSION >= 1.1:
 
     MLLIB_TESTS += [("spearman", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
         COMMON_JAVA_OPTS, [ConstantOption("spearman"),
-        OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [100], can_scale=True)] +
+        OptionSet("num-rows", [5000000], can_scale=True), OptionSet("num-cols", [100], can_scale=True)] +
         MLLIB_STATS_TEST_OPTS)]
 
     MLLIB_TESTS += [("chi-sq-feature", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
