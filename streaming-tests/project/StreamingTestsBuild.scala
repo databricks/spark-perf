@@ -20,7 +20,7 @@ object StreamingTestsBuild extends Build {
         "org.apache.spark" %% "spark-streaming" % "1.0.0" % "provided"
       ),
       test in assembly := {},
-      outputPath in assembly := file("target/spark-perf-tests-assembly.jar"),
+      outputPath in assembly := file("target/streaming-perf-tests-assembly.jar"),
       assemblyOption in assembly ~= { _.copy(includeScala = false) },
       mergeStrategy in assembly := {
         case PathList("META-INF", xs@_*) =>

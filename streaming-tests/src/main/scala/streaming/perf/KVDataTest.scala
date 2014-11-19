@@ -20,6 +20,7 @@ abstract class KVDataTest extends PerfTest {
   val UNIQUE_KEYS =      ("unique-keys",   "(approx) number of unique keys")
   val UNIQUE_VALUES =    ("unique-values", "(approx) number of unique values per key")
   val MEMORY_SERIALIZATION = ("memory-serialization", "whether memory-persisted data is serialized")
+  val USE_RECEIVER =     ("use-receiver", "false")
   //val KEY_LENGTH =       ("key-length",    "length of keys in characters")
   //val VALUE_LENGTH =     ("value-length",  "length of values in characters")
 
@@ -29,13 +30,14 @@ abstract class KVDataTest extends PerfTest {
   var uniqueKeys: Long = _
   var uniqueValues: Long = _
   var storageLevel: StorageLevel = _
+  var useReceiver: Boolean = _
 
   override def longOptions = super.longOptions ++
     Seq(NUM_STREAMS, RECORDS_PER_SEC, REDUCE_TASKS, UNIQUE_KEYS, UNIQUE_VALUES)
 
   override def stringOptions = super.stringOptions
 
-  override def booleanOptions = super.booleanOptions ++ Seq(MEMORY_SERIALIZATION)
+  override def booleanOptions = super.booleanOptions ++ Seq(MEMORY_SERIALIZATION, USE_RECEIVER)
 
   def run(): String = {
     numStreams = longOptionValue(NUM_STREAMS).toInt
@@ -47,6 +49,7 @@ abstract class KVDataTest extends PerfTest {
       case true => StorageLevel.MEMORY_ONLY_SER
       case false => StorageLevel.MEMORY_ONLY
     }
+    useReceiver = booleanOptionValue(USE_RECEIVER)
 
     val numBatches = (totalDurationSec * 1000 / batchDurationMs).toInt
     assert(
@@ -67,17 +70,16 @@ abstract class KVDataTest extends PerfTest {
     // run test
     ssc.start()
     val startTime = System.currentTimeMillis
-    Thread.sleep(totalDurationSec * 1000)
+    ssc.awaitTermination(totalDurationSec * 1000)
     ssc.stop()
     processResults(statsReportListener)
   }
 
   // Setup multiple input streams and union them
   def setupInputStreams(numStreams: Int): DStream[(String, String)] = {
-    val dataGenerators = (1 to numStreams).map(streamIndex =>
-      new DataGenerator(sc, batchDurationMs, recordsPerSec, uniqueKeys, uniqueValues, streamIndex))
-    val inputStreams = dataGenerators.map(dg =>
-      new CustomInputDStream[(String, String)](ssc, dg.generateRDD(_)))
+    val dataGenerators = (1 to numStreams).map { streamIndex => new DataGenerator(
+      ssc, batchDurationMs, recordsPerSec, uniqueKeys, uniqueValues, streamIndex, useReceiver, storageLevel) }
+    val inputStreams = dataGenerators.map(_.createInputDStream())
     ssc.union(inputStreams)
   }
 
@@ -91,13 +93,17 @@ object KVDataTest {
   // Generate statistics from the processing data
   def processResults(statsReportListener: StatsReportListener): String = {
     val processingDelays = statsReportListener.batchInfos.flatMap(_.processingDelay).map(_.toDouble / 1000.0)
-    val distrib = new Distribution(processingDelays.takeRight(processingDelays.size - IGNORED_BATCHES))
+    val distrib = new Distribution(processingDelays.takeRight(processingDelays.size - IGNORED_BATCHES).toArray)
     val statCounter = distrib.statCounter
-    val quantiles = Array(0,0.25,0.5,0.75,1.0)
+    val quantiles = Array(0,0.25,0.5,0.75,0.9, 0.95, 0.99, 1.0)
     val quantileValues = quantiles.zip(distrib.getQuantiles(quantiles)).toMap
-    val resultString = "count: %d, avg: %.3f s, stdev: %.3f s, min: %.3f s, 25%%: %.3f s, 50%%: %.3f s, 75%%: %.3f s, max: %.3f s".format(
-      processingDelays.size, statCounter.mean, statCounter.stdev, quantileValues(0), quantileValues(0.25), quantileValues(0.5),
-      quantileValues(0.75), quantileValues(1.0)
+    val formatString = "count: %d, avg: %.3f s, stdev: %.3f s, min: %.3f s, 25%%: %.3f s, 50%%: %.3f s, " +
+      "75%%: %.3f s, 90%%: %.3f s, 95%%: %.3f s, 99%%: %.3f s, max: %.3f s"
+    val resultString = formatString.format(
+      processingDelays.size, statCounter.mean, statCounter.stdev,
+      quantileValues(0), quantileValues(0.25), quantileValues(0.50),
+      quantileValues(0.75), quantileValues(0.90), quantileValues(0.95),
+      quantileValues(0.99), quantileValues(1.0)
     )
     resultString
   }

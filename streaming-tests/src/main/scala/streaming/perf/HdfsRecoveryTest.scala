@@ -24,7 +24,7 @@ class HdfsRecoveryTest extends PerfTest {
     val tempDataDirectory = hdfsUrl + "/temp/"
 
     // Create the file generator
-    val fileGenerator = new FileGenerator(ssc.sparkContext, dataDirectory, tempDataDirectory, maxRecordsPerFile, cleanerDelay)
+    val fileGenerator = new FileGenerator(dataDirectory, tempDataDirectory, maxRecordsPerFile, cleanerDelay)
     fileGenerator.initialize()
 
     // Setup computation
