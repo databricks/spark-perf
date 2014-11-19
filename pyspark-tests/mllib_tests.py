@@ -280,9 +280,12 @@ if __name__ == "__main__":
                 results.append({"trainingTime": t[0], "testTime": t[1],
                                 "trainingMetric": t[2], "testMetric": t[3]})
         # JSON results
+        sparkConfInfo = {} # convert to dict to match Scala JSON
+        for (a,b) in sc._conf.getAll():
+            sparkConfInfo[a] = b
         jsonResults = json.dumps({"testName": name,
                                   "options": vars(options),
-                                  "sparkConf": sc._conf.getAll(),
+                                  "sparkConf": sparkConfInfo,
                                   "sparkVersion": sc.version,
                                   "systemProperties": systemProperties,
                                   "results": results},
