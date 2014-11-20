@@ -43,6 +43,8 @@ class PredictionTest(PerfTest):
 
     def run(self):
         options = self.options
+        self.trainRDD.cache() # match Scala tests for caching before computing testTime
+        self.trainRDD.count()
         results = []
         for i in range(options.num_trials):
             # Train
@@ -201,6 +203,8 @@ class ALSTest(PerfTest):
         :return: List of [trainingTime, testTime, trainingMetric, testMetric] tuples
         """
         options = self.options
+        self.trainRDD.cache() # match Scala tests for caching before computing testTime
+        self.trainRDD.count()
         results = []
         for i in range(options.num_trials):
             r = self.runTest()
