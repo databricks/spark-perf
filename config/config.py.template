@@ -255,6 +255,9 @@ STREAMING_HDFS_RECOVERY_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_dura
 STREAMING_TESTS += [("basic", "streaming.perf.TestRunner", SCALE_FACTOR,
     STREAMING_COMMON_JAVA_OPTS, [ConstantOption("basic")] + STREAMING_COMMON_OPTS + streaming_batch_duration_opts(1000))] 
 
+STREAMING_TESTS += [("count", "streaming.perf.TestRunner", SCALE_FACTOR,
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("count")] + STREAMING_KEY_VAL_TEST_OPTS)]
+
 STREAMING_TESTS += [("state-by-key", "streaming.perf.TestRunner", SCALE_FACTOR,
     STREAMING_COMMON_JAVA_OPTS, [ConstantOption("state-by-key")] + STREAMING_KEY_VAL_TEST_OPTS)]
 

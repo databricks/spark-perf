@@ -70,7 +70,11 @@ abstract class KVDataTest extends PerfTest {
     // run test
     ssc.start()
     val startTime = System.currentTimeMillis
-    ssc.awaitTermination(totalDurationSec * 1000)
+    while (System.currentTimeMillis - startTime < totalDurationSec * 1000) {
+      ssc.awaitTermination(60 * 1000)
+      println(s"Time left: ${(System.currentTimeMillis - startTime) / 1000.0} seconds")
+    }
+                        
     ssc.stop()
     processResults(statsReportListener)
   }
@@ -119,6 +123,13 @@ abstract class WindowKVDataTest extends KVDataTest {
   override def run(): String = {
     windowDurationMs = longOptionValue(WINDOW_DURATION)
     super.run()
+  }
+}
+
+class CountTest extends KVDataTest {
+  // Setup the streamign computation
+  def setupOutputStream(inputStream: DStream[(String, String)]): DStream[_] = {
+    inputStream  // this stream will get automatically counted, see KVDataTest.run
   }
 }
 
