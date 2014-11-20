@@ -34,7 +34,7 @@ abstract class PerfTest {
 
   /** Initialize internal state based on arguments */
   def initialize(testName_ : String, otherArgs: Array[String]) {
-    // add all the options to parser
+    // Add all the options to parser
     longOptions.map{case (opt, desc) =>
       println("Registering long option " + opt)
       parser.accepts(opt, desc).withRequiredArg().ofType(classOf[Long]).required()
@@ -55,14 +55,16 @@ abstract class PerfTest {
     hdfsUrl = stringOptionValue(HDFS_URL)
     checkpointDirectory = hdfsUrl + "/checkpoint/"
     ssc = createContext()
-    ssc.checkpoint(checkpointDirectory)
-    sc = ssc.sparkContext
+    if (ssc != null) {
+      ssc.checkpoint(checkpointDirectory)
+      sc = ssc.sparkContext
+    }
   }
 
   /** Runs the test and returns a series of results, along with values of any parameters */
   def run(): String
 
-  protected def createContext() = {
+  protected def createContext(): StreamingContext = {
     val conf = new SparkConf().setAppName(testName)
     val sparkContext = new SparkContext(conf)    
     new StreamingContext(sparkContext, Milliseconds(batchDurationMs))

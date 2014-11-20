@@ -8,8 +8,14 @@ import java.util.Calendar
 import com.google.common.io.Files
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path, PathFilter}
+import org.apache.spark.Logging
 
-class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Long, cleanerDelay: Long) {
+class FileGenerator(
+    dataDir: String,
+    tempDataDir: String,
+    maxRecordsPerFile: Long,
+    cleanerDelay: Long
+  ) extends Logging {
 
   val MAX_TRIES = 100
   val MAX_KEYS = 1000
@@ -45,14 +51,14 @@ class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Lon
     deletingThread.setDaemon(true)
     generatingThread.start()
     deletingThread.start()
-    println("FileGenerator started")
+    logInfo("FileGenerator started")
   }
 
   /** Stop generating files */
   def stop() {
     generatingThread.interrupt()
     deletingThread.interrupt()
-    println("FileGenerator Interrupted")
+    logInfo("FileGenerator Interrupted")
   }
 
   /** Delete test directory */
@@ -78,9 +84,9 @@ class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Lon
           val finalFile = new Path(dataDir, "file-" + time + "-" + key + "-" + count)
           val generated = copyFile(localFile, finalFile)
           if (generated) {
-            println("Generated file #" + count + " at " + System.currentTimeMillis() + ": " + finalFile)
+            logInfo("Generated file #" + count + " at " + System.currentTimeMillis() + ": " + finalFile)
           } else {
-            println("Could not generate file #" + count + ": " + finalFile)
+            logError("Could not generate file #" + count + ": " + finalFile)
             System.exit(0)
           }
           Thread.sleep(INTERVAL)
@@ -88,9 +94,9 @@ class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Lon
       }
     } catch {
       case ie: InterruptedException =>
-        println("File generating thread interrupted")
+        logWarning("File generating thread interrupted")
       case e: Exception =>
-        println("Error generating files", e)
+        logError("Error generating files", e)
         System.exit(0)
     }
   }
@@ -102,7 +108,7 @@ class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Lon
     while (!done && tries < MAX_TRIES) {
       tries += 1
       try {
-        println("Copying from " + localFile + " to " + tempFile)
+        logDebug("Copying from " + localFile + " to " + tempFile)
         fs.copyFromLocalFile(new Path(localFile.toString), tempFile)
         //if (fs.exists(tempFile)) println("" + tempFile + " exists") else println("" + tempFile + " does not exist")
         //println("Renaming from " + tempFile + " to " + finalFile)
@@ -110,7 +116,7 @@ class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Lon
         done = true
       } catch {
         case ioe: IOException =>
-          println("Attempt " + tries + " at generating file " + finalFile + " failed.", ioe)
+          logError("Attempt " + tries + " at generating file " + finalFile + " failed.", ioe)
           reset()
       } finally {
         // if (fs.exists(tempFile)) fs.delete(tempFile, true)
@@ -133,19 +139,19 @@ class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Lon
             modTime < oldFileThreshTime
           }
         }
-        println("Finding files older than " + oldFileThreshTime)
+        logDebug("Finding files older than " + oldFileThreshTime)
         val oldFiles = fs.listStatus(dataDirectory, newFilter).map(_.getPath)
-        println("Found " + oldFiles.size + " old files")
+        logInfo("Found " + oldFiles.size + " old files")
         oldFiles.foreach(file => {
-          println("Deleting file " + file)
+          logInfo("Deleting file " + file)
           fs.delete(file, true)
         })
       } catch {
         case ie: InterruptedException =>
           interrupted = true
-          println("File deleting thread interrupted")
+          logWarning("File deleting thread interrupted")
         case e: Exception =>
-          println("Deleting files gave error ", e)
+          logError("Deleting files gave error ", e)
           reset()
       }
     }
@@ -164,7 +170,7 @@ class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Lon
       line = br.readLine()
     }
     br.close()
-    println("Local file has " + count + " occurrences of " + expectedWord +
+    logDebug("Local file has " + count + " occurrences of " + expectedWord +
       (if (count != expectedCount)  ", expected was " + expectedCount else ""))
   }
 

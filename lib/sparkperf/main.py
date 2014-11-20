@@ -131,6 +131,6 @@ if has_mllib_tests:
                          config.MLLIB_OUTPUT_FILENAME)
 
 print("All tests have finished running. Stopping Spark standalone cluster ...")
-cluster.stop()
+# cluster.stop()
 
 print("Finished running all tests.")

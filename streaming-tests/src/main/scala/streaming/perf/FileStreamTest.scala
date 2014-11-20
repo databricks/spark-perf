@@ -7,7 +7,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import streaming.perf.util.FileGenerator
 
-class HdfsRecoveryTest extends PerfTest {
+class FileStreamTest extends PerfTest {
   val RECORDS_PER_FILE = ("records-per-file", "Number records per file")
   val FILE_CLEANER_DELAY = ("file-cleaner-delay", "Delay (secs) in cleaning up generated files")
 

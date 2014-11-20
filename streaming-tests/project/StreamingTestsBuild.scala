@@ -16,11 +16,11 @@ object StreamingTestsBuild extends Build {
         "org.scalatest" %% "scalatest" % "2.2.1" % "test",
         "com.google.guava" % "guava" % "14.0.1",
         "org.slf4j" % "slf4j-log4j12" % "1.7.2",
-        "org.apache.spark" %% "spark-core" % "1.0.0" % "provided",
-        "org.apache.spark" %% "spark-streaming" % "1.0.0" % "provided"
+        "org.apache.spark" %% "spark-core" % "1.2.0-SNAPSHOT" % "provided",
+        "org.apache.spark" %% "spark-streaming" % "1.2.0-SNAPSHOT" % "provided"
       ),
       test in assembly := {},
-      outputPath in assembly := file("target/spark-perf-tests-assembly.jar"),
+      outputPath in assembly := file("target/streaming-perf-tests-assembly.jar"),
       assemblyOption in assembly ~= { _.copy(includeScala = false) },
       mergeStrategy in assembly := {
         case PathList("META-INF", xs@_*) =>
