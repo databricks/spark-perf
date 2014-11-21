@@ -81,10 +81,17 @@ class PerfTestSuite(object):
                     append_config_to_file(stderr_filename, java_opt_list, opt_list)
                     java_opts_str = " ".join(java_opt_list)
                     java_opts_str += " -Dsparkperf.commitSHA=" + cluster.commit_sha
+                    if hasattr(config, 'SPARK_EXECUTOR_URI'):
+                        java_opts_str += " -Dspark.executor.uri=" + config.SPARK_EXECUTOR_URI
+                    if hasattr(config, 'SPARK_MESOS_COARSE') and config.SPARK_MESOS_COARSE:
+                        java_opts_str += " -Dspark.mesos.coarse=true"
                     cmd = cls.get_spark_submit_cmd(cluster, config, main_class_or_script, opt_list,
                                                    stdout_filename, stderr_filename)
                     print("\nSetting env var SPARK_SUBMIT_OPTS: %s" % java_opts_str)
                     test_env["SPARK_SUBMIT_OPTS"] = java_opts_str
+                    if hasattr(config, 'MESOS_NATIVE_LIBRARY'):
+                        print("\nSetting env var MESOS_NATIVE_LIBRARY: %s" % config.MESOS_NATIVE_LIBRARY)
+                        test_env["MESOS_NATIVE_LIBRARY"] = config.MESOS_NATIVE_LIBRARY
                     print("Running command: %s\n" % cmd)
                     Popen(cmd, shell=True, env=test_env).wait()
                     result_string = cls.process_output(config, short_name, opt_list,

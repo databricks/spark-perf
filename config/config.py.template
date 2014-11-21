@@ -24,6 +24,10 @@ SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
 # Otherwise, the default uses the specified EC2 cluster
 SPARK_CLUSTER_URL = open("/home/ec2-user/spark-ec2/cluster-url", 'r').readline().strip()
 IS_YARN_MODE = "yarn" in SPARK_CLUSTER_URL
+IS_MESOS_MODE = "mesos" in SPARK_CLUSTER_URL
+
+# Specify URI to download spark executor
+#SPARK_EXECUTOR_URI = "http://localhost:8000/spark.tgz"
 
 # If this is true, we'll submit your job using an existing Spark installation.
 # If this is false, we'll clone and build a specific version of Spark, and
@@ -35,8 +39,8 @@ HDFS_URL = "hdfs://%s:9000/test/" % socket.gethostname()
 
 # Set the following if not using existing Spark installation
 # Commit id and repo used if you are not using an existing Spark cluster
-# custom version of Spark. The remote name in your git repo is assumed 
-# to be "origin". 
+# custom version of Spark. The remote name in your git repo is assumed
+# to be "origin".
 #
 # The commit ID can specify any of the following:
 #     1. A git commit hash         e.g. "4af93ff3"
@@ -97,9 +101,9 @@ MLLIB_OUTPUT_FILENAME = "results/mllib_perf_output_%s_%s" % (
 #  Test Configuration Options  #
 # ============================ #
 
-# The default values configured below are appropriate for approximately 20 m1.xlarge nodes, 
-# in which each node has 15 GB of memory. Use this variable to scale the values (e.g. 
-# number of records in a generated dataset) if you are running the tests with more 
+# The default values configured below are appropriate for approximately 20 m1.xlarge nodes,
+# in which each node has 15 GB of memory. Use this variable to scale the values (e.g.
+# number of records in a generated dataset) if you are running the tests with more
 # or fewer nodes.
 SCALE_FACTOR = 1.0
 
@@ -166,7 +170,7 @@ SPARK_KEY_VAL_TEST_OPTS = [
     OptionSet("unique-values", [1000 * 1000], True),
     # Length in characters of each value.
     OptionSet("value-length", [10]),
-    # Use hashes instead of padded numbers for keys and values 
+    # Use hashes instead of padded numbers for keys and values
     FlagSet("hash-records", [False]),
     # Storage location if HDFS persistence is used
     OptionSet("storage-location", [
@@ -196,14 +200,14 @@ SCHEDULING_THROUGHPUT_OPTS = [
 ]
 
 SPARK_TESTS += [("scheduling-throughput", "spark.perf.TestRunner",
-    SCALE_FACTOR, COMMON_JAVA_OPTS, 
+    SCALE_FACTOR, COMMON_JAVA_OPTS,
     [ConstantOption("scheduling-throughput")] + COMMON_OPTS + SCHEDULING_THROUGHPUT_OPTS)]
 
 SPARK_TESTS += [("scala-agg-by-key", "spark.perf.TestRunner", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("aggregate-by-key")] + SPARK_KV_OPTS)]
 
 # Scale the input for this test by 2x since ints are smaller.
-SPARK_TESTS += [("scala-agg-by-key-int", "spark.perf.TestRunner", SCALE_FACTOR * 2, 
+SPARK_TESTS += [("scala-agg-by-key-int", "spark.perf.TestRunner", SCALE_FACTOR * 2,
     COMMON_JAVA_OPTS, [ConstantOption("aggregate-by-key-int")] + SPARK_KV_OPTS)]
 
 SPARK_TESTS += [("scala-agg-by-key-naive", "spark.perf.TestRunner", SCALE_FACTOR,
@@ -216,7 +220,7 @@ SPARK_TESTS += [("scala-sort-by-key", "spark.perf.TestRunner", SCALE_FACTOR * 0.
 SPARK_TESTS += [("scala-sort-by-key-int", "spark.perf.TestRunner", SCALE_FACTOR * 0.2,
     COMMON_JAVA_OPTS, [ConstantOption("sort-by-key-int")] + SPARK_KV_OPTS)]
 
-SPARK_TESTS += [("scala-count", "spark.perf.TestRunner", SCALE_FACTOR, 
+SPARK_TESTS += [("scala-count", "spark.perf.TestRunner", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("count")] + SPARK_KV_OPTS)]
 
 SPARK_TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner", SCALE_FACTOR,
@@ -308,7 +312,7 @@ STREAMING_HDFS_RECOVERY_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_dura
 
 # This test is just to see if everything is setup properly
 STREAMING_TESTS += [("basic", "streaming.perf.TestRunner", SCALE_FACTOR,
-    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("basic")] + STREAMING_COMMON_OPTS + streaming_batch_duration_opts(1000))] 
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("basic")] + STREAMING_COMMON_OPTS + streaming_batch_duration_opts(1000))]
 
 STREAMING_TESTS += [("state-by-key", "streaming.perf.TestRunner", SCALE_FACTOR,
     STREAMING_COMMON_JAVA_OPTS, [ConstantOption("state-by-key")] + STREAMING_KEY_VAL_TEST_OPTS)]
@@ -523,7 +527,7 @@ MLLIB_TESTS += [("chi-sq-feature", "mllib.perf.onepointone.TestRunner", SCALE_FA
 
 MLLIB_TESTS += [("chi-sq-gof", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("chi-sq-gof"),
-    OptionSet("num-rows", [50000000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] + 
+    OptionSet("num-rows", [50000000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
     MLLIB_STATS_TEST_OPTS)]
 
 MLLIB_TESTS += [("chi-sq-mat", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
@@ -531,3 +535,12 @@ MLLIB_TESTS += [("chi-sq-mat", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR
     OptionSet("num-rows", [50000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
     MLLIB_STATS_TEST_OPTS)]
 
+# ================================ #
+#  Mesos Configuration Options     #
+# ================================ #
+
+# Path to the Mesos native library. This is only required for running with Mesos.
+#MESOS_NATIVE_LIBRARY = "/usr/local/lib/libmesos.so"
+
+# Run Mesos client in coarse or fine grain mode. This is only applied for running with Mesos.
+#SPARK_MESOS_COARSE = True

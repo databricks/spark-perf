@@ -29,11 +29,13 @@ class Cluster(object):
         run_cmds_parallel(copy_spark)
 
     def stop(self):
-        print "Stopping Spark cluster"
+        print("Stopping Spark standalone cluster...")
         run_cmd("%s/sbin/stop-all.sh" % self.spark_home)
 
     def start(self):
+        print("Starting a Spark standalone cluster to use for testing...")
         run_cmd("%s/sbin/start-all.sh" % self.spark_home)
+        time.sleep(5)
 
     def ensure_spark_stopped_on_slaves(self):
         """
@@ -49,6 +51,8 @@ class Cluster(object):
                 time.sleep(10)
             else:
                 stop = True
+        # Allow some extra time for slaves to fully terminate.
+        time.sleep(5)
 
     def warmup_disks(self, bytes_to_write, disk_warmup_files):
         """
