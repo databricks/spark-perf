@@ -68,7 +68,9 @@ if config.USE_CLUSTER_SPARK:
 else:
     cluster = spark_build_manager.get_cluster(config.SPARK_COMMIT_ID, config.SPARK_CONF_DIR,
                                               config.SPARK_MERGE_COMMIT_INTO_MASTER)
-    cluster.sync_spark()
+
+# rsync Spark to all nodes in case there is a change in Worker config
+cluster.sync_spark()
 
 # If a cluster is already running from an earlier test, try shutting it down.
 if os.path.exists(cluster.spark_home):
