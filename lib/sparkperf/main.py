@@ -120,7 +120,7 @@ if run_spark_tests:
     SparkTests.run_tests(cluster, config, config.SPARK_TESTS, "Spark-Tests",
                          config.SPARK_OUTPUT_FILENAME)
 
-if config.PYSPARK_TESTS:
+if run_pyspark_tests:
     PythonTests.run_tests(cluster, config, config.PYSPARK_TESTS, "PySpark-Tests",
                           config.PYSPARK_OUTPUT_FILENAME)
 
