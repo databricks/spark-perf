@@ -35,22 +35,22 @@ print "Loading configuration from %s" % args.config_file
 with open(args.config_file) as cf:
     config = imp.load_source("config", "", cf)
 
-# Spark will always be built, assuming that any possible test run of this program is going to depend
-# on Spark.
-has_spark_tests = not config.SPARK_SKIP_TESTS and (len(config.SPARK_TESTS) > 0)
-should_prep_spark = not config.USE_CLUSTER_SPARK
-
-# Since Spark is always going to prepared, streaming and mllib do not require extra preparation
-has_streaming_tests = not config.STREAMING_SKIP_TESTS and (len(config.STREAMING_TESTS) > 0)
-has_mllib_tests = not config.MLLIB_SKIP_TESTS and (len(config.MLLIB_TESTS) > 0)
+# Spark will always be built, assuming that any possible test run
+# of this program is going to depend on Spark.
+run_spark_tests = config.RUN_SPARK_TESTS and (len(config.SPARK_TESTS) > 0)
+run_pyspark_tests = config.RUN_PYSPARK_TESTS and (len(config.PYSPARK_TESTS) > 0)
+run_streaming_tests = config.RUN_STREAMING_TESTS and (len(config.STREAMING_TESTS) > 0)
+run_mllib_tests = config.RUN_MLLIB_TESTS and (len(config.MLLIB_TESTS) > 0)
+run_tests = run_spark_tests or run_pyspark_tests or run_streaming_tests or run_mllib_tests
 
 # Only build the perf test sources that will be used.
-should_prep_spark_tests = has_spark_tests and not config.SPARK_SKIP_TEST_PREP
-should_prep_streaming_tests = has_streaming_tests and not config.STREAMING_SKIP_TEST_PREP
-should_prep_mllib_tests = has_mllib_tests and not config.MLLIB_SKIP_TEST_PREP
+should_prep_spark = not config.USE_CLUSTER_SPARK and config.PREP_SPARK
+should_prep_spark_tests = run_spark_tests and config.PREP_SPARK_TESTS
+should_prep_streaming_tests = run_streaming_tests and config.PREP_STREAMING_TESTS
+should_prep_mllib_tests = run_mllib_tests and not config.PREP_MLLIB_TESTS
 
 # Do disk warmup only if there are tests to run.
-should_warmup_disk = has_spark_tests and not config.SKIP_DISK_WARMUP
+should_warmup_disk = run_tests and config.DISK_WARMUP
 
 # Check that commit ID's are specified in config_file.
 if should_prep_spark:
@@ -90,19 +90,19 @@ if os.path.exists(spark_work_dir):
 print("Building perf tests...")
 if should_prep_spark_tests:
     SparkTests.build()
-elif has_spark_tests:
+elif run_spark_tests:
     assert SparkTests.is_built(), ("You tried to skip packaging the Spark perf " +
         "tests, but %s was not already present") % SparkTests.test_jar_path
 
 if should_prep_streaming_tests:
     StreamingTests.build()
-elif has_streaming_tests:
+elif run_streaming_tests:
     assert StreamingTests.is_built(), ("You tried to skip packaging the Spark Streaming perf " +
         "tests, but %s was not already present") % StreamingTests.test_jar_path
 
 if should_prep_mllib_tests:
     MLlibTests.build()
-elif has_mllib_tests:
+elif run_mllib_tests:
     assert MLlibTests.is_built(), ("You tried to skip packaging the MLlib perf " +
         "tests, but %s was not already present") % MLlibTests.test_jar_path
 
@@ -114,7 +114,7 @@ time.sleep(5) # Starting the cluster takes a little time so give it a second.
 if should_warmup_disk:
     cluster.warmup_disks(config.DISK_WARMUP_BYTES, config.DISK_WARMUP_FILES)
 
-if has_spark_tests:
+if run_spark_tests:
     SparkTests.run_tests(cluster, config, config.SPARK_TESTS, "Spark-Tests",
                          config.SPARK_OUTPUT_FILENAME)
 
@@ -122,11 +122,11 @@ if config.PYSPARK_TESTS:
     PythonTests.run_tests(cluster, config, config.PYSPARK_TESTS, "PySpark-Tests",
                           config.PYSPARK_OUTPUT_FILENAME)
 
-if has_streaming_tests:
+if run_streaming_tests:
     StreamingTests.run_tests(cluster, config, config.STREAMING_TESTS, "Streaming-Tests",
                              config.STREAMING_OUTPUT_FILENAME)
 
-if has_mllib_tests:
+if run_mllib_tests:
     MLlibTests.run_tests(cluster, config, config.MLLIB_TESTS, "MLlib-Tests",
                          config.MLLIB_OUTPUT_FILENAME)
 
