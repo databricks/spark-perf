@@ -33,6 +33,16 @@ class PerfTestSuite(object):
         raise NotImplementedError
 
     @classmethod
+    def before_run_tests(cls, config, out_file):
+        """
+        This is called before tests in this suite are run.
+        It is useful for logging test suite specific messages.
+
+        :param out_file: a python file handler to the output file
+        """
+        pass
+
+    @classmethod
     def run_tests(cls, cluster, config, tests_to_run, test_group_name, output_filename):
         """
         Run a set of tests from this performance suite.
@@ -51,6 +61,8 @@ class PerfTestSuite(object):
         print(OUTPUT_DIVIDER_STRING)
         print("Running %d tests in %s.\n" % (num_tests_to_run, test_group_name))
         failed_tests = []
+
+        cls.before_run_tests(config, out_file)
 
         for short_name, main_class_or_script, scale_factor, java_opt_sets, opt_sets in tests_to_run:
             print(OUTPUT_DIVIDER_STRING)
@@ -121,6 +133,11 @@ class SparkTests(JVMPerfTestSuite):
     @classmethod
     def build(cls):
         run_cmd("cd %s/spark-tests; %s clean assembly" % (PROJ_DIR, SBT_CMD))
+
+    @classmethod
+    def before_run_tests(cls, config, out_file):
+        out_file.write("# Test name, test options, median, std dev, min, first, last\n")
+        out_file.flush()
 
     @classmethod
     def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
