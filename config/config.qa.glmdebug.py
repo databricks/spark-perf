@@ -22,7 +22,7 @@ SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip() 
 # If this is true, we'll submit your job using an existing Spark installation.
 # If this is false, we'll checkout and build a specific version of Spark, and
 # copy configurations from your existing Spark install.
-USE_CLUSTER_SPARK = False
+USE_CLUSTER_SPARK = True
 
 # URL of the HDFS installation in the Spark EC2 cluster
 HDFS_URL = "hdfs://%s:9000/test/" % socket.gethostname()
@@ -38,7 +38,7 @@ HDFS_URL = "hdfs://%s:9000/test/" % socket.gethostname()
 #     2. A branch name             e.g. "origin/branch-0.7"
 #     3. A tag name                e.g. "origin/tag/v0.8.0-incubating"
 #     4. A pull request            e.g. "origin/pr/675"
-SPARK_COMMIT_ID = "TO DO"
+SPARK_COMMIT_ID = ""
 SPARK_GIT_REPO = "https://github.com/apache/spark.git"
 SPARK_MERGE_COMMIT_INTO_MASTER = False # Whether to merge the commit into master
 #####################################################################
