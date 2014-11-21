@@ -3,7 +3,7 @@ Data generation for MLlib spark-perf tests
 (+ data loading in the future)
 """
 
-import numpy, sets
+import numpy
 
 from pyspark.mllib.linalg import Vectors
 from pyspark.mllib.regression import LabeledPoint
