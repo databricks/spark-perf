@@ -29,3 +29,6 @@ spark_perf_output_*
 streaming_perf_output_*
 *.xml
 test-warehouses
+
+# Result files
+/results

@@ -1,22 +1,19 @@
 package streaming.perf.util
 
-import org.apache.spark.{Logging, SparkContext}
-import org.apache.hadoop.fs.{PathFilter, Path, FileSystem}
-import org.apache.hadoop.conf.Configuration
-import com.google.common.io.Files
-import java.io.{IOException, File}
-import java.text.SimpleDateFormat
+import java.io.{BufferedReader, File, FileReader, IOException}
 import java.nio.charset.Charset
+import java.text.SimpleDateFormat
 import java.util.Calendar
-import scala.util.Random
-import java.io.{BufferedReader, FileReader}
 
+import com.google.common.io.Files
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path, PathFilter}
 
-class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxRecordsPerFile: Long, cleanerDelay: Long) extends Logging {
+class FileGenerator(dataDir: String, tempDataDir: String, maxRecordsPerFile: Long, cleanerDelay: Long) {
 
   val MAX_TRIES = 100
   val MAX_KEYS = 1000
-  val INTERVAL = 50
+  val INTERVAL = 100
   val VERIFY_LOCAL_FILES = false
 
   val dataDirectory = new Path(dataDir)
@@ -48,14 +45,14 @@ class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxR
     deletingThread.setDaemon(true)
     generatingThread.start()
     deletingThread.start()
-    logInfo("Started")
+    println("FileGenerator started")
   }
 
   /** Stop generating files */
   def stop() {
     generatingThread.interrupt()
     deletingThread.interrupt()
-    logInfo("Interrupted")
+    println("FileGenerator Interrupted")
   }
 
   /** Delete test directory */
@@ -81,9 +78,9 @@ class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxR
           val finalFile = new Path(dataDir, "file-" + time + "-" + key + "-" + count)
           val generated = copyFile(localFile, finalFile)
           if (generated) {
-            logInfo("Generated file #" + count + " at " + System.currentTimeMillis() + ": " + finalFile)
+            println("Generated file #" + count + " at " + System.currentTimeMillis() + ": " + finalFile)
           } else {
-            logError("Could not generate file #" + count + ": " + finalFile)
+            println("Could not generate file #" + count + ": " + finalFile)
             System.exit(0)
           }
           Thread.sleep(INTERVAL)
@@ -91,9 +88,9 @@ class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxR
       }
     } catch {
       case ie: InterruptedException =>
-        logInfo("File generating thread interrupted")
+        println("File generating thread interrupted")
       case e: Exception =>
-        logError("Error generating files", e)
+        println("Error generating files", e)
         System.exit(0)
     }
   }
@@ -105,15 +102,15 @@ class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxR
     while (!done && tries < MAX_TRIES) {
       tries += 1
       try {
-        logInfo("Copying from " + localFile + " to " + tempFile)
+        println("Copying from " + localFile + " to " + tempFile)
         fs.copyFromLocalFile(new Path(localFile.toString), tempFile)
-        if (fs.exists(tempFile)) logInfo("" + tempFile + " exists") else logInfo("" + tempFile + " does not exist")
-        logInfo("Renaming from " + tempFile + " to " + finalFile)
+        //if (fs.exists(tempFile)) println("" + tempFile + " exists") else println("" + tempFile + " does not exist")
+        //println("Renaming from " + tempFile + " to " + finalFile)
         if (!fs.rename(tempFile, finalFile)) throw new Exception("Could not rename " + tempFile + " to " + finalFile)
         done = true
       } catch {
         case ioe: IOException =>
-          logWarning("Attempt " + tries + " at generating file " + finalFile + " failed.", ioe)
+          println("Attempt " + tries + " at generating file " + finalFile + " failed.", ioe)
           reset()
       } finally {
         // if (fs.exists(tempFile)) fs.delete(tempFile, true)
@@ -128,25 +125,27 @@ class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxR
     while (!interrupted) {
       try {
         Thread.sleep(cleanerDelay * 1000 / 5)
+        val oldFileThreshTime = System.currentTimeMillis - cleanerDelay * 1000
         val newFilter = new PathFilter() {
           def accept(path: Path): Boolean = {
             val modTime = fs.getFileStatus(path).getModificationTime()
-            logInfo("Mod time for " + path + " is " + modTime)
-            modTime < (System.currentTimeMillis() - cleanerDelay * 1000)
+            //println("Mod time for " + path + " is " + modTime)
+            modTime < oldFileThreshTime
           }
         }
-        logInfo("Finding files older than " + (System.currentTimeMillis() - cleanerDelay * 1000))
+        println("Finding files older than " + oldFileThreshTime)
         val oldFiles = fs.listStatus(dataDirectory, newFilter).map(_.getPath)
+        println("Found " + oldFiles.size + " old files")
         oldFiles.foreach(file => {
-          logInfo("Deleting file " + file)
+          println("Deleting file " + file)
           fs.delete(file, true)
         })
       } catch {
         case ie: InterruptedException =>
           interrupted = true
-          logInfo("File deleting thread interrupted")
+          println("File deleting thread interrupted")
         case e: Exception =>
-          logWarning("Deleting files gave error ", e)
+          println("Deleting files gave error ", e)
           reset()
       }
     }
@@ -165,7 +164,7 @@ class FileGenerator(sc: SparkContext, dataDir: String, tempDataDir: String, maxR
       line = br.readLine()
     }
     br.close()
-    logInfo("Local file has " + count + " occurrences of " + expectedWord +
+    println("Local file has " + count + " occurrences of " + expectedWord +
       (if (count != expectedCount)  ", expected was " + expectedCount else ""))
   }
 
