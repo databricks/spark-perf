@@ -52,13 +52,16 @@ should_prep_mllib_tests = run_mllib_tests and not config.PREP_MLLIB_TESTS
 # Do disk warmup only if there are tests to run.
 should_warmup_disk = run_tests and config.DISK_WARMUP
 
+# Restart Master and Workers
+should_restart_cluster = config.RESTART_SPARK_CLUSTER
+
 # Check that commit ID's are specified in config_file.
 if should_prep_spark:
     assert config.SPARK_COMMIT_ID is not "", \
         ("Please specify SPARK_COMMIT_ID in %s" % args.config_file)
 
 # If a cluster is already running from the Spark EC2 scripts, try shutting it down.
-if os.path.exists(config.SPARK_HOME_DIR):
+if os.path.exists(config.SPARK_HOME_DIR) and should_restart_cluster:
     Cluster(spark_home=config.SPARK_HOME_DIR).stop()
 
 spark_build_manager = SparkBuildManager("%s/spark-build-cache" % PROJ_DIR, config.SPARK_GIT_REPO)
@@ -70,16 +73,18 @@ else:
                                               config.SPARK_MERGE_COMMIT_INTO_MASTER)
 
 # rsync Spark to all nodes in case there is a change in Worker config
-cluster.sync_spark()
+if should_restart_cluster:
+    cluster.sync_spark()
 
 # If a cluster is already running from an earlier test, try shutting it down.
-if os.path.exists(cluster.spark_home):
+if os.path.exists(cluster.spark_home) and should_restart_cluster:
     cluster.stop()
 
-# Ensure all shutdowns have completed (no executors are running).
-cluster.ensure_spark_stopped_on_slaves()
-# Allow some extra time for slaves to fully terminate.
-time.sleep(5)
+if should_restart_cluster:
+    # Ensure all shutdowns have completed (no executors are running).
+    cluster.ensure_spark_stopped_on_slaves()
+    # Allow some extra time for slaves to fully terminate.
+    time.sleep(5)
 
 # Build the tests for each project.
 spark_work_dir = "%s/work" % cluster.spark_home
@@ -109,9 +114,10 @@ elif run_mllib_tests:
         "tests, but %s was not already present") % MLlibTests.test_jar_path
 
 # Start our Spark cluster.
-print("Starting a Spark standalone cluster to use for testing...")
-cluster.start()
-time.sleep(5) # Starting the cluster takes a little time so give it a second.
+if should_restart_cluster:
+    print("Starting a Spark standalone cluster to use for testing...")
+    cluster.start()
+    time.sleep(5) # Starting the cluster takes a little time so give it a second.
 
 if should_warmup_disk:
     cluster.warmup_disks(config.DISK_WARMUP_BYTES, config.DISK_WARMUP_FILES)
@@ -132,7 +138,8 @@ if run_mllib_tests:
     MLlibTests.run_tests(cluster, config, config.MLLIB_TESTS, "MLlib-Tests",
                          config.MLLIB_OUTPUT_FILENAME)
 
-print("All tests have finished running. Stopping Spark standalone cluster ...")
-cluster.stop()
+if should_restart_cluster:
+    print("All tests have finished running. Stopping Spark standalone cluster ...")
+    cluster.stop()
 
 print("Finished running all tests.")

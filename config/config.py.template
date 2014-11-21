@@ -19,8 +19,11 @@ SPARK_HOME_DIR = "/root/spark"
 SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
 
 # Master used when submitting Spark jobs.
-SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip() # EC2 Cluster
-# SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname()                  # Local cluster
+# For local clusters: "spark://%s:7077" % socket.gethostname()
+# For Yarn clusters: "yarn"
+# Otherwise, the default uses the specified EC2 cluster
+SPARK_CLUSTER_URL = open("/home/ec2-user/spark-ec2/cluster-url", 'r').readline().strip()
+IS_YARN_MODE = "yarn" in SPARK_CLUSTER_URL
 
 # If this is true, we'll submit your job using an existing Spark installation.
 # If this is false, we'll clone and build a specific version of Spark, and
@@ -47,6 +50,11 @@ SPARK_MERGE_COMMIT_INTO_MASTER = False # Whether to merge the commit into master
 # Whether to install and build Spark. Set this to true only for the
 # first installation if an existing one does not already exist.
 PREP_SPARK = not USE_CLUSTER_SPARK
+
+# Whether to restart the Master and all Workers
+# This should always be false for Yarn
+RESTART_SPARK_CLUSTER = True
+RESTART_SPARK_CLUSTER = RESTART_SPARK_CLUSTER and not IS_YARN_MODE
 
 # Which tests to run
 RUN_SPARK_TESTS = True
