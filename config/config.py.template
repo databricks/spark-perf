@@ -176,6 +176,11 @@ SPARK_TESTS = []
 # PySpark tests
 PYSPARK_TESTS = []
 
+BROADCAST_TEST_OPTS = [
+    # The size of broadcast
+    OptionSet("broadcast-size", [200 << 20], can_scale=True),
+]
+
 #PYSPARK_TESTS += [("python-scheduling-throughput", "tests.py",
 #    SCALE_FACTOR, COMMON_JAVA_OPTS,
 #    [ConstantOption("SchedulerThroughputTest"), OptionSet("num-tasks", [5000])] + COMMON_OPTS)]
@@ -202,6 +207,12 @@ PYSPARK_TESTS = []
 
 #PYSPARK_TESTS += [("python-count-w-fltr", "tests.py", SCALE_FACTOR,
 #    COMMON_JAVA_OPTS, [ConstantOption("CountWithFilter")] + SPARK_KV_OPTS)]
+
+#PYSPARK_TESTS += [("python-broadcast-w-bytes", "tests.py", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("BroadcastWithBytes")] + SPARK_KV_OPTS + BROADCAST_TEST_OPTS)]
+
+#PYSPARK_TESTS += [("python-broadcast-w-set", "tests.py", SCALE_FACTOR,
+#    COMMON_JAVA_OPTS, [ConstantOption("BroadcastWithSet")] + SPARK_KV_OPTS + BROADCAST_TEST_OPTS)]
 
 
 
