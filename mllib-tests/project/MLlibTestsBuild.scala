@@ -52,7 +52,7 @@ object MLlibTestsBuild extends Build {
     file("onepointtwo"),
     settings = commonSettings ++ Seq(
       //should be set to 1.2.0 or higher
-      libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.2.0-SNAPSHOT" % "provided"
+      libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.3.0-SNAPSHOT" % "provided"
     )
   )
 

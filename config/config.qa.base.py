@@ -407,7 +407,7 @@ if MLLIB_SPARK_VERSION >= 1.2:
     MLLIB_DECISION_TREE_TEST_OPTS += [
         # Ensemble type: RandomForest, GradientBoosting
         # Note: If num-trees = 1, then RandomForest and GradientBoosting should give the same result.
-        OptionSet("ensemble-type", ["RandomForest", "GradientBoosting"]),
+        OptionSet("ensemble-type", ["RandomForest"]),
         # Path to training dataset (if not given, use random data).
         OptionSet("training-data", [""]),
         # Path to test dataset (only used if training dataset given).
