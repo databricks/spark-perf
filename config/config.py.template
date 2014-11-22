@@ -26,8 +26,15 @@ SPARK_CLUSTER_URL = open("/home/ec2-user/spark-ec2/cluster-url", 'r').readline()
 IS_YARN_MODE = "yarn" in SPARK_CLUSTER_URL
 IS_MESOS_MODE = "mesos" in SPARK_CLUSTER_URL
 
-# Specify URI to download spark executor
+# Specify URI to download spark executor. This only applied for running with Mesos.
 #SPARK_EXECUTOR_URI = "http://localhost:8000/spark.tgz"
+
+# Path to the Mesos native library. This is only required for running with Mesos.
+#MESOS_NATIVE_LIBRARY = "/usr/local/lib/libmesos.so"
+
+# Run Mesos client in coarse or fine grain mode. This is only applied for running with Mesos.
+#SPARK_MESOS_COARSE = True
+
 
 # If this is true, we'll submit your job using an existing Spark installation.
 # If this is false, we'll clone and build a specific version of Spark, and
@@ -534,13 +541,3 @@ MLLIB_TESTS += [("chi-sq-mat", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR
     COMMON_JAVA_OPTS, [ConstantOption("chi-sq-matrix"),
     OptionSet("num-rows", [50000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
     MLLIB_STATS_TEST_OPTS)]
-
-# ================================ #
-#  Mesos Configuration Options     #
-# ================================ #
-
-# Path to the Mesos native library. This is only required for running with Mesos.
-#MESOS_NATIVE_LIBRARY = "/usr/local/lib/libmesos.so"
-
-# Run Mesos client in coarse or fine grain mode. This is only applied for running with Mesos.
-#SPARK_MESOS_COARSE = True
