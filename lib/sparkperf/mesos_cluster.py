@@ -1,9 +1,6 @@
 from sparkperf.cluster import Cluster
 import json
-import re
 import os
-import sys
-import time
 import urllib2
 
 
