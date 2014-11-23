@@ -11,6 +11,7 @@ logger.addHandler(logging.StreamHandler())
 
 from sparkperf.commands import *
 from sparkperf.cluster import Cluster
+from sparkperf.mesos_cluster import MesosCluster
 from sparkperf.testsuites import *
 from sparkperf.build import SparkBuildManager
 
@@ -61,12 +62,15 @@ if should_prep_spark:
         ("Please specify SPARK_COMMIT_ID in %s" % args.config_file)
 
 # If a cluster is already running from the Spark EC2 scripts, try shutting it down.
-if os.path.exists(config.SPARK_HOME_DIR) and should_restart_cluster:
+if os.path.exists(config.SPARK_HOME_DIR) and should_restart_cluster and not config.IS_MESOS_MODE:
     Cluster(spark_home=config.SPARK_HOME_DIR).stop()
 
 spark_build_manager = SparkBuildManager("%s/spark-build-cache" % PROJ_DIR, config.SPARK_GIT_REPO)
 
-if config.USE_CLUSTER_SPARK:
+if config.IS_MESOS_MODE:
+    cluster = MesosCluster(spark_home=config.SPARK_HOME_DIR, spark_conf_dir=config.SPARK_CONF_DIR,
+                           mesos_master=config.SPARK_CLUSTER_URL)
+elif config.USE_CLUSTER_SPARK:
     cluster = Cluster(spark_home=config.SPARK_HOME_DIR, spark_conf_dir=config.SPARK_CONF_DIR)
 else:
     cluster = spark_build_manager.get_cluster(config.SPARK_COMMIT_ID, config.SPARK_CONF_DIR,
@@ -83,8 +87,6 @@ if os.path.exists(cluster.spark_home) and should_restart_cluster:
 if should_restart_cluster:
     # Ensure all shutdowns have completed (no executors are running).
     cluster.ensure_spark_stopped_on_slaves()
-    # Allow some extra time for slaves to fully terminate.
-    time.sleep(5)
 
 # Build the tests for each project.
 spark_work_dir = "%s/work" % cluster.spark_home
@@ -115,9 +117,7 @@ elif run_mllib_tests:
 
 # Start our Spark cluster.
 if should_restart_cluster:
-    print("Starting a Spark standalone cluster to use for testing...")
     cluster.start()
-    time.sleep(5) # Starting the cluster takes a little time so give it a second.
 
 if should_warmup_disk:
     cluster.warmup_disks(config.DISK_WARMUP_BYTES, config.DISK_WARMUP_FILES)
@@ -139,7 +139,6 @@ if run_mllib_tests:
                          config.MLLIB_OUTPUT_FILENAME)
 
 if should_restart_cluster:
-    print("All tests have finished running. Stopping Spark standalone cluster ...")
     cluster.stop()
 
 print("Finished running all tests.")
