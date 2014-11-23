@@ -1,6 +1,7 @@
 import time
 import random
 import json
+import sys
 
 import pyspark
 
@@ -33,7 +34,7 @@ class DataGenerator:
         return rdd
 
 
-class PerfTest:
+class PerfTest(object):
     def __init__(self, sc):
         self.sc = sc
 
@@ -129,6 +130,21 @@ class BroadcastWithSet(BroadcastWithBytes):
         n = self.options.broadcast_size / 32
         self.data = set(range(n))
 
+
+all_tests = [
+    "AggregateByKey",
+    "AggregateByKeyInt",
+    "AggregateByKeyNaive",
+    "BroadcastWithBytes",
+    "BroadcastWithSet",
+    "Count",
+    "CountWithFilter",
+    "SchedulerThroughputTest",
+    "SortByKey",
+    "SortByKeyInt",
+]
+
+
 if __name__ == "__main__":
     import optparse
     parser = optparse.OptionParser(usage="Usage: %prog [options] test_names")
@@ -142,15 +158,27 @@ if __name__ == "__main__":
     parser.add_option("--unique-values", type="int", default=102400)
     parser.add_option("--value-length", type="int", default=20)
     parser.add_option("--num-partitions", type="int", default=10)
-    parser.add_option("--broadcast-size", type="int", default=10 << 20)
+    parser.add_option("--broadcast-size", type="int", default=1 << 20)
     parser.add_option("--random-seed", type="int", default=1)
     parser.add_option("--persistent-type", default="memory")
     parser.add_option("--wait-for-exit", action="store_true")
 
+    parser.add_option("--list", "-l", action="store_true", help="list all tests")
+    parser.add_option("--all", "-a", action="store_true", help="run all tests")
+
     options, cases = parser.parse_args()
+
+    if options.list:
+        for n in all_tests:
+            print n
+        sys.exit(0)
+
+    if options.all:
+        cases = all_tests
 
     sc = pyspark.SparkContext(appName="TestRunner")
     for name in cases:
+        print 'run test:', name
         test = globals()[name](sc)
         test.initialize(options)
         test.createInputData()
