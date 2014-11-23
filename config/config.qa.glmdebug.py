@@ -318,7 +318,7 @@ MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # The number of rows or examples
     OptionSet("num-examples", [1000000], can_scale=True),
     # The number of features per example
-    OptionSet("num-features", [10000], can_scale=True)
+    OptionSet("num-features", [5000], can_scale=True)
 ]
 
 # Generalized Linear Model (GLM) Tests #
@@ -471,9 +471,9 @@ MLLIB_BIG_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
 # PySpark MLlib tests
 PYSPARK_MLLIB_TESTS = []
 
-PYSPARK_MLLIB_TESTS += [("python-glm-classification", "mllib_tests.py", SCALE_FACTOR,
-                         MLLIB_JAVA_OPTS, [ConstantOption("GLMClassificationTest")] +
-                         MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
+#PYSPARK_MLLIB_TESTS += [("python-glm-classification", "mllib_tests.py", SCALE_FACTOR,
+#                         MLLIB_JAVA_OPTS, [ConstantOption("GLMClassificationTest")] +
+#                         MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
 
 PYSPARK_MLLIB_TESTS += [("python-glm-regression", "mllib_tests.py", SCALE_FACTOR,
                          MLLIB_JAVA_OPTS, [ConstantOption("GLMRegressionTest")] +
