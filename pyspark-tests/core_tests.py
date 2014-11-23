@@ -16,9 +16,9 @@ class DataGenerator:
         return sc.parallelize(xrange(numPartitions), numPartitions).flatMap(gen)
 
     def createKVDataSet(self, sc, dataType, records, uniqueKeys, uniqueValues, keyLength,
-                        valueLength, numPartitions, randomSeed,
-                        persistenceType, storageLocation="/tmp/spark-perf-kv-data"):
-        inputRDD = self.generateIntData(sc, records, uniqueKeys, uniqueValues, numPartitions, randomSeed)
+                        valueLength, numPartitions, seed,
+                        persistenceType):
+        inputRDD = self.generateIntData(sc, records, uniqueKeys, uniqueValues, numPartitions, seed)
         keyfmt = "%%0%dd" % keyLength
         valuefmt = "%%0%dd" % valueLength
         if dataType == "string":
@@ -74,7 +74,7 @@ class KVDataTest(PerfTest):
                 options.unique_keys, options.unique_values,
                 options.key_length, options.value_length,
                 options.num_partitions, options.random_seed,
-                options.persistent_type, options.storage_location)
+                options.persistent_type)
 
 
 class KVDataTestInt(KVDataTest):
@@ -145,8 +145,6 @@ if __name__ == "__main__":
     parser.add_option("--broadcast-size", type="int", default=10 << 20)
     parser.add_option("--random-seed", type="int", default=1)
     parser.add_option("--persistent-type", default="memory")
-    parser.add_option("--storage-location", default="/tmp")
-    parser.add_option("--hash-records", action="store_true")
     parser.add_option("--wait-for-exit", action="store_true")
 
     options, cases = parser.parse_args()
