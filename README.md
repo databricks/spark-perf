@@ -24,7 +24,7 @@ Support for automatically building Spark requires Maven.  On `spark-ec2` cluster
 
 ## Configuration
 
-To configure `spark-perf`, copy `config/config.py.template` to `config/config.py` and edit that file.  See `config.py.template` for detailed configuration instructions.  After editing `config.py`, execute `./bin/run` to run performance tests.
+To configure `spark-perf`, copy `config/config.py.template` to `config/config.py` and edit that file.  See `config.py.template` for detailed configuration instructions.  After editing `config.py`, execute `./bin/run` to run performance tests.  You can pass the `--config` option to use a custom configuration file.
 
 The following sections describe some additional settings to change for certain test environments:
 

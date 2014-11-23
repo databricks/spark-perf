@@ -2,7 +2,7 @@
 
 import argparse
 import imp
-import time
+import os
 import logging
 
 logger = logging.getLogger("sparkperf")
@@ -16,7 +16,7 @@ from sparkperf.testsuites import *
 from sparkperf.build import SparkBuildManager
 
 
-parser = argparse.ArgumentParser(description='Run Spark or Shark peformance tests. Before running, '
+parser = argparse.ArgumentParser(description='Run Spark performance tests. Before running, '
     'edit the supplied configuration file.')
 
 parser.add_argument('--config-file', help='override default location of config file, must be a '

@@ -1,4 +1,9 @@
-"""Configuration options for running Spark and Shark performance tests (perf-tests)."""
+"""
+Configuration options for running Spark performance tests.
+
+When updating `spark-perf`, you should probably use `diff` to compare the updated template to
+your modified `config.py` file and copy over any new configurations.
+"""
 
 import time
 import os
@@ -117,7 +122,8 @@ PYTHON_MLLIB_OUTPUT_FILENAME = "results/python_mllib_perf_output_%s_%s" % (
 # The default values configured below are appropriate for approximately 20 m1.xlarge nodes,
 # in which each node has 15 GB of memory. Use this variable to scale the values (e.g.
 # number of records in a generated dataset) if you are running the tests with more
-# or fewer nodes.
+# or fewer nodes. When developing new test suites, you might want to set this to a small
+# value suitable for a single machine, such as 0.001.
 SCALE_FACTOR = 1.0
 
 assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
@@ -308,7 +314,7 @@ STREAMING_COMMON_JAVA_OPTS = [
     # Fraction of JVM memory used for caching RDDs.
     JavaOptionSet("spark.storage.memoryFraction", [0.66]),
     JavaOptionSet("spark.serializer", ["org.apache.spark.serializer.JavaSerializer"]),
-    JavaOptionSet("spark.executor.memory", ["9g"]),
+    # JavaOptionSet("spark.executor.memory", ["9g"]),
     JavaOptionSet("spark.executor.extraJavaOptions", [" -XX:+UseConcMarkSweepGC "])
 ]
 
