@@ -6,25 +6,23 @@ import pyspark
 
 class DataGenerator:
 
-    def paddedString(self, i, length, doHash=False):
-        return ("%%0%dd" % length) % (hash(i) if doHash else i)
-
     def generateIntData(self, sc, records, uniqueKeys, uniqueValues, numPartitions, seed):
         n = records / numPartitions
         def gen(index):
             ran = random.Random(hash(str(seed ^ index)))
-            for i in range(n):
+            for i in xrange(n):
                 yield ran.randint(0, uniqueKeys), ran.randint(0, uniqueValues)
-        return sc.parallelize(range(numPartitions), numPartitions).flatMap(gen)
+        return sc.parallelize(xrange(numPartitions), numPartitions).flatMap(gen)
 
     def createKVDataSet(self, sc, dataType, records, uniqueKeys, uniqueValues, keyLength,
                               valueLength, numPartitions, randomSeed,
                               persistenceType, storageLocation="/tmp/spark-perf-kv-data"):
         inputRDD = self.generateIntData(sc, records, uniqueKeys, uniqueValues, numPartitions, randomSeed)
+        keyfmt = "%%0%dd" % keyLength
+        valuefmt = "%%0%dd" % valueLength
         if dataType == "string":
-            inputRDD = inputRDD.map(lambda (k, v): (self.paddedString(k, keyLength),
-                                            self.paddedString(v, valueLength)))
-        if persistenceType == "memory":
+            inputRDD = inputRDD.map(lambda (k, v): (keyfmt % k, valuefmt % v)) 
+	if persistenceType == "memory":
             rdd = inputRDD.persist(pyspark.StorageLevel.MEMORY_ONLY)
         elif persistenceType == "disk":
             rdd = inputRDD.persist(pyspark.StorageLevel.DISK_ONLY)
@@ -44,21 +42,24 @@ class PerfTest:
     def createInputData(self):
         pass
 
-    def run(self):
+    def runTest(self):
         raise NotImplementedError
 
-
-class SchedulerThroughputTest(PerfTest):
     def run(self):
         options = self.options
         rs = []
         for i in range(options.num_trials):
             start = time.time()
-            self.sc.parallelize(range(options.num_tasks), options.num_tasks).count()
+            self.runTest()
             rs.append(time.time() - start)
             time.sleep(options.inter_trial_wait)
         return rs
 
+
+class SchedulerThroughputTest(PerfTest):
+    def runTest(self):
+        self.sc.parallelize(xrange(options.num_tasks), options.num_tasks).count()
+      
 
 class KVDataTest(PerfTest):
     def __init__(self, sc, dataType="string"):
@@ -74,53 +75,60 @@ class KVDataTest(PerfTest):
                 options.num_partitions, options.random_seed,
                 options.persistent_type, options.storage_location)
 
-    def runTest(self, rdd, reduceTasks):
-        raise NotImplementedError
-
-    def run(self):
-        options = self.options
-        used = []
-        for i in range(options.num_trials):
-            start = time.time()
-            self.runTest(self.rdd, options.reduce_tasks)
-            end = time.time()
-            used.append(end - start)
-            time.sleep(options.inter_trial_wait)
-        return used
-
 
 class KVDataTestInt(KVDataTest):
     def __init__(self, sc):
         KVDataTest.__init__(self, sc, "int")
 
 class AggregateByKey(KVDataTest):
-    def runTest(self, rdd, reduceTasks):
-        rdd.map(lambda (k, v): (k, int(v))).reduceByKey(lambda x, y: x + y, reduceTasks).count()
+    def runTest(self):
+        self.rdd.map(lambda (k, v): (k, int(v))).reduceByKey(lambda x, y: x + y, reduceTasks).count()
 
 class AggregateByKeyInt(KVDataTestInt):
-
-    def runTest(self, rdd, reduceTasks):
-        rdd.reduceByKey(lambda x, y: x + y, reduceTasks).count()
+    def runTest(self):
+        self.rdd.reduceByKey(lambda x, y: x + y, reduceTasks).count()
 
 class AggregateByKeyNaive(KVDataTest):
-    def runTest(self, rdd, reduceTasks):
-        rdd.map(lambda (k, v): (k, int(v))).groupByKey(reduceTasks).mapValues(sum).count()
+    def runTest(self):
+        self.rdd.map(lambda (k, v): (k, int(v))).groupByKey(reduceTasks).mapValues(sum).count()
 
 class SortByKey(KVDataTest):
-    def runTest(self, rdd, reduceTasks):
-        rdd.sortByKey(numPartitions=reduceTasks).count()
+    def runTest(self):
+        self.rdd.sortByKey(numPartitions=reduceTasks).count()
 
 class SortByKeyInt(KVDataTestInt):
-    def runTest(self, rdd, reduceTasks):
-        rdd.sortByKey(numPartitions=reduceTasks).count()
+    def runTest(self):
+        self.rdd.sortByKey(numPartitions=reduceTasks).count()
 
 class Count(KVDataTest):
-    def runTest(self, rdd, _):
-        rdd.count()
+    def runTest(self):
+        self.rdd.count()
 
 class CountWithFilter(KVDataTest):
-    def runTest(self, rdd, _):
-        rdd.filter(lambda (k, v): int(v) % 2).count()
+    def runTest(self):
+        self.rdd.filter(lambda (k, v): int(v) % 2).count()
+
+class BroadcastWithBytes(PerfTest):
+    def createInputData(self):
+        self.rdd = self.sc.parallelize(range(self.options.num_partitions), self.options.num_partitions)
+    def runTest(self):
+	n = self.options.broadcast_size
+        if n > (1 << 20):
+            block = open("/dev/urandom").read(1 << 20)
+            data = block * (n >> 20)
+        else:
+            data = open("/dev/urandom").read(n)
+        s = self.sc.broadcast(data)
+        assert self.rdd.filter(lambda x: len(s.value) == n).count() == self.options.num_partitions
+        s.unpersist()
+   
+class BroadcastWithSet(BroadcastWithBytes):
+    def runTest(self):
+	n = self.options.broadcast_size / 10
+        s = self.sc.broadcast(range(n))
+        assert self.rdd.filter(lambda x: len(s.value) == n).count() == self.options.num_partitions 
+        s.unpersist()
+
 
 if __name__ == "__main__":
     import optparse
@@ -135,6 +143,7 @@ if __name__ == "__main__":
     parser.add_option("--unique-values", type="int", default=102400)
     parser.add_option("--value-length", type="int", default=20)
     parser.add_option("--num-partitions", type="int", default=10)
+    parser.add_option("--broadcast-size", type="int", default=10 << 20)
     parser.add_option("--random-seed", type="int", default=1)
     parser.add_option("--persistent-type", default="memory")
     parser.add_option("--storage-location", default="/tmp")
@@ -150,3 +159,4 @@ if __name__ == "__main__":
         test.createInputData()
         ts = test.run()
         print "results:", ",".join("%.3f" % t for t in ts)
+
