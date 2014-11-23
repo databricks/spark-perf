@@ -56,6 +56,9 @@ PREP_SPARK = not USE_CLUSTER_SPARK
 RESTART_SPARK_CLUSTER = True
 RESTART_SPARK_CLUSTER = RESTART_SPARK_CLUSTER and not IS_YARN_MODE
 
+# Rsync SPARK_HOME to all the slaves or not
+RSYNC_SPARK_HOME = True
+
 # Which tests to run
 RUN_SPARK_TESTS = True
 RUN_PYSPARK_TESTS = False
@@ -234,37 +237,37 @@ BROADCAST_TEST_OPTS = [
     OptionSet("broadcast-size", [200 << 20], can_scale=True),
 ]
 
-PYSPARK_TESTS += [("python-scheduling-throughput", "tests.py",
+PYSPARK_TESTS += [("python-scheduling-throughput", "core_tests.py",
     SCALE_FACTOR, COMMON_JAVA_OPTS,
     [ConstantOption("SchedulerThroughputTest"), OptionSet("num-tasks", [5000])] + COMMON_OPTS)]
 
-PYSPARK_TESTS += [("python-agg-by-key", "tests.py", SCALE_FACTOR,
+PYSPARK_TESTS += [("python-agg-by-key", "core_tests.py", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("AggregateByKey")] + SPARK_KV_OPTS)]
 
 # Scale the input for this test by 2x since ints are smaller.
-PYSPARK_TESTS += [("python-agg-by-key-int", "tests.py", SCALE_FACTOR * 2,
+PYSPARK_TESTS += [("python-agg-by-key-int", "core_tests.py", SCALE_FACTOR * 2,
     COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyInt")] + SPARK_KV_OPTS)]
 
-PYSPARK_TESTS += [("python-agg-by-key-naive", "tests.py", SCALE_FACTOR,
+PYSPARK_TESTS += [("python-agg-by-key-naive", "core_tests.py", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyNaive")] + SPARK_KV_OPTS)]
 
 # Scale the input for this test by 0.10.
-PYSPARK_TESTS += [("python-sort-by-key", "tests.py", SCALE_FACTOR * 0.1,
+PYSPARK_TESTS += [("python-sort-by-key", "core_tests.py", SCALE_FACTOR * 0.1,
     COMMON_JAVA_OPTS, [ConstantOption("SortByKey")] + SPARK_KV_OPTS)]
 
-PYSPARK_TESTS += [("python-sort-by-key-int", "tests.py", SCALE_FACTOR * 0.2,
+PYSPARK_TESTS += [("python-sort-by-key-int", "core_tests.py", SCALE_FACTOR * 0.2,
     COMMON_JAVA_OPTS, [ConstantOption("SortByKeyInt")] + SPARK_KV_OPTS)]
 
-PYSPARK_TESTS += [("python-count", "tests.py", SCALE_FACTOR,
+PYSPARK_TESTS += [("python-count", "core_tests.py", SCALE_FACTOR,
                  COMMON_JAVA_OPTS, [ConstantOption("Count")] + SPARK_KV_OPTS)]
 
-PYSPARK_TESTS += [("python-count-w-fltr", "tests.py", SCALE_FACTOR,
+PYSPARK_TESTS += [("python-count-w-fltr", "core_tests.py", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("CountWithFilter")] + SPARK_KV_OPTS)]
 
-PYSPARK_TESTS += [("python-broadcast-w-bytes", "tests.py", SCALE_FACTOR,
+PYSPARK_TESTS += [("python-broadcast-w-bytes", "core_tests.py", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("BroadcastWithBytes")] + SPARK_KV_OPTS + BROADCAST_TEST_OPTS)]
 
-PYSPARK_TESTS += [("python-broadcast-w-set", "tests.py", SCALE_FACTOR,
+PYSPARK_TESTS += [("python-broadcast-w-set", "core_tests.py", SCALE_FACTOR,
     COMMON_JAVA_OPTS, [ConstantOption("BroadcastWithSet")] + SPARK_KV_OPTS + BROADCAST_TEST_OPTS)]
 
 

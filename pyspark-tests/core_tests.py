@@ -1,5 +1,6 @@
 import time
 import random
+import json
 
 import pyspark
 
@@ -15,14 +16,14 @@ class DataGenerator:
         return sc.parallelize(xrange(numPartitions), numPartitions).flatMap(gen)
 
     def createKVDataSet(self, sc, dataType, records, uniqueKeys, uniqueValues, keyLength,
-                              valueLength, numPartitions, randomSeed,
-                              persistenceType, storageLocation="/tmp/spark-perf-kv-data"):
+                        valueLength, numPartitions, randomSeed,
+                        persistenceType, storageLocation="/tmp/spark-perf-kv-data"):
         inputRDD = self.generateIntData(sc, records, uniqueKeys, uniqueValues, numPartitions, randomSeed)
         keyfmt = "%%0%dd" % keyLength
         valuefmt = "%%0%dd" % valueLength
         if dataType == "string":
             inputRDD = inputRDD.map(lambda (k, v): (keyfmt % k, valuefmt % v)) 
-	if persistenceType == "memory":
+        if persistenceType == "memory":
             rdd = inputRDD.persist(pyspark.StorageLevel.MEMORY_ONLY)
         elif persistenceType == "disk":
             rdd = inputRDD.persist(pyspark.StorageLevel.DISK_ONLY)
@@ -82,23 +83,23 @@ class KVDataTestInt(KVDataTest):
 
 class AggregateByKey(KVDataTest):
     def runTest(self):
-        self.rdd.map(lambda (k, v): (k, int(v))).reduceByKey(lambda x, y: x + y, reduceTasks).count()
+        self.rdd.map(lambda (k, v): (k, int(v))).reduceByKey(lambda x, y: x + y, self.options.reduce_tasks).count()
 
 class AggregateByKeyInt(KVDataTestInt):
     def runTest(self):
-        self.rdd.reduceByKey(lambda x, y: x + y, reduceTasks).count()
+        self.rdd.reduceByKey(lambda x, y: x + y, self.options.reduce_tasks).count()
 
 class AggregateByKeyNaive(KVDataTest):
     def runTest(self):
-        self.rdd.map(lambda (k, v): (k, int(v))).groupByKey(reduceTasks).mapValues(sum).count()
+        self.rdd.map(lambda (k, v): (k, int(v))).groupByKey(self.options.reduce_tasks).mapValues(sum).count()
 
 class SortByKey(KVDataTest):
     def runTest(self):
-        self.rdd.sortByKey(numPartitions=reduceTasks).count()
+        self.rdd.sortByKey(numPartitions=self.options.reduce_tasks).count()
 
 class SortByKeyInt(KVDataTestInt):
     def runTest(self):
-        self.rdd.sortByKey(numPartitions=reduceTasks).count()
+        self.rdd.sortByKey(numPartitions=self.options.reduce_tasks).count()
 
 class Count(KVDataTest):
     def runTest(self):
@@ -110,25 +111,23 @@ class CountWithFilter(KVDataTest):
 
 class BroadcastWithBytes(PerfTest):
     def createInputData(self):
-        self.rdd = self.sc.parallelize(range(self.options.num_partitions), self.options.num_partitions)
-    def runTest(self):
-	n = self.options.broadcast_size
+        n = self.options.broadcast_size
         if n > (1 << 20):
             block = open("/dev/urandom").read(1 << 20)
-            data = block * (n >> 20)
+            self.data = block * (n >> 20)
         else:
-            data = open("/dev/urandom").read(n)
-        s = self.sc.broadcast(data)
-        assert self.rdd.filter(lambda x: len(s.value) == n).count() == self.options.num_partitions
+            self.data = open("/dev/urandom").read(n)
+    def runTest(self):
+        n = len(self.data)
+        s = self.sc.broadcast(self.data)
+        rdd = self.sc.parallelize(range(self.options.num_partitions), 100)
+        assert rdd.filter(lambda x: len(s.value) == n).count() == self.options.num_partitions
         s.unpersist()
    
 class BroadcastWithSet(BroadcastWithBytes):
-    def runTest(self):
-	n = self.options.broadcast_size / 10
-        s = self.sc.broadcast(range(n))
-        assert self.rdd.filter(lambda x: len(s.value) == n).count() == self.options.num_partitions 
-        s.unpersist()
-
+    def createInputData(self):
+        n = self.options.broadcast_size / 32
+        self.data = set(range(n))
 
 if __name__ == "__main__":
     import optparse
@@ -157,6 +156,23 @@ if __name__ == "__main__":
         test = globals()[name](sc)
         test.initialize(options)
         test.createInputData()
-        ts = test.run()
-        print "results:", ",".join("%.3f" % t for t in ts)
-
+        results = test.run()
+        print "results:", ",".join("%.3f" % t for t in results)
+        
+        # JSON results
+        javaSystemProperties = sc._jvm.System.getProperties()
+        systemProperties = {}
+        for k in javaSystemProperties.keys():
+            systemProperties[k] = str(javaSystemProperties[k])
+        sparkConfInfo = {} # convert to dict to match Scala JSON
+        for (a,b) in sc._conf.getAll():
+            sparkConfInfo[a] = b
+        jsonResults = json.dumps({"testName": name,
+                                  "options": vars(options),
+                                  "sparkConf": sparkConfInfo,
+                                  "sparkVersion": sc.version,
+                                  "systemProperties": systemProperties,
+                                  "results": results,
+                                  "bestResult:": min(results)},
+                                 separators=(',', ':'))  # use separators for compact encoding
+        print "json results: " + jsonResults
