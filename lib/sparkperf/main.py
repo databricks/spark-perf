@@ -132,10 +132,6 @@ if run_pyspark_tests:
     PythonTests.run_tests(cluster, config, config.PYSPARK_TESTS, "PySpark-Tests",
                           config.PYSPARK_OUTPUT_FILENAME)
 
-if run_python_mllib_tests:
-    PythonTests.run_tests(cluster, config, config.PYTHON_MLLIB_TESTS, "Python-MLlib-Tests",
-                          config.PYTHON_MLLIB_OUTPUT_FILENAME)
-
 if run_streaming_tests:
     StreamingTests.run_tests(cluster, config, config.STREAMING_TESTS, "Streaming-Tests",
                              config.STREAMING_OUTPUT_FILENAME)
@@ -143,6 +139,10 @@ if run_streaming_tests:
 if run_mllib_tests:
     MLlibTests.run_tests(cluster, config, config.MLLIB_TESTS, "MLlib-Tests",
                          config.MLLIB_OUTPUT_FILENAME)
+
+if run_python_mllib_tests:
+    PythonMLlibTests.run_tests(cluster, config, config.PYTHON_MLLIB_TESTS, "Python-MLlib-Tests",
+                               config.PYTHON_MLLIB_OUTPUT_FILENAME)
 
 if should_restart_cluster:
     cluster.stop()
