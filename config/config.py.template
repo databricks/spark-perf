@@ -72,7 +72,7 @@ RUN_SPARK_TESTS = True
 RUN_PYSPARK_TESTS = False
 RUN_STREAMING_TESTS = False
 RUN_MLLIB_TESTS = False
-RUN_PYSPARK_MLLIB_TESTS = False
+RUN_PYTHON_MLLIB_TESTS = False
 
 # Which tests to prepare. Set this to true for the first
 # installation or whenever you make a change to the tests.
@@ -103,7 +103,7 @@ STREAMING_OUTPUT_FILENAME = "results/streaming_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 MLLIB_OUTPUT_FILENAME = "results/mllib_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
-PYSPARK_MLLIB_OUTPUT_FILENAME = "results/python_mllib_perf_output_%s_%s" % (
+PYTHON_MLLIB_OUTPUT_FILENAME = "results/python_mllib_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 
 
@@ -359,7 +359,7 @@ MLLIB_JAVA_OPTS = COMMON_JAVA_OPTS
 if MLLIB_SPARK_VERSION >= 1.1:
     MLLIB_JAVA_OPTS = MLLIB_JAVA_OPTS + [
         # Shuffle manager: SORT, HASH
-        JavaOptionSet("spark.shuffle.manager", ["HASH"])
+        JavaOptionSet("spark.shuffle.manager", ["SORT"])
     ]
 
 # The following options value sets are shared among all tests of
@@ -388,7 +388,7 @@ MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # The step size for SGD
     OptionSet("step-size", [0.05]),
     # Regularization type: none, l1, l2
-    OptionSet("reg-type", ["none", "l1", "l2"]),
+    OptionSet("reg-type", ["l2"]),
     # Regularization parameter
     OptionSet("reg-param", [0.1])
 ]
@@ -590,47 +590,33 @@ if MLLIB_SPARK_VERSION >= 1.1:
     MLLIB_TESTS += [("chi-sq-mat", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
         MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-mat")] + MLLIB_CHI_SQ_MAT_TEST_OPTS)]
 
-# PySpark MLlib tests
-PYSPARK_MLLIB_TESTS = []
+# Python MLlib tests
+PYTHON_MLLIB_TESTS = []
 
-PYSPARK_MLLIB_TESTS += [("python-glm-classification", "mllib_tests.py", SCALE_FACTOR,
+PYTHON_MLLIB_TESTS += [("python-glm-classification", "mllib_tests.py", SCALE_FACTOR,
                          MLLIB_JAVA_OPTS, [ConstantOption("GLMClassificationTest")] +
                          MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
 
-PYSPARK_MLLIB_TESTS += [("python-glm-regression", "mllib_tests.py", SCALE_FACTOR,
+PYTHON_MLLIB_TESTS += [("python-glm-regression", "mllib_tests.py", SCALE_FACTOR,
                          MLLIB_JAVA_OPTS, [ConstantOption("GLMRegressionTest")] +
                          MLLIB_GLM_REGRESSION_TEST_OPTS)]
 
-PYSPARK_MLLIB_TESTS += [("python-naive-bayes", "mllib_tests.py", SCALE_FACTOR,
+PYTHON_MLLIB_TESTS += [("python-naive-bayes", "mllib_tests.py", SCALE_FACTOR,
                          MLLIB_JAVA_OPTS, [ConstantOption("NaiveBayesTest")] +
                          NAIVE_BAYES_TEST_OPTS)]
 
-PYSPARK_MLLIB_TESTS += [("python-als", "mllib_tests.py", SCALE_FACTOR,
+PYTHON_MLLIB_TESTS += [("python-als", "mllib_tests.py", SCALE_FACTOR,
                          MLLIB_JAVA_OPTS, [ConstantOption("ALSTest")] +
                          MLLIB_RECOMMENDATION_TEST_OPTS)]
 
-PYSPARK_MLLIB_TESTS += [("python-kmeans", "mllib_tests.py", SCALE_FACTOR,
+PYTHON_MLLIB_TESTS += [("python-kmeans", "mllib_tests.py", SCALE_FACTOR,
                          MLLIB_JAVA_OPTS, [ConstantOption("KMeansTest")] + MLLIB_CLUSTERING_TEST_OPTS)]
 
 if MLLIB_SPARK_VERSION >= 1.1:
-    PYSPARK_MLLIB_TESTS += [("python-pearson", "mllib_tests.py", SCALE_FACTOR,
+    PYTHON_MLLIB_TESTS += [("python-pearson", "mllib_tests.py", SCALE_FACTOR,
                              MLLIB_JAVA_OPTS, [ConstantOption("PearsonCorrelationTest")] +
                              MLLIB_PEARSON_TEST_OPTS)]
 
-    PYSPARK_MLLIB_TESTS += [("python-spearman", "mllib_tests.py", SCALE_FACTOR,
+    PYTHON_MLLIB_TESTS += [("python-spearman", "mllib_tests.py", SCALE_FACTOR,
                              MLLIB_JAVA_OPTS, [ConstantOption("SpearmanCorrelationTest")] +
                              MLLIB_SPEARMAN_TEST_OPTS)]
-
-
-# Total number of bytes used to warm up each local directory.
-DISK_WARMUP_BYTES = 200 * 1024 * 1024
-
-# Number of files to create when warming up each local directory. Bytes will be evenly divided
-# across files.
-DISK_WARMUP_FILES = 200
-
-# Prompt for confirmation when deleting temporary files.
-PROMPT_FOR_DELETES = True
-
-# Use a custom configuration directory
-SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
