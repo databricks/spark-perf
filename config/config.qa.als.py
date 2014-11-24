@@ -535,7 +535,7 @@ SPARK_SKIP_TESTS = True
 STREAMING_SKIP_TESTS = True
 MLLIB_SKIP_TESTS = False
 PYSPARK_CORE_SKIP_TESTS = True
-PYSPARK_MLLIB_SKIP_TESTS = True
+PYSPARK_MLLIB_SKIP_TESTS = False
 
 # Skip building and packaging project tests (requires respective perf tests to already be packaged
 # in the project's target directory).

@@ -405,8 +405,7 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
 
 if MLLIB_SPARK_VERSION >= 1.2:
     MLLIB_DECISION_TREE_TEST_OPTS += [
-        # Ensemble type: RandomForest, GradientBoosting
-        # Note: If num-trees = 1, then RandomForest and GradientBoosting should give the same result.
+        # Ensemble type: RandomForest
         OptionSet("ensemble-type", ["RandomForest"]),
         # Path to training dataset (if not given, use random data).
         OptionSet("training-data", [""]),
@@ -493,33 +492,43 @@ MLLIB_TESTS += [("summary-statistics", "mllib.perf." + MLLIB_SPARK_VERSION_STR +
     MLLIB_LINALG_TEST_OPTS)]
 
 # Statistic Toolkit Tests #
-if MLLIB_SPARK_VERSION >= 1.1:
-    MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS
+MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS
 
+MLLIB_PEARSON_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                          [OptionSet("num-rows", [10000000], can_scale=True),
+                           OptionSet("num-cols", [1000], can_scale=True)]
+
+MLLIB_SPEARMAN_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                           [OptionSet("num-rows", [5000000], can_scale=True),
+                            OptionSet("num-cols", [100], can_scale=True)]
+
+MLLIB_CHI_SQ_FEATURE_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                                 [OptionSet("num-rows", [10000000], can_scale=True),
+                                  OptionSet("num-cols", [500], can_scale=True)]
+
+MLLIB_CHI_SQ_GOF_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                             [OptionSet("num-rows", [50000000], can_scale=True),
+                              OptionSet("num-cols", [0], can_scale=True)]
+
+MLLIB_CHI_SQ_MAT_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                             [OptionSet("num-rows", [20000], can_scale=True),
+                              OptionSet("num-cols", [0], can_scale=True)]
+
+if MLLIB_SPARK_VERSION >= 1.1:
     MLLIB_TESTS += [("pearson", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("pearson"),
-        OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [1000], can_scale=True)] +
-        MLLIB_STATS_TEST_OPTS)]
+        MLLIB_JAVA_OPTS, [ConstantOption("pearson")] + MLLIB_PEARSON_TEST_OPTS)]
 
     MLLIB_TESTS += [("spearman", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("spearman"),
-        OptionSet("num-rows", [5000000], can_scale=True), OptionSet("num-cols", [100], can_scale=True)] +
-        MLLIB_STATS_TEST_OPTS)]
+        MLLIB_JAVA_OPTS, [ConstantOption("spearman")] + MLLIB_SPEARMAN_TEST_OPTS)]
 
     MLLIB_TESTS += [("chi-sq-feature", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-feature"),
-        OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [500], can_scale=True)] +
-        MLLIB_STATS_TEST_OPTS)]
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-feature")] + MLLIB_CHI_SQ_FEATURE_TEST_OPTS)]
 
     MLLIB_TESTS += [("chi-sq-gof", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-gof"),
-        OptionSet("num-rows", [50000000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
-        MLLIB_STATS_TEST_OPTS)]
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-gof")] + MLLIB_CHI_SQ_GOF_TEST_OPTS)]
 
     MLLIB_TESTS += [("chi-sq-mat", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-mat"),
-        OptionSet("num-rows", [20000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
-        MLLIB_STATS_TEST_OPTS)]
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-mat")] + MLLIB_CHI_SQ_MAT_TEST_OPTS)]
 
 # PySpark MLlib tests
 PYSPARK_MLLIB_TESTS = []
@@ -532,9 +541,25 @@ PYSPARK_MLLIB_TESTS += [("python-glm-regression", "mllib_tests.py", SCALE_FACTOR
                          MLLIB_JAVA_OPTS, [ConstantOption("GLMRegressionTest")] +
                          MLLIB_GLM_REGRESSION_TEST_OPTS)]
 
+PYSPARK_MLLIB_TESTS += [("python-naive-bayes", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("NaiveBayesTest")] +
+                         NAIVE_BAYES_TEST_OPTS)]
+
 #PYSPARK_MLLIB_TESTS += [("python-als", "mllib_tests.py", SCALE_FACTOR,
 #                         MLLIB_JAVA_OPTS, [ConstantOption("ALSTest")] +
 #                         MLLIB_RECOMMENDATION_TEST_OPTS)]
+
+PYSPARK_MLLIB_TESTS += [("python-kmeans", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("KMeansTest")] + MLLIB_CLUSTERING_TEST_OPTS)]
+
+if MLLIB_SPARK_VERSION >= 1.1:
+    PYSPARK_MLLIB_TESTS += [("python-pearson", "mllib_tests.py", SCALE_FACTOR,
+                             MLLIB_JAVA_OPTS, [ConstantOption("PearsonCorrelationTest")] +
+                             MLLIB_PEARSON_TEST_OPTS)]
+
+    PYSPARK_MLLIB_TESTS += [("python-spearman", "mllib_tests.py", SCALE_FACTOR,
+                             MLLIB_JAVA_OPTS, [ConstantOption("SpearmanCorrelationTest")] +
+                             MLLIB_SPEARMAN_TEST_OPTS)]
 
 
 # Skip downloading and building Spark
@@ -544,7 +569,7 @@ SPARK_SKIP_TESTS = True
 STREAMING_SKIP_TESTS = True
 MLLIB_SKIP_TESTS = False
 PYSPARK_CORE_SKIP_TESTS = True
-PYSPARK_MLLIB_SKIP_TESTS = True
+PYSPARK_MLLIB_SKIP_TESTS = False
 
 # Skip building and packaging project tests (requires respective perf tests to already be packaged
 # in the project's target directory).

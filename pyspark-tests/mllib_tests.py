@@ -4,8 +4,10 @@ import time
 
 import pyspark
 from pyspark.mllib.classification import *
+from pyspark.mllib.clustering import *
 from pyspark.mllib.regression import *
 from pyspark.mllib.recommendation import *
+from pyspark.mllib.stat import *
 
 from mllib_data import *
 
@@ -21,9 +23,33 @@ class PerfTest:
 
     def run(self):
         """
-        :return: List of [trainingTime, testTime, trainingMetric, testMetric] tuples
+        :return: List of [trainingTime, testTime, trainingMetric, testMetric] tuples,
+                 or list of [time] tuples
         """
         raise NotImplementedError
+
+
+class NonPredictionTest(PerfTest):
+    def __init__(self, sc):
+        PerfTest.__init__(self, sc)
+
+    def runTest(self):
+        raise NotImplementedError
+
+    def run(self):
+        """
+        :return: List of [time] 1-element tuples
+        """
+        options = self.options
+        results = []
+        for i in range(options.num_trials):
+            start = time.time()
+            self.runTest()
+            runtime = time.time() - start
+            results.append([runtime])
+            time.sleep(options.inter_trial_wait)
+        return results
+
 
 class PredictionTest(PerfTest):
     def __init__(self, sc):
@@ -53,13 +79,35 @@ class PredictionTest(PerfTest):
             trainingTime = time.time() - start
             # Measure test time on training set since it is probably larger.
             start = time.time()
+            print 'computing trainingMetric...'
             trainingMetric = self.evaluate(model, self.trainRDD)
+            print '  done computing trainingMetric'
             testTime = time.time() - start
             # Test
+            print 'computing testMetric...'
             testMetric = self.evaluate(model, self.testRDD)
+            print '  done computing testMetric'
             results.append([trainingTime, testTime, trainingMetric, testMetric])
             time.sleep(options.inter_trial_wait)
         return results
+
+    @classmethod
+    def _evaluateAccuracy(cls, model, rdd):
+        """
+        :return:  0/1 classification accuracy as percentage for model on the given data.
+        """
+        acc = rdd.map(lambda lp: 1.0 if lp.label == model.predict(lp.features) else 0.0).mean()
+        return 100.0 * acc
+
+    @classmethod
+    def _evaluateRMSE(cls, model, rdd):
+        """
+        :return:  root mean squared error (RMSE) for model on the given data.
+        """
+        squaredError =\
+            rdd.map(lambda lp: numpy.square(lp.label - model.predict(lp.features))).mean()
+        return numpy.sqrt(squaredError)
+
 
 class GLMTest(PredictionTest):
     def __init__(self, sc):
@@ -75,6 +123,7 @@ class GLMTest(PredictionTest):
         self.testRDD = LabeledDataGenerator.generateGLMData(
             self.sc, numTest, options.num_features,
             options.num_partitions, options.random_seed + 1, labelType=2)
+
 
 class GLMClassificationTest(GLMTest):
     def __init__(self, sc):
@@ -105,12 +154,7 @@ class GLMClassificationTest(GLMTest):
             raise Exception("GLMClassificationTest does not recognize loss: %s" % options.loss)
 
     def evaluate(self, model, rdd):
-        """
-        :return:  0/1 classification accuracy as percentage for model on the given data.
-        """
-        n = rdd.count()
-        acc = rdd.map(lambda lp: 1.0 if lp.label == model.predict(lp.features) else 0.0).sum()
-        return 100.0 * (acc / n)
+        return PredictionTest._evaluateAccuracy(model, rdd)
 
 
 class GLMRegressionTest(GLMTest):
@@ -137,17 +181,49 @@ class GLMRegressionTest(GLMTest):
             raise Exception("GLMRegressionTest does not recognize loss: %s" % options.loss)
 
     def evaluate(self, model, rdd):
-        """
-        :return:  root mean squared error (RMSE) for model on the given data.
-        """
-        n = rdd.count()
-        squaredError = rdd.map(lambda lp: numpy.square(lp.label - model.predict(lp.features))).sum()
-        return numpy.sqrt(squaredError / n)
+        return PredictionTest._evaluateRMSE(model, rdd)
 
 
-class ALSTest(PerfTest):
+class NaiveBayesTest(PredictionTest):
     def __init__(self, sc):
-        PerfTest.__init__(self, sc)
+        PredictionTest.__init__(self, sc)
+
+    def createInputData(self):
+        options = self.options
+        numTrain = options.num_points
+        numTest = int(options.num_points * 0.2)
+        self.trainRDD = LabeledDataGenerator.generateGLMData(
+            self.sc, numTrain, options.num_columns,
+            options.num_partitions, options.random_seed, labelType=2)
+        self.testRDD = LabeledDataGenerator.generateGLMData(
+            self.sc, numTest, options.num_columns,
+            options.num_partitions, options.random_seed + 1, labelType=2)
+
+    def evaluate(self, model, rdd):
+        return PredictionTest._evaluateAccuracy(model, rdd)
+
+    def train(self, rdd):
+        return NaiveBayes.train(rdd, lambda_=options.nb_lambda)
+
+
+class KMeansTest(NonPredictionTest):
+    def __init__(self, sc):
+        NonPredictionTest.__init__(self, sc)
+
+    def createInputData(self):
+        options = self.options
+        self.data = FeaturesGenerator.generateContinuousData(
+            self.sc, options.num_points, options.num_columns,
+            options.num_partitions, options.random_seed)
+
+    def runTest(self):
+        model = KMeans.train(self.data, k=options.num_centers,
+                             maxIterations=options.num_iterations)
+
+
+class ALSTest(PredictionTest):
+    def __init__(self, sc):
+        PredictionTest.__init__(self, sc)
 
     def createInputData(self):
         options = self.options
@@ -178,39 +254,43 @@ class ALSTest(PerfTest):
             predictions.map(mapPrediction).join(rdd.map(lambda r: ((r[0], r[1]), r[2]))).values()
         return numpy.sqrt(predictionsAndRatings.map(lambda ab: numpy.square(ab[0] - ab[1])).mean())
 
-    def runTest(self):
-        # Learn model
-        start = time.time()
+    def train(self, rdd):
         if options.implicit_prefs:
-            model = ALS.trainImplicit(self.trainRDD, rank=options.rank,
+            model = ALS.trainImplicit(rdd, rank=options.rank,
                                       iterations=options.num_iterations,
                                       lambda_=options.reg_param, blocks=options.num_partitions)
         else:
-            model = ALS.train(self.trainRDD, rank=options.rank,
+            model = ALS.train(rdd, rank=options.rank,
                               iterations=options.num_iterations,
                               lambda_=options.reg_param, blocks=options.num_partitions)
-        trainingTime = time.time() - start
-        # Measure test time on training set since it is probably larger.
-        start = time.time()
-        trainingMetric = self.evaluate(model, self.trainRDD)
-        testTime = time.time() - start
-        # Test
-        testMetric = self.evaluate(model, self.testRDD)
-        return [trainingTime, testTime, trainingMetric, testMetric]
+        return model
 
-    def run(self):
-        """
-        :return: List of [trainingTime, testTime, trainingMetric, testMetric] tuples
-        """
+
+class CorrelationTest(NonPredictionTest):
+    def __init__(self, sc):
+        NonPredictionTest.__init__(self, sc)
+
+    def createInputData(self):
         options = self.options
-        self.trainRDD.cache() # match Scala tests for caching before computing testTime
-        self.trainRDD.count()
-        results = []
-        for i in range(options.num_trials):
-            r = self.runTest()
-            results.append(r)
-            time.sleep(options.inter_trial_wait)
-        return results
+        self.data = FeaturesGenerator.generateContinuousData(
+            self.sc, options.num_rows, options.num_cols,
+            options.num_partitions, options.random_seed)
+
+
+class PearsonCorrelationTest(CorrelationTest):
+    def __init__(self, sc):
+        CorrelationTest.__init__(self, sc)
+
+    def runTest(self):
+        corr = Statistics.corr(self.data, method="pearson")
+
+
+class SpearmanCorrelationTest(CorrelationTest):
+    def __init__(self, sc):
+        CorrelationTest.__init__(self, sc)
+
+    def runTest(self):
+        corr = Statistics.corr(self.data, method="spearman")
 
 
 if __name__ == "__main__":
@@ -224,6 +304,7 @@ if __name__ == "__main__":
     parser.add_option("--random-seed", type="int", default=5)
     parser.add_option("--num-iterations", type="int", default=20)
     parser.add_option("--reg-param", type="float", default=0.1)
+    parser.add_option("--rank", type="int", default=2)
     # MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS
     parser.add_option("--num-examples", type="int", default=1024)
     parser.add_option("--num-features", type="int", default=50)
@@ -240,12 +321,28 @@ if __name__ == "__main__":
     # NAIVE_BAYES_TEST_OPTS
     parser.add_option("--per-negative", type="float", default=0.3)
     parser.add_option("--nb-lambda", type="float", default=1.0)
+    # MLLIB_DECISION_TREE_TEST_OPTS
+    parser.add_option("--label-type", type="int", default=2)
+    parser.add_option("--frac-categorical-features", type="float", default=0.5)
+    parser.add_option("--frac-binary-features", type="float", default=0.5)
+    parser.add_option("--tree-depth", type="int", default=5)
+    parser.add_option("--max-bins", type="int", default=32)
+    #  (for Spark 1.2+ only:)
+    parser.add_option("--ensemble-type", type="string", default="RandomForest")
+    parser.add_option("--num-trees", type="int", default=1)
+    parser.add_option("--feature-subset-strategy", type="string", default="auto")
     # MLLIB_RECOMMENDATION_TEST_OPTS
     parser.add_option("--num-users", type="int", default=60)
     parser.add_option("--num-products", type="int", default=50)
     parser.add_option("--num-ratings", type="int", default=500)
-    parser.add_option("--rank", type="int", default=2)
     parser.add_option("--implicit-prefs", type="int", default=0)
+    # MLLIB_CLUSTERING_TEST_OPTS
+    parser.add_option("--num-points", type="int", default=1000)
+    parser.add_option("--num-columns", type="int", default=10)
+    parser.add_option("--num-centers", type="int", default=5)
+    # MLLIB_LINALG_TEST_OPTS + MLLIB_STATS_TEST_OPTS
+    parser.add_option("--num-rows", type="int", default=1000)
+    parser.add_option("--num-cols", type="int", default=10)
 
     options, cases = parser.parse_args()
 
@@ -266,7 +363,7 @@ if __name__ == "__main__":
             raise Exception("mllib_tests.py FAILED (got %d results instead of %d)" %
                             (len(ts), test.options.num_trials))
         results = []
-        if 'time' in ts[0]:
+        if len(ts[0]) == 1:
             # results include: time
             print "Results from each trial:"
             print "trial\ttime"

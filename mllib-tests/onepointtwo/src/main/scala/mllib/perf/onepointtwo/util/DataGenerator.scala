@@ -51,7 +51,7 @@ object DataGenerator {
       seed: Long = System.currentTimeMillis(),
       chiSq: Boolean = false): RDD[LabeledPoint] = {
 
-    RandomRDDs.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, scaleFactor,chiSq),
+    RandomRDDs.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, scaleFactor, chiSq),
       numRows, numPartitions, seed)
   }
 
