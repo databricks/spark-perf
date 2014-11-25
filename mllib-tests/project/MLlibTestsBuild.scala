@@ -17,9 +17,10 @@ object MLlibTestsBuild extends Build {
     version := "0.1",
     scalaVersion := "2.10.4",
     libraryDependencies ++= Seq(
-      "net.sf.jopt-simple" % "jopt-simple" % "4.5",
+      "net.sf.jopt-simple" % "jopt-simple" % "4.6",
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
-      "org.slf4j" % "slf4j-log4j12" % "1.7.2"
+      "org.slf4j" % "slf4j-log4j12" % "1.7.2",
+      "org.json4s" %% "json4s-native" % "3.2.9"
     )
   )
 
@@ -44,14 +45,23 @@ object MLlibTestsBuild extends Build {
         case PathList("application.conf", xs@_*) => MergeStrategy.concat
         case _ => MergeStrategy.first
       }
-    )).aggregate(onepointoh, onepointone).dependsOn(onepointoh, onepointone)
+    )).aggregate(onepointtwo).dependsOn(onepointtwo) //aggregate(onepointoh, onepointone, onepointtwo).dependsOn(onepointoh, onepointone, onepointtwo)
+
+  lazy val onepointtwo = Project(
+    "onepointtwo",
+    file("onepointtwo"),
+    settings = commonSettings ++ Seq(
+      //should be set to 1.2.0 or higher
+      libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.3.0-SNAPSHOT" % "provided"
+    )
+  )
 
   lazy val onepointone = Project(
     "onepointone",
     file("onepointone"),
     settings = commonSettings ++ Seq(
       //should be set to 1.1.0 or higher
-      libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.1.0" % "provided"
+      libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.1.0-SNAPSHOT" % "provided"
     )
   )
 

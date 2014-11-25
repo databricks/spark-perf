@@ -75,6 +75,7 @@ RUN_SPARK_TESTS = True
 RUN_PYSPARK_TESTS = False
 RUN_STREAMING_TESTS = False
 RUN_MLLIB_TESTS = False
+RUN_PYTHON_MLLIB_TESTS = False
 
 # Which tests to prepare. Set this to true for the first
 # installation or whenever you make a change to the tests.
@@ -104,6 +105,8 @@ PYSPARK_OUTPUT_FILENAME = "results/python_perf_output_%s_%s" % (
 STREAMING_OUTPUT_FILENAME = "results/streaming_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 MLLIB_OUTPUT_FILENAME = "results/mllib_perf_output_%s_%s" % (
+    SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
+PYTHON_MLLIB_OUTPUT_FILENAME = "results/python_mllib_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 
 
@@ -354,6 +357,25 @@ STREAMING_TESTS += [("hdfs-recovery", "streaming.perf.TestRunner", SCALE_FACTOR,
 
 MLLIB_TESTS = []
 
+# Set this to 1.0, 1.1, 1.2 to test MLlib with a particular Spark version.
+# Note: You should also edit the dependency in MLlibTestsBuild.scala.
+MLLIB_SPARK_VERSION = 1.2
+if MLLIB_SPARK_VERSION == 1.0:
+    MLLIB_SPARK_VERSION_STR = "onepointoh"
+elif MLLIB_SPARK_VERSION == 1.1:
+    MLLIB_SPARK_VERSION_STR = "onepointone"
+elif MLLIB_SPARK_VERSION == 1.2:
+    MLLIB_SPARK_VERSION_STR = "onepointtwo"
+else:
+    raise Exception("Bad MLLIB_SPARK_VERSION: %r" % MLLIB_SPARK_VERSION)
+
+MLLIB_JAVA_OPTS = COMMON_JAVA_OPTS
+if MLLIB_SPARK_VERSION >= 1.1:
+    MLLIB_JAVA_OPTS = MLLIB_JAVA_OPTS + [
+        # Shuffle manager: SORT, HASH
+        JavaOptionSet("spark.shuffle.manager", ["SORT"])
+    ]
+
 # The following options value sets are shared among all tests of
 # operations on MLlib algorithms.
 MLLIB_COMMON_OPTS = COMMON_OPTS + [
@@ -370,66 +392,79 @@ MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # The number of rows or examples
     OptionSet("num-examples", [1000000], can_scale=True),
     # The number of features per example
-    OptionSet("num-features", [10000], can_scale=True),
-    # The number of iterations for SGD
-    OptionSet("num-iterations", [100]),
-    # The step size for SGD
-    OptionSet("step-size", [0.05])
+    OptionSet("num-features", [10000], can_scale=True)
 ]
 
-# Regression Tests #
-MLLIB_REGRESSION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+# Generalized Linear Model (GLM) Tests #
+MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    # The number of iterations for SGD
+    OptionSet("num-iterations", [20]),
+    # The step size for SGD
+    OptionSet("step-size", [0.05]),
+    # Regularization type: none, l1, l2
+    OptionSet("reg-type", ["l2"]),
+    # Regularization parameter
+    OptionSet("reg-param", [0.1])
+]
+if MLLIB_SPARK_VERSION >= 1.1:
+    MLLIB_GLM_TEST_OPTS += [
+        # Optimization algorithm: sgd, lbfgs
+        OptionSet("optimizer", ["sgd"])
+    ]
+
+# GLM Regression Tests #
+MLLIB_GLM_REGRESSION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
     # The intercept for the data
     OptionSet("intercept", [0.0]),
     # The scale factor for the noise
-    OptionSet("epsilon", [0.1])
+    OptionSet("epsilon", [0.1]),
+    # Loss to minimize: l2 (squared error)
+    OptionSet("loss", ["l2"])
 ]
 
-MLLIB_TESTS += [("linear-regression", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("linear-regression"),
-    OptionSet("reg-param", [0.0])] + MLLIB_REGRESSION_TEST_OPTS)]
-
-MLLIB_TESTS += [("lasso", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("lasso"),
-    OptionSet("reg-param", [0.0,1.0])] + MLLIB_REGRESSION_TEST_OPTS)]
-
-MLLIB_TESTS += [("ridge-regression", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("ridge-regression"),
-    OptionSet("reg-param", [0.0,1.0])] + MLLIB_REGRESSION_TEST_OPTS)]
+MLLIB_TESTS += [("glm-regression", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("glm-regression")] + MLLIB_GLM_REGRESSION_TEST_OPTS)]
 
 # Classification Tests #
-MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
-     # The intercept for the data
+MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
+     # Expected fraction of examples which are negative
      OptionSet("per-negative", [0.3]),
-     # The scale factor for the noise
-     OptionSet("scale-factor", [1.0]),
-     # Naive Bayes smoothing lambda
-     OptionSet("nb-lambda", [1.0]),
-     # SVM regularization
-     OptionSet("reg-param", [1.0])
+     # The scale factor for the noise in feature values
+     OptionSet("scale-factor", [1.0])
 ]
 
-MLLIB_TESTS += [("logistic-regression", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("logistic-regression")] +
-    MLLIB_CLASSIFICATION_TEST_OPTS)]
+# GLM Classification Tests #
+MLLIB_GLM_CLASSIFICATION_TEST_OPTS = MLLIB_CLASSIFICATION_TEST_OPTS + [
+    # Loss to minimize: logistic, hinge (SVM)
+    OptionSet("loss", ["logistic", "hinge"])
+]
 
-MLLIB_TESTS += [("naive-bayes", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("naive-bayes")] +
-    MLLIB_CLASSIFICATION_TEST_OPTS)]
+MLLIB_TESTS += [("glm-classification", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("glm-classification")] +
+    MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
 
-MLLIB_TESTS += [("svm", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("svm")] +
-    MLLIB_CLASSIFICATION_TEST_OPTS)]
+NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    # Expected fraction of examples which are negative
+    OptionSet("per-negative", [0.3]),
+    # The scale factor for the noise in feature values
+    OptionSet("scale-factor", [1.0]),
+    # Naive Bayes smoothing lambda.
+    OptionSet("nb-lambda", [1.0])
+]
+
+MLLIB_TESTS += [("naive-bayes", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
+    NAIVE_BAYES_TEST_OPTS)]
 
 # Decision Trees #
-
 MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # The number of rows or examples
-    OptionSet("num-examples", [2000000], can_scale=True),
+    OptionSet("num-examples", [1000000], can_scale=True),
     # The number of features per example
-    OptionSet("num-features", [1000], can_scale=True),
+    OptionSet("num-features", [500], can_scale=True),
     # Type of label: 0 indicates regression, 2+ indicates classification with this many classes
-    OptionSet("label-type", [2], can_scale=False),
+    # Note: multi-class (>2) is not supported in Spark 1.0.
+    OptionSet("label-type", [0, 2], can_scale=False),
     # Fraction of features which are categorical
     OptionSet("frac-categorical-features", [0.5], can_scale=False),
     # Fraction of categorical features which are binary. Others have 20 categories.
@@ -437,17 +472,31 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # Depth of true decision tree model used to label examples.
     # WARNING: The meaning of depth changed from Spark 1.0 to Spark 1.1:
     #          depth=N for Spark 1.0 should be depth=N-1 for Spark 1.1
-    OptionSet("tree-depth", [5], can_scale=False),
+    OptionSet("tree-depth", [1, 10], can_scale=False),
     # Maximum number of bins for the decision tree learning algorithm.
-    OptionSet("max-bins", [100], can_scale=False),
-    # (unused parameter)
-    OptionSet("num-iterations", [0], can_scale=False),
-    # (unused parameter)
-    OptionSet("reg-param", [0], can_scale=False)
+    OptionSet("max-bins", [32], can_scale=False),
 ]
 
-MLLIB_TESTS += [("decision-tree-1.0", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("decision-tree")] +
+if MLLIB_SPARK_VERSION >= 1.2:
+    MLLIB_DECISION_TREE_TEST_OPTS += [
+        # Ensemble type: RandomForest
+        OptionSet("ensemble-type", ["RandomForest"]),
+        # Path to training dataset (if not given, use random data).
+        OptionSet("training-data", [""]),
+        # Path to test dataset (only used if training dataset given).
+        # If not given, hold out part of training data for validation.
+        OptionSet("test-data", [""]),
+        # Fraction of data to hold out for testing (ignored if given training and test dataset).
+        OptionSet("test-data-fraction", [0.2], can_scale=False),
+        # Number of trees. If 1, then run DecisionTree. If >1, then run RandomForest.
+        OptionSet("num-trees", [1, 10], can_scale=False),
+        # Feature subset sampling strategy: auto, all, sqrt, log2, onethird
+        # (only used for RandomForest)
+        OptionSet("feature-subset-strategy", ["auto"])
+    ]
+
+MLLIB_TESTS += [("decision-tree", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("decision-tree")] +
     MLLIB_DECISION_TREE_TEST_OPTS)]
 
 # Recommendation Tests #
@@ -457,19 +506,19 @@ MLLIB_RECOMMENDATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
      # The number of products
      OptionSet("num-products", [5000000], can_scale=True),
      # The number of ratings
-     OptionSet("num-ratings", [100000000], can_scale=True),
+     OptionSet("num-ratings", [50000000], can_scale=True),
      # The number of iterations for ALS
-     OptionSet("num-iterations", [20]),
+     OptionSet("num-iterations", [10]),
      # The rank of the factorized matrix model
-     OptionSet("rank", [20]),
+     OptionSet("rank", [10]),
      # The regularization parameter
-     OptionSet("reg-param", [1.0]),
+     OptionSet("reg-param", [0.1]),
      # Whether to use implicit preferences or not
      FlagSet("implicit-prefs", [False])
 ]
 
-MLLIB_TESTS += [("als", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("als")] +
+MLLIB_TESTS += [("als", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("als")] +
     MLLIB_RECOMMENDATION_TEST_OPTS)]
 
 # Clustering Tests #
@@ -484,74 +533,104 @@ MLLIB_CLUSTERING_TEST_OPTS = MLLIB_COMMON_OPTS + [
      OptionSet("num-iterations", [20])
 ]
 
-MLLIB_TESTS += [("kmeans", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("kmeans"),
-    OptionSet("reg-param", [0.0])] + MLLIB_CLUSTERING_TEST_OPTS)]
+MLLIB_TESTS += [("kmeans", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("kmeans")] + MLLIB_CLUSTERING_TEST_OPTS)]
 
 # Linear Algebra Tests #
 MLLIB_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
-     # The number of rows for the matrix
-     OptionSet("num-rows", [1000000], can_scale=True),
-     # The number of columns for the matrix
-     OptionSet("num-cols", [1000], can_scale=True),
-     # The number of top singular values wanted for SVD and PCA
-     OptionSet("rank", [50]),
-     # Regularization Parameter (Not used in these tests)
-     OptionSet("reg-param", [0.0]),
-     # Number of iterations (not used in these tests)
-     OptionSet("num-iterations", [0])
+    # The number of rows for the matrix
+    OptionSet("num-rows", [1000000], can_scale=True),
+    # The number of columns for the matrix
+    OptionSet("num-cols", [1000], can_scale=True),
+    # The number of top singular values wanted for SVD and PCA
+    OptionSet("rank", [50], can_scale=True)
+]
+# Linear Algebra Tests which take more time (slightly smaller settings) #
+MLLIB_BIG_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
+    # The number of rows for the matrix
+    OptionSet("num-rows", [800000], can_scale=True),
+    # The number of columns for the matrix
+    OptionSet("num-cols", [800], can_scale=True),
+    # The number of top singular values wanted for SVD and PCA
+    OptionSet("rank", [40], can_scale=True)
 ]
 
-MLLIB_TESTS += [("svd", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_LINALG_TEST_OPTS)]
+MLLIB_TESTS += [("svd", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_BIG_LINALG_TEST_OPTS)]
 
-MLLIB_TESTS += [("pca", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("pca")] + MLLIB_LINALG_TEST_OPTS)]
+MLLIB_TESTS += [("pca", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("pca")] + MLLIB_LINALG_TEST_OPTS)]
 
-MLLIB_TESTS += [("summary-statistics", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("summary-statistics")] +
+MLLIB_TESTS += [("summary-statistics", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("summary-statistics")] +
     MLLIB_LINALG_TEST_OPTS)]
 
-# Algorithms available with Spark-1.1 #
-
-# Logistic Regression with L-BFGS #
-MLLIB_TESTS += [("lr-lbfgs", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("lr-lbfgs"),
-    OptionSet("convergence-tol", [1e-5])] + MLLIB_CLASSIFICATION_TEST_OPTS)]
-
-MLLIB_TESTS += [("decision-tree-1.1", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("decision-tree")] +
-    MLLIB_DECISION_TREE_TEST_OPTS)]
-
 # Statistic Toolkit Tests #
-MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS + [
-      # Regularization Parameter (Not used in these tests)
-      OptionSet("reg-param", [0.0]),
-      # Number of iterations (not used in these tests)
-      OptionSet("num-iterations", [0])
-]
+MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS
 
-MLLIB_TESTS += [("pearson", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("pearson"),
-    OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [1000], can_scale=True)] +
-    MLLIB_STATS_TEST_OPTS)]
+MLLIB_PEARSON_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                          [OptionSet("num-rows", [10000000], can_scale=True),
+                           OptionSet("num-cols", [1000], can_scale=True)]
 
-MLLIB_TESTS += [("spearman", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("spearman"),
-    OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [100], can_scale=True)] +
-    MLLIB_STATS_TEST_OPTS)]
+MLLIB_SPEARMAN_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                           [OptionSet("num-rows", [5000000], can_scale=True),
+                            OptionSet("num-cols", [100], can_scale=True)]
 
-MLLIB_TESTS += [("chi-sq-feature", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("chi-sq-feature"),
-    OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [500], can_scale=True)] +
-    MLLIB_STATS_TEST_OPTS)]
+MLLIB_CHI_SQ_FEATURE_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                                 [OptionSet("num-rows", [10000000], can_scale=True),
+                                  OptionSet("num-cols", [500], can_scale=True)]
 
-MLLIB_TESTS += [("chi-sq-gof", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("chi-sq-gof"),
-    OptionSet("num-rows", [50000000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
-    MLLIB_STATS_TEST_OPTS)]
+MLLIB_CHI_SQ_GOF_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                             [OptionSet("num-rows", [50000000], can_scale=True),
+                              OptionSet("num-cols", [0], can_scale=True)]
 
-MLLIB_TESTS += [("chi-sq-mat", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-    COMMON_JAVA_OPTS, [ConstantOption("chi-sq-matrix"),
-    OptionSet("num-rows", [50000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
-    MLLIB_STATS_TEST_OPTS)]
+MLLIB_CHI_SQ_MAT_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                             [OptionSet("num-rows", [20000], can_scale=True),
+                              OptionSet("num-cols", [0], can_scale=True)]
+
+if MLLIB_SPARK_VERSION >= 1.1:
+    MLLIB_TESTS += [("pearson", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("pearson")] + MLLIB_PEARSON_TEST_OPTS)]
+
+    MLLIB_TESTS += [("spearman", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("spearman")] + MLLIB_SPEARMAN_TEST_OPTS)]
+
+    MLLIB_TESTS += [("chi-sq-feature", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-feature")] + MLLIB_CHI_SQ_FEATURE_TEST_OPTS)]
+
+    MLLIB_TESTS += [("chi-sq-gof", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-gof")] + MLLIB_CHI_SQ_GOF_TEST_OPTS)]
+
+    MLLIB_TESTS += [("chi-sq-mat", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-mat")] + MLLIB_CHI_SQ_MAT_TEST_OPTS)]
+
+# Python MLlib tests
+PYTHON_MLLIB_TESTS = []
+
+PYTHON_MLLIB_TESTS += [("python-glm-classification", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("GLMClassificationTest")] +
+                         MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
+
+PYTHON_MLLIB_TESTS += [("python-glm-regression", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("GLMRegressionTest")] +
+                         MLLIB_GLM_REGRESSION_TEST_OPTS)]
+
+PYTHON_MLLIB_TESTS += [("python-naive-bayes", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("NaiveBayesTest")] +
+                         NAIVE_BAYES_TEST_OPTS)]
+
+PYTHON_MLLIB_TESTS += [("python-als", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("ALSTest")] +
+                         MLLIB_RECOMMENDATION_TEST_OPTS)]
+
+PYTHON_MLLIB_TESTS += [("python-kmeans", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("KMeansTest")] + MLLIB_CLUSTERING_TEST_OPTS)]
+
+if MLLIB_SPARK_VERSION >= 1.1:
+    PYTHON_MLLIB_TESTS += [("python-pearson", "mllib_tests.py", SCALE_FACTOR,
+                             MLLIB_JAVA_OPTS, [ConstantOption("PearsonCorrelationTest")] +
+                             MLLIB_PEARSON_TEST_OPTS)]
+
+    PYTHON_MLLIB_TESTS += [("python-spearman", "mllib_tests.py", SCALE_FACTOR,
+                             MLLIB_JAVA_OPTS, [ConstantOption("SpearmanCorrelationTest")] +
+                             MLLIB_SPEARMAN_TEST_OPTS)]
