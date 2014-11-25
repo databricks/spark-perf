@@ -55,6 +55,8 @@ should_warmup_disk = run_tests and config.DISK_WARMUP
 
 # Restart Master and Workers
 should_restart_cluster = config.RESTART_SPARK_CLUSTER
+# Copy all the files in SPARK_HOME 
+should_rsync_spark_home = config.RSYNC_SPARK_HOME
 
 # Check that commit ID's are specified in config_file.
 if should_prep_spark:
@@ -77,7 +79,7 @@ else:
                                               config.SPARK_MERGE_COMMIT_INTO_MASTER)
 
 # rsync Spark to all nodes in case there is a change in Worker config
-if should_restart_cluster:
+if should_restart_cluster and should_rsync_spark_home:
     cluster.sync_spark()
 
 # If a cluster is already running from an earlier test, try shutting it down.
