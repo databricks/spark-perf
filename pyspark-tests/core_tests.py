@@ -201,4 +201,4 @@ if __name__ == "__main__":
                                   "results": results,
                                   "bestResult:": min(results)},
                                  separators=(',', ':'))  # use separators for compact encoding
-        print "json results: " + jsonResults
+        print "jsonResults: " + jsonResults
