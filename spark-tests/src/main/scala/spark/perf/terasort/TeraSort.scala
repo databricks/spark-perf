@@ -17,11 +17,10 @@
 
 package org.apache.spark.examples.terasort
 
-import org.apache.spark._
+import com.google.common.primitives.UnsignedBytes
 import org.apache.spark.SparkContext._
+import org.apache.spark._
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.rdd.{ShuffledRDD, PairRDDFunctions, OrderedRDDFunctions}
-import org.apache.hadoop.fs.Path;
 
 /**
  * An application that generates data according to the terasort spec and shuffles them.
@@ -31,17 +30,17 @@ import org.apache.hadoop.fs.Path;
  */
 object TeraSort {
 
-  implicit val caseInsensitiveOrdering = new TeraSortRecordOrdering()
+  implicit val caseInsensitiveOrdering = UnsignedBytes.lexicographicalComparator
 
   def main(args: Array[String]) {
 
     if (args.length < 2) {
       println("usage:")
-      println("DRIVER_MEMORY=[mem] bin/run-example org.apache.spark.examples.terasort.TeraSort " +
+      println("DRIVER_MEMORY=[mem] bin/run-example terasort.TeraSort " +
         "[input-file] [output-file]")
       println(" ")
       println("example:")
-      println("DRIVER_MEMORY=50g bin/run-example org.apache.spark.examples.terasort.TeraSort " +
+      println("DRIVER_MEMORY=50g bin/run-example terasort.TeraSort " +
         "/home/myuser/terasort_in /home/myuser/terasort_out")
       System.exit(0)
     }
@@ -50,7 +49,6 @@ object TeraSort {
     val inputFile = args(0)
     val outputFile = args(1)
 
-    val outdir = new Path(outputFile).getParent().toString()
     val conf = new SparkConf()
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .setAppName(s"TeraSort")
@@ -58,9 +56,7 @@ object TeraSort {
 
     val partitioner = new TeraSortPartitioner(sc.defaultParallelism)
     val dataset = sc.newAPIHadoopFile[Array[Byte], Array[Byte], TeraInputFormat](inputFile)
-      .partitionBy(partitioner)
     val sorted = dataset.sortByKey()
-    val output = new PairRDDFunctions(sorted)
-    output.saveAsNewAPIHadoopFile[TeraOutputFormat](outputFile)
+    sorted.saveAsNewAPIHadoopFile[TeraOutputFormat](outputFile)
   }
 }

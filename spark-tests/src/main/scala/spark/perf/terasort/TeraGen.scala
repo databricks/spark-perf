@@ -17,19 +17,19 @@
 
 package org.apache.spark.examples.terasort
 
+import org.apache.spark.SparkContext._
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.rdd.{ShuffledRDD, PairRDDFunctions}
 
 object TeraGen {
   def main(args: Array[String]) {
 
     if (args.length < 2) {
       println("usage:")
-      println("DRIVER_MEMORY=[mem] bin/run-example org.apache.spark.examples.terasort.TeraGen " +
+      println("DRIVER_MEMORY=[mem] bin/run-example terasort.TeraGen " +
         "[output-size] [output-directory]")
       println(" ")
       println("example:")
-      println("DRIVER_MEMORY=50g bin/run-example org.apache.spark.examples.terasort.TeraGen " +
+      println("DRIVER_MEMORY=50g bin/run-example terasort.TeraGen " +
         "100G file:///scratch/username/terasort_in")
       System.exit(0)
     }
@@ -71,23 +71,21 @@ object TeraGen {
 
       val rand = Random16.skipAhead(firstRecordNumber)
 
-      val rowBytes: Array[Byte] = new Array[Byte](RecordWrapper.RECORD_LEN)
-      val key = new Array[Byte](RecordWrapper.KEY_LEN)
-      val value = new Array[Byte](RecordWrapper.VALUE_LEN)
-      val row = new RecordWrapper(key, value)
+      val rowBytes: Array[Byte] = new Array[Byte](TeraInputFormat.RECORD_LEN)
+      val key = new Array[Byte](TeraInputFormat.KEY_LEN)
+      val value = new Array[Byte](TeraInputFormat.VALUE_LEN)
 
       Iterator.tabulate(recordsPerPartition.toInt) { offset =>
         Random16.nextRand(rand)
         generateRecord(rowBytes, rand, recordNumber)
         recordNumber.add(one)
-        rowBytes.copyToArray(key, 0, RecordWrapper.KEY_LEN)
-        rowBytes.copyToArray(value, RecordWrapper.KEY_LEN, RecordWrapper.VALUE_LEN)
-        row
+        rowBytes.copyToArray(key, 0, TeraInputFormat.KEY_LEN)
+        rowBytes.copyToArray(value, TeraInputFormat.KEY_LEN, TeraInputFormat.VALUE_LEN)
+        (key, value)
       }
     }
 
-    val output = new PairRDDFunctions(dataset.map(x => (x.key, x.value)))
-    output.saveAsNewAPIHadoopFile[TeraOutputFormat](outputFile)
+    dataset.saveAsNewAPIHadoopFile[TeraOutputFormat](outputFile)
 
     println("Number of records written: " + dataset.count())
   }

@@ -58,10 +58,10 @@ class TeraOutputFormat extends FileOutputFormat[Array[Byte], Array[Byte]] {
    * Does the user want a final sync at close?
    */
   def getFinalSync(job : JobContext ) : Boolean =
-    return job.getConfiguration().getBoolean(TeraOutputFormat.FINAL_SYNC_ATTRIBUTE, false);
+    job.getConfiguration().getBoolean(TeraOutputFormat.FINAL_SYNC_ATTRIBUTE, false);
 
-  class TeraRecordWriter(out : FSDataOutputStream, job: JobContext) 
-    extends RecordWriter[Array[Byte], Array[Byte]] {
+  class TeraRecordWriter(val out : FSDataOutputStream, val job: JobContext) 
+  extends RecordWriter[Array[Byte], Array[Byte]] {
     var finalSync = getFinalSync(job)
 
     def write(key : Array[Byte], value : Array[Byte]) = {
@@ -73,8 +73,7 @@ class TeraOutputFormat extends FileOutputFormat[Array[Byte], Array[Byte]] {
 
     def close(context : TaskAttemptContext) = {
       if (finalSync) {
-        // Requires partitular version of Hadoop
-        //out.hsync();
+        out.hsync();
       }
       out.close();
     }
@@ -89,12 +88,12 @@ class TeraOutputFormat extends FileOutputFormat[Array[Byte], Array[Byte]] {
 
     // get delegation token for outDir's file system
     TokenCache.obtainTokensForNamenodes(job.getCredentials(),
-        Array[Path](outDir), job.getConfiguration());
+      Array[Path](outDir), job.getConfiguration());
   }
 
   /*
   Backported from Hadoop FileOutputPath from later versions than 1.0.4
-  */
+   */
   def getOutputPath(job : JobContext ) : Path =  {
     job.getConfiguration().get(TeraOutputFormat.OUTDIR) match {
       case null => null
@@ -102,20 +101,19 @@ class TeraOutputFormat extends FileOutputFormat[Array[Byte], Array[Byte]] {
     }
   }
 
- def getRecordWriter(job : TaskAttemptContext) 
- : RecordWriter[Array[Byte], Array[Byte]] = {
+  def getRecordWriter(job : TaskAttemptContext) 
+  : RecordWriter[Array[Byte], Array[Byte]] = {
     val file : Path = getDefaultWorkFile(job, "");
     val fs : FileSystem = file.getFileSystem(job.getConfiguration());
     val fileOut : FSDataOutputStream = fs.create(file);
-    return new TeraRecordWriter(fileOut, job);
+    new TeraRecordWriter(fileOut, job);
   }
 
   override def getOutputCommitter(context : TaskAttemptContext) : OutputCommitter = {
     if (committer == null) {
-      val output : Path = getOutputPath(context);
+      val output = getOutputPath(context);
       committer = new FileOutputCommitter(output, context);
     }
-    return committer;
+    committer;
   }
-
 }

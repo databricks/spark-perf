@@ -17,10 +17,11 @@
 
 package org.apache.spark.examples.terasort
 
-import org.apache.hadoop.io.Text;
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.ShuffledRDD
-import org.apache.spark.SparkContext._
+import org.apache.spark.rdd.RDD
+import org.apache.hadoop.util.PureJavaCrc32
+import com.google.common.primitives.UnsignedBytes
 
 /**
  * An application that reads sorted data according to the terasort spec and
@@ -30,15 +31,15 @@ import org.apache.spark.SparkContext._
  * See http://sortbenchmark.org/
  */
 
-object TeraValidate{
+object TeraValidate {
 
   def main(args: Array[String]) {
 
-    if (args.length < 2) {
+    if (args.length < 1) {
       println("usage:")
       println("DRIVER_MEMORY=[mem] bin/run-example " +
         "org.apache.spark.examples.terasort.TeraValidate " +
-        "[input-directory] [output-directory]")
+        "[input-directory]")
       println(" ")
       println("example:")
       println("DRIVER_MEMORY=50g bin/run-example " +
@@ -49,42 +50,75 @@ object TeraValidate{
 
     // Process command line arguments
     val inputFile = args(0)
-    val outputFile = args(1)
 
     val conf = new SparkConf()
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .setAppName(s"TeraValidate")
     val sc = new SparkContext(conf)
 
-    println("Calculating input size...")
-    // Read data from input directory
+    validate(sc, inputFile )
+  }
+
+  def validate(sc : SparkContext, inputFile: String) : Unit = {
     val dataset = sc.newAPIHadoopFile[Array[Byte], Array[Byte], TeraInputFormat](inputFile)
-    printf("Input size: %d\n", dataset.count())
 
-    // Copy the data due to bugs like SPARK-1018: 
-    // https://spark-project.atlassian.net/browse/SPARK-1018
-    val output = dataset.map{ case (k,v) => (k.clone(), v.clone())}
-      .mapPartitions( iter => {
-        val ERROR = new Text("error")
-        val CHECKSUM = new Text("checksum")
-        val compare = new TeraSortRecordOrdering()
-        var res = List.newBuilder[(Text, Text)]
+    val output : RDD[(Unsigned16, Array[Byte], Array[Byte])] = 
+      dataset.map{case (k,v) => (k.clone(), v.clone())}.mapPartitions( (iter) => {
 
-        if (iter.isEmpty) {
-          res.+=((new Text(inputFile + ":empty"), new Text("")))
-          res.result().iterator
-        }
-        iter.sliding(2).foreach{ case Seq(prev, curr) => {
-          if (compare.compare(prev._1, curr._1) < 0) {
-            res.+=((ERROR,
-              new Text("misorder in " + inputFile +
-                " between " + prev._1.toString +
-                " and " + curr._1.toString)))
+        val sum = new Unsigned16
+        val checksum = new Unsigned16
+        val crc32 = new PureJavaCrc32()
+        val min = new Array[Byte](10)
+        val max = new Array[Byte](10)
+
+        val cmp = UnsignedBytes.lexicographicalComparator()
+
+        var pos = 0L
+        var prev = new Array[Byte](10)
+
+        while (iter.hasNext) {
+          val key = iter.next()._1
+          assert(cmp.compare(key, prev) >= 0)
+
+          crc32.reset()
+          crc32.update(key, 0, key.length)
+          checksum.set(crc32.getValue)
+          sum.add(checksum)
+
+          if (pos == 0) {
+            key.copyToArray(min, 0, 10)
           } 
-        }}
-        res.result().iterator
-      })
-    output.saveAsTextFile(outputFile)
-    sc.stop()
+          pos += 1
+          prev = key
+        }
+        prev.copyToArray(max, 0, 10)
+        Iterator((sum, min, max))
+      }, true)
+
+      val checksumOutput = output.collect()
+      val cmp = UnsignedBytes.lexicographicalComparator()
+      val sum = new Unsigned16
+      var numRecords = dataset.count
+
+      checksumOutput.foreach { case (partSum, min, max) =>
+        sum.add(partSum)
+      }
+      println("num records: " + numRecords)
+      println("checksum: " + sum.toString)
+      var lastMax = new Array[Byte](10)
+      checksumOutput.map{ case (partSum, min, max) =>
+        (partSum, min.clone(), max.clone())
+      }.zipWithIndex.foreach { case ((partSum, min, max), i) =>
+        println(s"part $i")
+        println(s"lastMax" + lastMax.toSeq.map(x => if (x < 0) 256 + x else x))
+        println(s"min " + min.toSeq.map(x => if (x < 0) 256 + x else x))
+        println(s"max " + max.toSeq.map(x => if (x < 0) 256 + x else x))
+        assert(cmp.compare(min, max) <= 0, "min >= max")
+        assert(cmp.compare(lastMax, min) <= 0, "current partition min < last partition max")
+        lastMax = max
+      }
+      println("num records: " + numRecords)
+      println("checksum: " + sum.toString)
+      println("partitions are properly sorted")
   }
 }
