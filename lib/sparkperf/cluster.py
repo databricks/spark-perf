@@ -51,7 +51,7 @@ class Cluster(object):
         stop = False
         while not stop:
             cmd = "ps -ef | grep -v grep | grep ExecutorBackend"
-            ret_vals = map(lambda s: run_cmd(make_ssh_cmd(cmd, s), False), self.slaves)
+            ret_vals = run_cmds_parallel([(make_ssh_cmd(cmd, s), False) for s in self.slaves])
             if 0 in ret_vals:
                 print "Spark is still running on some slaves ... sleeping for 10 seconds"
                 time.sleep(10)

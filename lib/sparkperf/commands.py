@@ -49,13 +49,21 @@ def run_cmds_parallel(commands):
     :param commands: an array of tuples, where each tuple consists of (command_name, exit_on_fail)
     """
     threads = []
-    for (cmd_name, exit_on_fail) in commands:
-        thread = threading.Thread(target=run_cmd, args=(cmd_name, exit_on_fail))
+    results = [None] * len(commands)
+    
+    def run_cmd_in_thread(i, cmd,  exit_on_fail):
+        return_code = run_cmd(cmd, exit_on_fail)
+        results[i] = return_code
+
+    for i, (cmd_name, exit_on_fail) in enumerate(commands):
+        thread = threading.Thread(target=run_cmd_in_thread, args=(i, cmd_name, exit_on_fail))
+        thread.daemon = True
         thread.start()
-        threads = threads + [thread]
+        threads.append(thread)
+
     for thread in threads:
         thread.join()
-
+    return results
 
 def make_ssh_cmd(cmd_name, host):
     """
