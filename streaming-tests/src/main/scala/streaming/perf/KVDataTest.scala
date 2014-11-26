@@ -92,7 +92,7 @@ abstract class KVDataTest extends PerfTest {
 
 object KVDataTest {
   val IGNORED_BATCHES = 10
- 
+
   // Generate statistics from the processing data
   def processResults(statsReportListener: StatsReportListener): String = {
     val processingDelays = statsReportListener.batchInfos.flatMap(_.processingDelay).map(_.toDouble / 1000.0)

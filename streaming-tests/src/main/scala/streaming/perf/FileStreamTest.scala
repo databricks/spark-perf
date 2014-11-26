@@ -9,9 +9,10 @@ import streaming.perf.util.FileGenerator
 
 class FileStreamTest extends PerfTest {
   val RECORDS_PER_FILE = ("records-per-file", "Number records per file")
+  val FILE_GENERATION_INTERVAL = ("file-generation-interval", "Interval (ms) at which files will be generated")
   val FILE_CLEANER_DELAY = ("file-cleaner-delay", "Delay (secs) in cleaning up generated files")
 
-  override def longOptions = super.longOptions ++ Seq(RECORDS_PER_FILE, FILE_CLEANER_DELAY)
+  override def longOptions = super.longOptions ++ Seq(RECORDS_PER_FILE, FILE_CLEANER_DELAY, FILE_GENERATION_INTERVAL)
 
   override def stringOptions = super.stringOptions ++ Seq(HDFS_URL)
 
@@ -20,11 +21,13 @@ class FileStreamTest extends PerfTest {
     // Define variables
     val maxRecordsPerFile = longOptionValue(RECORDS_PER_FILE)
     val cleanerDelay = longOptionValue(FILE_CLEANER_DELAY)
+    val fileGenerationInterval = longOptionValue(FILE_GENERATION_INTERVAL)
     val dataDirectory = hdfsUrl + "/data/"
     val tempDataDirectory = hdfsUrl + "/temp/"
 
     // Create the file generator
-    val fileGenerator = new FileGenerator(dataDirectory, tempDataDirectory, maxRecordsPerFile, cleanerDelay)
+    val fileGenerator = new FileGenerator(dataDirectory, tempDataDirectory,
+      maxRecordsPerFile, fileGenerationInterval.toInt, cleanerDelay)
     fileGenerator.initialize()
 
     // Setup computation

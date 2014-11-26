@@ -68,7 +68,7 @@ class DriverRecoveryTest extends PerfTest {
 
   override def booleanOptions = super.booleanOptions ++ Seq(USE_RECEIVER)
 
-  private val APP_START_WAIT_TIMEOUT = 10 * 1000
+  private val APP_START_WAIT_TIMEOUT = 60 * 1000
   private val MIN_APP_KILL_INTERVAL = 60 * 1000
   private val MAX_APP_KILL_INTERVAL = 90 * 1000
   private val RECOVERY_WAIT_TIMEOUT = 120 * 1000
@@ -118,8 +118,8 @@ class DriverRecoveryTest extends PerfTest {
 
     if (!useReceiver) {
       log("Creating file generator")
-      fileGenerator = new FileGenerator(
-        dataDirectory, tempDataDirectory, RECORDS_PER_FILE, FILE_CLEANER_DELAY)
+      fileGenerator = new FileGenerator(dataDirectory, tempDataDirectory,
+        RECORDS_PER_FILE, 2 * batchDurationMs.toInt, FILE_CLEANER_DELAY)
       fileGenerator.initialize()
       expectedCounts = (1L to RECORDS_PER_FILE).map(x => (1L to x).reduce(_ + _)).toSet
       log(s"Created file generator in $dataDirectory")

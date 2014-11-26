@@ -5,6 +5,8 @@ import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
+import scala.util.Random
+
 import com.google.common.io.Files
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path, PathFilter}
@@ -14,12 +16,13 @@ class FileGenerator(
     dataDir: String,
     tempDataDir: String,
     maxRecordsPerFile: Long,
-    cleanerDelay: Long
+    intervalBetweenFiles: Int,
+    cleanerDelay: Long,
+    filesPresentBeforeStart: Boolean = false
   ) extends Logging {
 
   val MAX_TRIES = 100
   val MAX_KEYS = 1000
-  val INTERVAL = 100
   val VERIFY_LOCAL_FILES = false
 
   val dataDirectory = new Path(dataDir)
@@ -27,7 +30,6 @@ class FileGenerator(
   val localFile = new File(Files.createTempDir(), "temp")
   val tempFile = new Path(tempDataDirectory, "temp-file")
   val conf = new Configuration()
-  // val initFile = new Path(dataDirectory, "test")
   val generatingThread = new Thread() { override def run() { generateFiles() }}
   val deletingThread = new Thread() { override def run() { deleteOldFiles() }}
   val df = new SimpleDateFormat("MM-dd-HH-mm-ss-SSS")
@@ -43,6 +45,9 @@ class FileGenerator(
       fs.delete(tempDataDirectory, true)
     }
     fs.mkdirs(tempDataDirectory)
+    if (filesPresentBeforeStart) {
+      generateFileBeforeStart()
+    }
   }
 
   /** Start generating files */
@@ -81,15 +86,17 @@ class FileGenerator(
           Files.append(word + " " + newLine, localFile, Charset.defaultCharset())
           if (VERIFY_LOCAL_FILES) verifyLocalFile(word, count)
           val time = df.format(Calendar.getInstance().getTime())
-          val finalFile = new Path(dataDir, "file-" + time + "-" + key + "-" + count)
+          val finalFile = new Path(dataDir, s"file-$time-$key-$count")
           val generated = copyFile(localFile, finalFile)
           if (generated) {
-            logInfo("Generated file #" + count + " at " + System.currentTimeMillis() + ": " + finalFile)
+            logInfo(s"Generated file #$count at ${System.currentTimeMillis}: $finalFile")
           } else {
-            logError("Could not generate file #" + count + ": " + finalFile)
-            System.exit(0)
+            logError(s"Could not generate file #$count:$finalFile")
+            System.exit(255)
           }
-          Thread.sleep(INTERVAL)
+          val sleepTime = Random.nextInt(intervalBetweenFiles)
+          logDebug(s"Waiting for $sleepTime ms before generating next file")
+          Thread.sleep(sleepTime)
         }
       }
     } catch {
@@ -97,9 +104,34 @@ class FileGenerator(
         logWarning("File generating thread interrupted")
       case e: Exception =>
         logError("Error generating files", e)
-        System.exit(0)
+        System.exit(255)
     }
   }
+
+  private def generateFileBeforeStart() {
+    try {
+      val word = "word0"
+      if (localFile.exists()) localFile.delete()
+      Files.append(Seq.fill(10)(word).mkString(" ") + "\n", localFile, Charset.defaultCharset())
+      val time = df.format(Calendar.getInstance().getTime())
+      for (count <- 1 to 10) {
+        val finalFile = new Path(dataDir, s"file-$time-word0-$count")
+        val generated = copyFile(localFile, finalFile)
+        if (generated) {
+          logInfo(s"Generated file #$count at ${System.currentTimeMillis} before start: $finalFile")
+        } else {
+          logError(s"Could not generate file #$count before start:$finalFile")
+          System.exit(255)
+        }
+      }
+    } catch {
+      case e: Exception =>
+        logError("Error generating files before start", e)
+        System.exit(255)
+    }
+  }
+
+
 
   /** Copies a local file to a HDFS path */
   private def copyFile(localFile: File, finalFile: Path): Boolean = {
@@ -108,18 +140,18 @@ class FileGenerator(
     while (!done && tries < MAX_TRIES) {
       tries += 1
       try {
-        logDebug("Copying from " + localFile + " to " + tempFile)
+        logDebug(s"Copying from $localFile to $tempFile")
         fs.copyFromLocalFile(new Path(localFile.toString), tempFile)
-        //if (fs.exists(tempFile)) println("" + tempFile + " exists") else println("" + tempFile + " does not exist")
-        //println("Renaming from " + tempFile + " to " + finalFile)
-        if (!fs.rename(tempFile, finalFile)) throw new Exception("Could not rename " + tempFile + " to " + finalFile)
+        if (!fs.rename(tempFile, finalFile)) {
+          throw new Exception(s"Could not rename $tempFile to $finalFile")
+        }
         done = true
       } catch {
         case ioe: IOException =>
-          logError("Attempt " + tries + " at generating file " + finalFile + " failed.", ioe)
+          logError(s"Attempt $tries at generating file $finalFile failed.", ioe)
           reset()
       } finally {
-        // if (fs.exists(tempFile)) fs.delete(tempFile, true)
+        if (fs.exists(tempFile)) fs.delete(tempFile, true)
       }
     }
     done
@@ -135,7 +167,7 @@ class FileGenerator(
         val newFilter = new PathFilter() {
           def accept(path: Path): Boolean = {
             val modTime = fs.getFileStatus(path).getModificationTime()
-            //println("Mod time for " + path + " is " + modTime)
+            logDebug(s"Mod time for $path is $modTime")
             modTime < oldFileThreshTime
           }
         }
@@ -151,7 +183,7 @@ class FileGenerator(
           interrupted = true
           logWarning("File deleting thread interrupted")
         case e: Exception =>
-          logError("Deleting files gave error ", e)
+          logError("Deleting files gave error", e)
           reset()
       }
     }
@@ -170,8 +202,8 @@ class FileGenerator(
       line = br.readLine()
     }
     br.close()
-    logDebug("Local file has " + count + " occurrences of " + expectedWord +
-      (if (count != expectedCount)  ", expected was " + expectedCount else ""))
+    logDebug(s"Local file has $count occurrences of $expectedWord" +
+      (if (count != expectedCount)  s", expected was $expectedCount" else ""))
   }
 
   private def fs: FileSystem = synchronized {
