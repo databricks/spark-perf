@@ -1,4 +1,4 @@
-package mllib.perf.onepointoh
+package mllib.perf.onepointone
 
 import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL._
@@ -6,7 +6,7 @@ import org.json4s.JsonDSL._
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 
-import mllib.perf.onepointoh.util.DataGenerator
+import mllib.perf.onepointone.util.DataGenerator
 
 /** Parent class for linear algebra tests which run on a large dataset.
   * Generated this way so that SVD / PCA can be added easily

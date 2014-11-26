@@ -1,4 +1,4 @@
-package mllib.perf.onepointoh
+package mllib.perf.onepointtwo
 
 import org.json4s.JsonDSL._
 import org.json4s.JsonAST._
@@ -6,18 +6,16 @@ import org.json4s.JsonAST._
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.mllib.classification._
-import org.apache.spark.mllib.clustering._
-import org.apache.spark.mllib.linalg._
-import org.apache.spark.mllib.recommendation.{ALS, MatrixFactorizationModel, Rating}
+import org.apache.spark.mllib.clustering.{KMeansModel, KMeans}
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.recommendation.{Rating, MatrixFactorizationModel, ALS}
 import org.apache.spark.mllib.regression._
-import org.apache.spark.mllib.tree.DecisionTree
-import org.apache.spark.mllib.tree.configuration.Algo._
-import org.apache.spark.mllib.tree.configuration.QuantileStrategy
-import org.apache.spark.mllib.tree.impurity.{Gini, Variance}
-import org.apache.spark.mllib.tree.model.DecisionTreeModel
+import org.apache.spark.mllib.tree.impurity.{Variance, Gini}
+import org.apache.spark.mllib.tree.RandomForest
+import org.apache.spark.mllib.tree.model.RandomForestModel
 import org.apache.spark.rdd.RDD
 
-import mllib.perf.onepointoh.util.DataGenerator
+import mllib.perf.onepointtwo.util.{DataLoader, DataGenerator}
 
 /** Parent class for tests which run on a large dataset. */
 abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends PerfTest {
@@ -26,13 +24,11 @@ abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends Per
 
   def validate(model: M, rdd: RDD[LabeledPoint]): Double
 
-  val NUM_EXAMPLES =
-    ("num-examples", "number of examples for regression and classification tests")
-  val NUM_FEATURES =
-    ("num-features", "number of features of each example for regression and classification tests")
+  val NUM_EXAMPLES =  ("num-examples",   "number of examples for regression tests")
+  val NUM_FEATURES =  ("num-features",   "number of features of each example for regression tests")
 
   intOptions = intOptions ++ Seq(NUM_FEATURES)
-  longOptions = longOptions ++ Seq(NUM_EXAMPLES)
+  longOptions = Seq(NUM_EXAMPLES)
 
   var rdd: RDD[LabeledPoint] = _
   var testRdd: RDD[LabeledPoint] = _
@@ -69,7 +65,7 @@ abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends Per
    */
   def calculateRMSE(predictions: RDD[(Double, Double)], numExamples: Long): Double = {
     val error = predictions.map{ case (pred, label) =>
-      (pred-label) * (pred-label)
+      (pred - label) * (pred - label)
     }.sum()
     math.sqrt(error / numExamples)
   }
@@ -79,14 +75,15 @@ abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends Per
 abstract class GLMTests(sc: SparkContext)
   extends RegressionAndClassificationTests[GeneralizedLinearModel](sc) {
 
-  val STEP_SIZE =     ("step-size",   "step size for SGD")
-  val NUM_ITERATIONS =      ("num-iterations",   "number of iterations for the algorithm")
-  val REG_TYPE =      ("reg-type",   "type of regularization: none, l1, l2")
+  val STEP_SIZE =      ("step-size",   "step size for SGD")
+  val NUM_ITERATIONS = ("num-iterations",   "number of iterations for the algorithm")
+  val REG_TYPE =       ("reg-type",   "type of regularization: none, l1, l2")
   val REG_PARAM =      ("reg-param",   "the regularization parameter against overfitting")
+  val OPTIMIZER =      ("optimizer", "optimization algorithm: sgd, lbfgs")
 
   intOptions = intOptions ++ Seq(NUM_ITERATIONS)
   doubleOptions = doubleOptions ++ Seq(STEP_SIZE, REG_PARAM)
-  stringOptions = stringOptions ++ Seq(REG_TYPE)
+  stringOptions = stringOptions ++ Seq(REG_TYPE, OPTIMIZER)
 }
 
 class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
@@ -105,7 +102,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
     val numFeatures: Int = intOptionValue(NUM_FEATURES)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    
+
     val intercept: Double = doubleOptionValue(INTERCEPT)
     val eps: Double = doubleOptionValue(EPS)
 
@@ -135,6 +132,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     val regType = stringOptionValue(REG_TYPE)
     val regParam = doubleOptionValue(REG_PARAM)
     val numIterations = intOptionValue(NUM_ITERATIONS)
+    val optimizer = stringOptionValue(OPTIMIZER)
 
     if (!Array("l2").contains(loss)) {
       throw new IllegalArgumentException(
@@ -143,6 +141,10 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     if (!Array("none", "l1", "l2").contains(regType)) {
       throw new IllegalArgumentException(
         s"GLMRegressionTest run with unknown regType ($regType).  Supported values: none, l1, l2.")
+    }
+    if (!Array("sgd").contains(optimizer)) { // only SGD supported in Spark 1.1
+      throw new IllegalArgumentException(
+        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd.")
     }
 
     (loss, regType) match {
@@ -186,7 +188,7 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
     val numFeatures: Int = intOptionValue(NUM_FEATURES)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    
+
     val threshold: Double = doubleOptionValue(THRESHOLD)
     val sf: Double = doubleOptionValue(SCALE)
 
@@ -208,6 +210,7 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
     val regType = stringOptionValue(REG_TYPE)
     val regParam = doubleOptionValue(REG_PARAM)
     val numIterations = intOptionValue(NUM_ITERATIONS)
+    val optimizer = stringOptionValue(OPTIMIZER)
 
     if (!Array("logistic", "hinge").contains(loss)) {
       throw new IllegalArgumentException(
@@ -217,16 +220,24 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
       throw new IllegalArgumentException(s"GLMClassificationTest run with unknown regType" +
         s" ($regType).  Supported values: none, l1, l2.")
     }
+    if (!Array("sgd", "lbfgs").contains(optimizer)) {
+      throw new IllegalArgumentException(
+        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs.")
+    }
 
-    (loss, regType) match {
-      case ("logistic", "none") =>
+    (loss, regType, optimizer) match {
+      case ("logistic", "none", "sgd") =>
         LogisticRegressionWithSGD.train(rdd, numIterations, stepSize)
-      case ("hinge", "l2") =>
+      case ("logistic", "none", "lbfgs") =>
+        println("WARNING: LogisticRegressionWithLBFGS ignores numIterations, stepSize" +
+          " in this Spark version.")
+        new LogisticRegressionWithLBFGS().run(rdd)
+      case ("hinge", "l2", "sgd") =>
         SVMWithSGD.train(rdd, numIterations, stepSize, regParam)
       case _ =>
         throw new IllegalArgumentException(
           s"GLMClassificationTest given incompatible (loss, regType) = ($loss, $regType)." +
-          s" Note the set of supported combinations increases in later Spark versions.")
+            s" Note the set of supported combinations increases in later Spark versions.")
     }
   }
 }
@@ -255,7 +266,7 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
 
   override def createInputData(seed: Long) = {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    
+
     val numUsers: Int = intOptionValue(NUM_USERS)
     val numProducts: Int = intOptionValue(NUM_PRODUCTS)
     val numRatings: Long = longOptionValue(NUM_RATINGS)
@@ -326,7 +337,7 @@ abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
 
   override def createInputData(seed: Long) = {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    
+
     val numPoints: Long = longOptionValue(NUM_POINTS)
     val numColumns: Int = intOptionValue(NUM_COLUMNS)
     val numCenters: Int = intOptionValue(NUM_CENTERS)
@@ -418,7 +429,8 @@ class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
     val regParam = doubleOptionValue(REG_PARAM)
     val seed = intOptionValue(RANDOM_SEED) + 12
 
-    new ALS().setIterations(numIterations).setRank(rank).setSeed(seed).setLambda(regParam).run(rdd)
+    new ALS().setIterations(numIterations).setRank(rank).setSeed(seed).setLambda(regParam)
+      .setBlocks(rdd.partitions.size).run(rdd)
   }
 }
 
@@ -435,8 +447,10 @@ class KMeansTest(sc: SparkContext) extends ClusteringTests(sc) {
  * Parent class for DecisionTree-based tests which run on a large dataset.
  */
 abstract class DecisionTreeTests(sc: SparkContext)
-  extends RegressionAndClassificationTests[DecisionTreeModel](sc) {
+  extends RegressionAndClassificationTests[RandomForestModel](sc) {
 
+  val TEST_DATA_FRACTION =
+    ("test-data-fraction",  "fraction of data to hold out for testing (ignored if given training and test dataset)")
   val LABEL_TYPE =
     ("label-type", "Type of label: 0 indicates regression, 2+ indicates " +
       "classification with this many classes")
@@ -447,16 +461,23 @@ abstract class DecisionTreeTests(sc: SparkContext)
       "Others have 20 categories.")
   val TREE_DEPTH = ("tree-depth", "Depth of true decision tree model used to label examples.")
   val MAX_BINS = ("max-bins", "Maximum number of bins for the decision tree learning algorithm.")
+  val NUM_TREES = ("num-trees", "Number of trees to train.  If 1, run DecisionTree.  If >1, run an ensemble method (RandomForest).")
+  val FEATURE_SUBSET_STRATEGY =
+    ("feature-subset-strategy", "Strategy for feature subset sampling. Supported: auto, all, sqrt, log2, onethird.")
 
-  intOptions = intOptions ++ Seq(LABEL_TYPE, TREE_DEPTH, MAX_BINS)
-  doubleOptions = doubleOptions ++ Seq(FRAC_CATEGORICAL_FEATURES, FRAC_BINARY_FEATURES)
+  intOptions = intOptions ++ Seq(LABEL_TYPE, TREE_DEPTH, MAX_BINS, NUM_TREES)
+  doubleOptions = doubleOptions ++ Seq(TEST_DATA_FRACTION, FRAC_CATEGORICAL_FEATURES, FRAC_BINARY_FEATURES)
+  stringOptions = stringOptions ++ Seq(FEATURE_SUBSET_STRATEGY)
 
-  val options = intOptions ++ stringOptions ++ booleanOptions ++ doubleOptions ++ longOptions
-  addOptionsToParser()
+  addOptionalOptionToParser("training-data", "path to training dataset (if not given, use random data)", "", classOf[String])
+  addOptionalOptionToParser("test-data", "path to test dataset (only used if training dataset given)" +
+      " (if not given, hold out part of training data for validation)", "", classOf[String])
 
   var categoricalFeaturesInfo: Map[Int, Int] = Map.empty
 
-  def validate(model: DecisionTreeModel, rdd: RDD[LabeledPoint]): Double = {
+  protected var labelType = -1
+
+  def validate(model: RandomForestModel, rdd: RDD[LabeledPoint]): Double = {
     val numExamples = rdd.count()
     val predictions: RDD[(Double, Double)] = rdd.map { example =>
       (model.predict(example.features), example.label)
@@ -465,20 +486,60 @@ abstract class DecisionTreeTests(sc: SparkContext)
     if (labelType == 0) {
       calculateRMSE(predictions, numExamples)
     } else {
-      val thresholdedPredictions = predictions.map { case (pred, truth) =>
-        val pred01 = if (pred > 0.5) 1.0 else 0.0 // only needed for Spark 1.0, not later versions
-        (pred01, truth)
-      }
-      calculateAccuracy(thresholdedPredictions, numExamples)
+      calculateAccuracy(predictions, numExamples)
     }
   }
 }
 
 class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
 
+  val ENSEMBLE_TYPE = ("ensemble-type", "Type of ensemble algorithm: RandomForest.")
+
+  stringOptions = stringOptions ++ Seq(ENSEMBLE_TYPE)
+
+  val options = intOptions ++ stringOptions ++ booleanOptions ++ doubleOptions ++ longOptions
+  addOptionsToParser()
+
+  private def getTestDataFraction: Double = {
+    val testDataFraction: Double = doubleOptionValue(TEST_DATA_FRACTION)
+    assert(testDataFraction >= 0 && testDataFraction <= 1, s"Bad testDataFraction: $testDataFraction")
+    testDataFraction
+  }
+
   override def createInputData(seed: Long) = {
+    val trainingDataPath: String = optionValue[String]("training-data")
+    val (rdds, categoricalFeaturesInfo_, numClasses) = if (trainingDataPath != "") {
+      println(s"LOADING FILE: $trainingDataPath")
+      val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
+      val testDataPath: String = optionValue[String]("test-data")
+      val testDataFraction: Double = getTestDataFraction
+      DataLoader.loadLibSVMFiles(sc, numPartitions, trainingDataPath, testDataPath,
+        testDataFraction, seed)
+    } else {
+      createSyntheticInputData(seed)
+    }
+    assert(rdds.length == 2)
+    rdd = rdds(0).cache()
+    testRdd = rdds(1)
+    categoricalFeaturesInfo = categoricalFeaturesInfo_
+    this.labelType = numClasses
+
+    // Materialize rdd
+    println("Num Examples: " + rdd.count())
+  }
+
+  /**
+   * Create synthetic training and test datasets.
+   * @return (trainTestDatasets, categoricalFeaturesInfo, numClasses) where
+   *          trainTestDatasets = Array(trainingData, testData),
+   *          categoricalFeaturesInfo is a map of categorical feature arities, and
+   *          numClasses = number of classes label can take.
+   */
+  private def createSyntheticInputData(
+      seed: Long): (Array[RDD[LabeledPoint]], Map[Int, Int], Int) = {
     // Generic test options
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
+    val testDataFraction: Double = getTestDataFraction
     // Data dimensions and type
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
     val numFeatures: Int = intOptionValue(NUM_FEATURES)
@@ -493,32 +554,38 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
         numFeatures, numPartitions, labelType,
         fracCategoricalFeatures, fracBinaryFeatures, treeDepth, seed)
 
-    val splits = rdd_.randomSplit(Array(0.8, 0.2), seed)
-
-    rdd = splits(0).cache()
-    testRdd = splits(1)
-    categoricalFeaturesInfo = categoricalFeaturesInfo_
-
-    // Materialize rdd
-    println("Num Examples: " + rdd.count())
+    val splits = rdd_.randomSplit(Array(1.0 - testDataFraction, testDataFraction), seed)
+    (splits, categoricalFeaturesInfo_, labelType)
   }
 
-  override def runTest(rdd: RDD[LabeledPoint]): DecisionTreeModel = {
-    val labelType: Int = intOptionValue(LABEL_TYPE)
+  override def runTest(rdd: RDD[LabeledPoint]): RandomForestModel = {
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
     val maxBins: Int = intOptionValue(MAX_BINS)
+    val numTrees: Int = intOptionValue(NUM_TREES)
+    val featureSubsetStrategy: String = stringOptionValue(FEATURE_SUBSET_STRATEGY)
+    val ensembleType: String = stringOptionValue(ENSEMBLE_TYPE)
+    if (!Array("RandomForest").contains(ensembleType)) {
+      throw new IllegalArgumentException(
+        s"DecisionTreeTest given unknown ensembleType param: $ensembleType." +
+        " Supported values: RandomForest.")
+    }
     if (labelType == 0) {
       // Regression
-      DecisionTree.train(rdd, Regression, Variance, treeDepth, maxBins, QuantileStrategy.Sort,
-        categoricalFeaturesInfo)
-    } else if (labelType == 2) {
+      ensembleType match {
+        case "RandomForest" =>
+          RandomForest.trainRegressor(rdd, categoricalFeaturesInfo, numTrees, featureSubsetStrategy,
+            "variance", treeDepth, maxBins, this.getRandomSeed)
+      }
+    } else if (labelType >= 2) {
       // Classification
-      DecisionTree.train(rdd, Classification, Gini, treeDepth,
-        maxBins, QuantileStrategy.Sort, categoricalFeaturesInfo)
+      ensembleType match {
+        case "RandomForest" =>
+          RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees,
+            featureSubsetStrategy, "gini", treeDepth, maxBins, this.getRandomSeed)
+      }
     } else {
-      throw new IllegalArgumentException(
-        s"Bad label-type parameter given to DecisionTreeTest: $labelType." +
-        s"  Only 0 (regression) or 2 (binary classification) supported for Spark 1.0.")
+      throw new IllegalArgumentException(s"Bad label-type parameter " +
+        s"given to DecisionTreeTest: $labelType")
     }
   }
 }

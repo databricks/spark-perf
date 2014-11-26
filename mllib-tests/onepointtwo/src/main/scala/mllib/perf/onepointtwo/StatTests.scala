@@ -1,4 +1,4 @@
-package mllib.perf.onepointone
+package mllib.perf.onepointtwo
 
 import org.json4s.JsonDSL._
 import org.json4s.JsonAST._
@@ -12,7 +12,7 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.Statistics
 import org.apache.spark.rdd.RDD
 
-import mllib.perf.onepointone.util.DataGenerator
+import mllib.perf.onepointtwo.util.DataGenerator
 
 
 /**

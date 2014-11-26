@@ -321,7 +321,7 @@ class ClassLabelGenerator(
   override def nextValue(): LabeledPoint = {
     val y = if (rng.nextDouble() < threshold) 0.0 else 1.0
     val x = Array.fill[Double](numFeatures) {
-      if (!chiSq) rng.nextGaussian() + (y * scaleFactor) else rng.nextInt(6)*1.0
+      if (!chiSq) rng.nextGaussian() + (y * scaleFactor) else rng.nextInt(6) * 1.0
     }
 
     LabeledPoint(y, Vectors.dense(x))
