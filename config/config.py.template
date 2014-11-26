@@ -7,31 +7,47 @@ import socket
 
 from sparkperf.config_utils import FlagSet, JavaOptionSet, OptionSet, ConstantOption
 
-# Standard Configuration Options
-# --------------------------------------------------------------------------------------------------
+
+# ================================ #
+#  Standard Configuration Options  #
+# ================================ #
 
 # Point to an installation of Spark on the cluster.
 SPARK_HOME_DIR = "/root/spark"
-# TODO: If we drop the disk warm-up, we could limit the scope of this to only when using
-#       the cluster Spark.
+
+# Use a custom configuration directory
+SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
 
 # Master used when submitting Spark jobs.
-SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip() # EC2 Cluster
-# SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname()                  # Local cluster
+# For local clusters: "spark://%s:7077" % socket.gethostname()
+# For Yarn clusters: "yarn"
+# Otherwise, the default uses the specified EC2 cluster
+SPARK_CLUSTER_URL = open("/home/ec2-user/spark-ec2/cluster-url", 'r').readline().strip()
+IS_YARN_MODE = "yarn" in SPARK_CLUSTER_URL
+IS_MESOS_MODE = "mesos" in SPARK_CLUSTER_URL
+
+# Specify URI to download spark executor. This only applied for running with Mesos.
+#SPARK_EXECUTOR_URI = "http://localhost:8000/spark.tgz"
+
+# Path to the Mesos native library. This is only required for running with Mesos.
+#MESOS_NATIVE_LIBRARY = "/usr/local/lib/libmesos.so"
+
+# Run Mesos client in coarse or fine grain mode. This is only applied for running with Mesos.
+#SPARK_MESOS_COARSE = True
+
 
 # If this is true, we'll submit your job using an existing Spark installation.
-# If this is false, we'll checkout and build a specific version of Spark, and
-# copy configurations from your existing Spark install.
+# If this is false, we'll clone and build a specific version of Spark, and
+# copy configurations from your existing Spark installation.
 USE_CLUSTER_SPARK = True
 
 # URL of the HDFS installation in the Spark EC2 cluster
 HDFS_URL = "hdfs://%s:9000/test/" % socket.gethostname()
-# HDFS_URL = "%s/test/" % os.getcwd()
 
-############## If not using existing Spark installation  ############
+# Set the following if not using existing Spark installation
 # Commit id and repo used if you are not using an existing Spark cluster
-# custom version of Spark. The remote name in your git repo is assumed 
-# to be "origin". 
+# custom version of Spark. The remote name in your git repo is assumed
+# to be "origin".
 #
 # The commit ID can specify any of the following:
 #     1. A git commit hash         e.g. "4af93ff3"
@@ -41,9 +57,47 @@ HDFS_URL = "hdfs://%s:9000/test/" % socket.gethostname()
 SPARK_COMMIT_ID = ""
 SPARK_GIT_REPO = "https://github.com/apache/spark.git"
 SPARK_MERGE_COMMIT_INTO_MASTER = False # Whether to merge the commit into master
-#####################################################################
 
-# File to write results to.
+# Whether to install and build Spark. Set this to true only for the
+# first installation if an existing one does not already exist.
+PREP_SPARK = not USE_CLUSTER_SPARK
+
+# Whether to restart the Master and all Workers
+# This should always be false for Yarn
+RESTART_SPARK_CLUSTER = True
+RESTART_SPARK_CLUSTER = RESTART_SPARK_CLUSTER and not IS_YARN_MODE
+
+# Rsync SPARK_HOME to all the slaves or not
+RSYNC_SPARK_HOME = True
+
+# Which tests to run
+RUN_SPARK_TESTS = True
+RUN_PYSPARK_TESTS = False
+RUN_STREAMING_TESTS = False
+RUN_MLLIB_TESTS = False
+RUN_PYTHON_MLLIB_TESTS = False
+
+# Which tests to prepare. Set this to true for the first
+# installation or whenever you make a change to the tests.
+PREP_SPARK_TESTS = True
+PREP_PYSPARK_TESTS = False
+PREP_STREAMING_TESTS = False
+PREP_MLLIB_TESTS = False
+
+# Whether to warm up local disks (warm-up is only necesary on EC2).
+DISK_WARMUP = False
+
+# Total number of bytes used to warm up each local directory.
+DISK_WARMUP_BYTES = 200 * 1024 * 1024
+
+# Number of files to create when warming up each local directory.
+# Bytes will be evenly divided across files.
+DISK_WARMUP_FILES = 200
+
+# Prompt for confirmation when deleting temporary files.
+PROMPT_FOR_DELETES = True
+
+# Files to write results to
 SPARK_OUTPUT_FILENAME = "results/spark_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 PYSPARK_OUTPUT_FILENAME = "results/python_perf_output_%s_%s" % (
@@ -52,13 +106,17 @@ STREAMING_OUTPUT_FILENAME = "results/streaming_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 MLLIB_OUTPUT_FILENAME = "results/mllib_perf_output_%s_%s" % (
     SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
+PYTHON_MLLIB_OUTPUT_FILENAME = "results/python_mllib_perf_output_%s_%s" % (
+    SPARK_COMMIT_ID.replace("/", "-"), time.strftime("%Y-%m-%d_%H-%M-%S"))
 
-# Test Configuration
-# --------------------------------------------------------------------------------------------------
 
-# The default values configured below are appropriate for approximately 20 m1.xlarge nodes, 
-# in which each node has 15 GB of memory. Use this variable to scale the values (e.g. 
-# number of records in a generated dataset) if you are running the tests with more 
+# ============================ #
+#  Test Configuration Options  #
+# ============================ #
+
+# The default values configured below are appropriate for approximately 20 m1.xlarge nodes,
+# in which each node has 15 GB of memory. Use this variable to scale the values (e.g.
+# number of records in a generated dataset) if you are running the tests with more
 # or fewer nodes.
 SCALE_FACTOR = 1.0
 
@@ -125,87 +183,112 @@ SPARK_KEY_VAL_TEST_OPTS = [
     OptionSet("unique-values", [1000 * 1000], True),
     # Length in characters of each value.
     OptionSet("value-length", [10]),
-    # Use hashes instead of padded numbers for keys and values 
+    # Use hashes instead of padded numbers for keys and values
     FlagSet("hash-records", [False]),
     # Storage location if HDFS persistence is used
     OptionSet("storage-location", [
         os.getenv("HDFS_URL", "") + "/spark-perf-kv-data"])
 ]
 
-# Test setup
-# --------------------------------------------------------------------------------------------------
-# Set up the actual tests. Each test is represtented by a tuple: (short_name, test_cmd,
-# scale_factor, list<JavaOptionSet>, list<OptionSet>).
 
-### Uncomment individual tests to add them
+# ======================= #
+#  Spark Core Test Setup  #
+# ======================= #
 
-# Spark core tests #
+# Set up the actual tests. Each test is represtented by a tuple:
+# (short_name, test_cmd, scale_factor, list<JavaOptionSet>, list<OptionSet>)
 
 SPARK_KV_OPTS = COMMON_OPTS + SPARK_KEY_VAL_TEST_OPTS
 SPARK_TESTS = []
 
-#SPARK_TESTS += [("scheduling-throughput", "spark.perf.TestRunner",
-#    SCALE_FACTOR, COMMON_JAVA_OPTS, 
-#    [ConstantOption("scheduling-throughput"), OptionSet("num-tasks", [10 * 1000])] + COMMON_OPTS)]
+SCHEDULING_THROUGHPUT_OPTS = [
+    # The number of tasks that should be launched in each job:
+    OptionSet("num-tasks", [10 * 1000]),
+    # The number of jobs that should be run:
+    OptionSet("num-jobs", [1]),
+    # The size of the task closure (in bytes):
+    OptionSet("closure-size", [0]),
+    # A random seed to make tests reproducible:
+    OptionSet("random-seed", [5]),
+]
 
-#SPARK_TESTS += [("scala-agg-by-key", "spark.perf.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("aggregate-by-key")] + SPARK_KV_OPTS)]
+SPARK_TESTS += [("scheduling-throughput", "spark.perf.TestRunner",
+    SCALE_FACTOR, COMMON_JAVA_OPTS,
+    [ConstantOption("scheduling-throughput")] + COMMON_OPTS + SCHEDULING_THROUGHPUT_OPTS)]
+
+SPARK_TESTS += [("scala-agg-by-key", "spark.perf.TestRunner", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, [ConstantOption("aggregate-by-key")] + SPARK_KV_OPTS)]
 
 # Scale the input for this test by 2x since ints are smaller.
-#SPARK_TESTS += [("scala-agg-by-key-int", "spark.perf.TestRunner", SCALE_FACTOR * 2, 
-#    COMMON_JAVA_OPTS, [ConstantOption("aggregate-by-key-int")] + SPARK_KV_OPTS)]
+SPARK_TESTS += [("scala-agg-by-key-int", "spark.perf.TestRunner", SCALE_FACTOR * 2,
+    COMMON_JAVA_OPTS, [ConstantOption("aggregate-by-key-int")] + SPARK_KV_OPTS)]
 
-#SPARK_TESTS += [("scala-agg-by-key-naive", "spark.perf.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("aggregate-by-key-naive")] + SPARK_KV_OPTS)]
+SPARK_TESTS += [("scala-agg-by-key-naive", "spark.perf.TestRunner", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, [ConstantOption("aggregate-by-key-naive")] + SPARK_KV_OPTS)]
 
 # Scale the input for this test by 0.10.
-#SPARK_TESTS += [("scala-sort-by-key", "spark.perf.TestRunner", SCALE_FACTOR * 0.1,
-#    COMMON_JAVA_OPTS, [ConstantOption("sort-by-key")] + SPARK_KV_OPTS)]
+SPARK_TESTS += [("scala-sort-by-key", "spark.perf.TestRunner", SCALE_FACTOR * 0.1,
+    COMMON_JAVA_OPTS, [ConstantOption("sort-by-key")] + SPARK_KV_OPTS)]
 
-#SPARK_TESTS += [("scala-sort-by-key-int", "spark.perf.TestRunner", SCALE_FACTOR * 0.2,
-#    COMMON_JAVA_OPTS, [ConstantOption("sort-by-key-int")] + SPARK_KV_OPTS)]
+SPARK_TESTS += [("scala-sort-by-key-int", "spark.perf.TestRunner", SCALE_FACTOR * 0.2,
+    COMMON_JAVA_OPTS, [ConstantOption("sort-by-key-int")] + SPARK_KV_OPTS)]
 
-#SPARK_TESTS += [("scala-count", "spark.perf.TestRunner", SCALE_FACTOR, 
-#    COMMON_JAVA_OPTS, [ConstantOption("count")] + SPARK_KV_OPTS)]
+SPARK_TESTS += [("scala-count", "spark.perf.TestRunner", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, [ConstantOption("count")] + SPARK_KV_OPTS)]
 
-#SPARK_TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("count-with-filter")] + SPARK_KV_OPTS)]
+SPARK_TESTS += [("scala-count-w-fltr", "spark.perf.TestRunner", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, [ConstantOption("count-with-filter")] + SPARK_KV_OPTS)]
 
 
+# ==================== #
+#  Pyspark Test Setup  #
+# ==================== #
 
-# PySpark tests
 PYSPARK_TESTS = []
 
-#PYSPARK_TESTS += [("python-scheduling-throughput", "tests.py",
-#    SCALE_FACTOR, COMMON_JAVA_OPTS,
-#    [ConstantOption("SchedulerThroughputTest"), OptionSet("num-tasks", [5000])] + COMMON_OPTS)]
+BROADCAST_TEST_OPTS = [
+    # The size of broadcast
+    OptionSet("broadcast-size", [200 << 20], can_scale=True),
+]
 
-#PYSPARK_TESTS += [("python-agg-by-key", "tests.py", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKey")] + SPARK_KV_OPTS)]
+PYSPARK_TESTS += [("python-scheduling-throughput", "core_tests.py",
+    SCALE_FACTOR, COMMON_JAVA_OPTS,
+    [ConstantOption("SchedulerThroughputTest"), OptionSet("num-tasks", [5000])] + COMMON_OPTS)]
+
+PYSPARK_TESTS += [("python-agg-by-key", "core_tests.py", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKey")] + SPARK_KV_OPTS)]
 
 # Scale the input for this test by 2x since ints are smaller.
-#PYSPARK_TESTS += [("python-agg-by-key-int", "tests.py", SCALE_FACTOR * 2,
-#    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyInt")] + SPARK_KV_OPTS)]
+PYSPARK_TESTS += [("python-agg-by-key-int", "core_tests.py", SCALE_FACTOR * 2,
+    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyInt")] + SPARK_KV_OPTS)]
 
-#PYSPARK_TESTS += [("python-agg-by-key-naive", "tests.py", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyNaive")] + SPARK_KV_OPTS)]
+PYSPARK_TESTS += [("python-agg-by-key-naive", "core_tests.py", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, [ConstantOption("AggregateByKeyNaive")] + SPARK_KV_OPTS)]
 
-## Scale the input for this test by 0.10.
-#PYSPARK_TESTS += [("python-sort-by-key", "tests.py", SCALE_FACTOR * 0.1,
-#    COMMON_JAVA_OPTS, [ConstantOption("SortByKey")] + SPARK_KV_OPTS)]
+# Scale the input for this test by 0.10.
+PYSPARK_TESTS += [("python-sort-by-key", "core_tests.py", SCALE_FACTOR * 0.1,
+    COMMON_JAVA_OPTS, [ConstantOption("SortByKey")] + SPARK_KV_OPTS)]
 
-#PYSPARK_TESTS += [("python-sort-by-key-int", "tests.py", SCALE_FACTOR * 0.2,
-#    COMMON_JAVA_OPTS, [ConstantOption("SortByKeyInt")] + SPARK_KV_OPTS)]
+PYSPARK_TESTS += [("python-sort-by-key-int", "core_tests.py", SCALE_FACTOR * 0.2,
+    COMMON_JAVA_OPTS, [ConstantOption("SortByKeyInt")] + SPARK_KV_OPTS)]
 
-#PYSPARK_TESTS += [("python-count", "tests.py", SCALE_FACTOR,
-#                 COMMON_JAVA_OPTS, [ConstantOption("Count")] + SPARK_KV_OPTS)]
+PYSPARK_TESTS += [("python-count", "core_tests.py", SCALE_FACTOR,
+                 COMMON_JAVA_OPTS, [ConstantOption("Count")] + SPARK_KV_OPTS)]
 
-#PYSPARK_TESTS += [("python-count-w-fltr", "tests.py", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("CountWithFilter")] + SPARK_KV_OPTS)]
+PYSPARK_TESTS += [("python-count-w-fltr", "core_tests.py", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, [ConstantOption("CountWithFilter")] + SPARK_KV_OPTS)]
+
+PYSPARK_TESTS += [("python-broadcast-w-bytes", "core_tests.py", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, [ConstantOption("BroadcastWithBytes")] + SPARK_KV_OPTS + BROADCAST_TEST_OPTS)]
+
+PYSPARK_TESTS += [("python-broadcast-w-set", "core_tests.py", SCALE_FACTOR,
+    COMMON_JAVA_OPTS, [ConstantOption("BroadcastWithSet")] + SPARK_KV_OPTS + BROADCAST_TEST_OPTS)]
 
 
+# ============================ #
+#  Spark Streaming Test Setup  #
+# ============================ #
 
-# Spark Streaming tests
 STREAMING_TESTS = []
 
 # The following function generates options for setting batch duration in streaming tests
@@ -221,7 +304,6 @@ STREAMING_COMMON_OPTS = [
     OptionSet("hdfs-url", [HDFS_URL]),
 ]
 
-
 STREAMING_COMMON_JAVA_OPTS = [
     # Fraction of JVM memory used for caching RDDs.
     JavaOptionSet("spark.storage.memoryFraction", [0.66]),
@@ -229,6 +311,7 @@ STREAMING_COMMON_JAVA_OPTS = [
     JavaOptionSet("spark.executor.memory", ["9g"]),
     JavaOptionSet("spark.executor.extraJavaOptions", [" -XX:+UseConcMarkSweepGC "])
 ]
+
 STREAMING_KEY_VAL_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(2000) + [
     # Number of input streams.
     OptionSet("num-streams", [1], can_scale=True),
@@ -251,9 +334,9 @@ STREAMING_HDFS_RECOVERY_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_dura
     OptionSet("file-cleaner-delay", [300])
 ]
 
-# this test is just to see if everything is setup properly
+# This test is just to see if everything is setup properly
 STREAMING_TESTS += [("basic", "streaming.perf.TestRunner", SCALE_FACTOR,
-    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("basic")] + STREAMING_COMMON_OPTS + streaming_batch_duration_opts(1000))] 
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("basic")] + STREAMING_COMMON_OPTS + streaming_batch_duration_opts(1000))]
 
 STREAMING_TESTS += [("count", "streaming.perf.TestRunner", SCALE_FACTOR,
     STREAMING_COMMON_JAVA_OPTS, [ConstantOption("count")] + STREAMING_KEY_VAL_TEST_OPTS)]
@@ -270,8 +353,31 @@ STREAMING_TESTS += [("reduce-by-key-and-window", "streaming.perf.TestRunner", SC
 STREAMING_TESTS += [("hdfs-recovery", "streaming.perf.TestRunner", SCALE_FACTOR,
     STREAMING_COMMON_JAVA_OPTS, [ConstantOption("hdfs-recovery")] + STREAMING_HDFS_RECOVERY_TEST_OPTS)]
 
-# MLlib Tests #
+
+# ================== #
+#  MLlib Test Setup  #
+# ================== #
+
 MLLIB_TESTS = []
+
+# Set this to 1.0, 1.1, 1.2 to test MLlib with a particular Spark version.
+# Note: You should also edit the dependency in MLlibTestsBuild.scala.
+MLLIB_SPARK_VERSION = 1.2
+if MLLIB_SPARK_VERSION == 1.0:
+    MLLIB_SPARK_VERSION_STR = "onepointoh"
+elif MLLIB_SPARK_VERSION == 1.1:
+    MLLIB_SPARK_VERSION_STR = "onepointone"
+elif MLLIB_SPARK_VERSION == 1.2:
+    MLLIB_SPARK_VERSION_STR = "onepointtwo"
+else:
+    raise Exception("Bad MLLIB_SPARK_VERSION: %r" % MLLIB_SPARK_VERSION)
+
+MLLIB_JAVA_OPTS = COMMON_JAVA_OPTS
+if MLLIB_SPARK_VERSION >= 1.1:
+    MLLIB_JAVA_OPTS = MLLIB_JAVA_OPTS + [
+        # Shuffle manager: SORT, HASH
+        JavaOptionSet("spark.shuffle.manager", ["SORT"])
+    ]
 
 # The following options value sets are shared among all tests of
 # operations on MLlib algorithms.
@@ -289,66 +395,79 @@ MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # The number of rows or examples
     OptionSet("num-examples", [1000000], can_scale=True),
     # The number of features per example
-    OptionSet("num-features", [10000], can_scale=True),
-    # The number of iterations for SGD
-    OptionSet("num-iterations", [100]),
-    # The step size for SGD
-    OptionSet("step-size", [0.05])
+    OptionSet("num-features", [10000], can_scale=True)
 ]
 
-# Regression Tests #
-MLLIB_REGRESSION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+# Generalized Linear Model (GLM) Tests #
+MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    # The number of iterations for SGD
+    OptionSet("num-iterations", [20]),
+    # The step size for SGD
+    OptionSet("step-size", [0.05]),
+    # Regularization type: none, l1, l2
+    OptionSet("reg-type", ["l2"]),
+    # Regularization parameter
+    OptionSet("reg-param", [0.1])
+]
+if MLLIB_SPARK_VERSION >= 1.1:
+    MLLIB_GLM_TEST_OPTS += [
+        # Optimization algorithm: sgd, lbfgs
+        OptionSet("optimizer", ["sgd"])
+    ]
+
+# GLM Regression Tests #
+MLLIB_GLM_REGRESSION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
     # The intercept for the data
     OptionSet("intercept", [0.0]),
     # The scale factor for the noise
-    OptionSet("epsilon", [0.1])
+    OptionSet("epsilon", [0.1]),
+    # Loss to minimize: l2 (squared error)
+    OptionSet("loss", ["l2"])
 ]
 
-#MLLIB_TESTS += [("linear-regression", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("linear-regression"),
-#    OptionSet("reg-param", [0.0])] + MLLIB_REGRESSION_TEST_OPTS)]
-
-#MLLIB_TESTS += [("lasso", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("lasso"),
-#    OptionSet("reg-param", [0.0,1.0])] + MLLIB_REGRESSION_TEST_OPTS)]
-
-#MLLIB_TESTS += [("ridge-regression", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("ridge-regression"),
-#    OptionSet("reg-param", [0.0,1.0])] + MLLIB_REGRESSION_TEST_OPTS)]
+MLLIB_TESTS += [("glm-regression", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("glm-regression")] + MLLIB_GLM_REGRESSION_TEST_OPTS)]
 
 # Classification Tests #
-MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
-     # The intercept for the data
+MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
+     # Expected fraction of examples which are negative
      OptionSet("per-negative", [0.3]),
-     # The scale factor for the noise
-     OptionSet("scale-factor", [1.0]),
-     # Naive Bayes smoothing lambda
-     OptionSet("nb-lambda", [1.0]),
-     # SVM regularization
-     OptionSet("reg-param", [1.0])
+     # The scale factor for the noise in feature values
+     OptionSet("scale-factor", [1.0])
 ]
 
-#MLLIB_TESTS += [("logistic-regression", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("logistic-regression")] +
-#    MLLIB_CLASSIFICATION_TEST_OPTS)]
+# GLM Classification Tests #
+MLLIB_GLM_CLASSIFICATION_TEST_OPTS = MLLIB_CLASSIFICATION_TEST_OPTS + [
+    # Loss to minimize: logistic, hinge (SVM)
+    OptionSet("loss", ["logistic", "hinge"])
+]
 
-#MLLIB_TESTS += [("naive-bayes", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("naive-bayes")] +
-#    MLLIB_CLASSIFICATION_TEST_OPTS)]
+MLLIB_TESTS += [("glm-classification", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("glm-classification")] +
+    MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
 
-#MLLIB_TESTS += [("svm", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("svm")] +
-#    MLLIB_CLASSIFICATION_TEST_OPTS)]
+NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    # Expected fraction of examples which are negative
+    OptionSet("per-negative", [0.3]),
+    # The scale factor for the noise in feature values
+    OptionSet("scale-factor", [1.0]),
+    # Naive Bayes smoothing lambda.
+    OptionSet("nb-lambda", [1.0])
+]
+
+MLLIB_TESTS += [("naive-bayes", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
+    NAIVE_BAYES_TEST_OPTS)]
 
 # Decision Trees #
-
 MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # The number of rows or examples
-    OptionSet("num-examples", [2000000], can_scale=True),
+    OptionSet("num-examples", [1000000], can_scale=True),
     # The number of features per example
-    OptionSet("num-features", [1000], can_scale=True),
+    OptionSet("num-features", [500], can_scale=True),
     # Type of label: 0 indicates regression, 2+ indicates classification with this many classes
-    OptionSet("label-type", [2], can_scale=False),
+    # Note: multi-class (>2) is not supported in Spark 1.0.
+    OptionSet("label-type", [0, 2], can_scale=False),
     # Fraction of features which are categorical
     OptionSet("frac-categorical-features", [0.5], can_scale=False),
     # Fraction of categorical features which are binary. Others have 20 categories.
@@ -356,18 +475,32 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
     # Depth of true decision tree model used to label examples.
     # WARNING: The meaning of depth changed from Spark 1.0 to Spark 1.1:
     #          depth=N for Spark 1.0 should be depth=N-1 for Spark 1.1
-    OptionSet("tree-depth", [5], can_scale=False),
+    OptionSet("tree-depth", [1, 10], can_scale=False),
     # Maximum number of bins for the decision tree learning algorithm.
-    OptionSet("max-bins", [100], can_scale=False),
-    # (unused parameter)
-    OptionSet("num-iterations", [0], can_scale=False),
-    # (unused parameter)
-    OptionSet("reg-param", [0], can_scale=False)
+    OptionSet("max-bins", [32], can_scale=False),
 ]
 
-#MLLIB_TESTS += [("decision-tree-1.0", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("decision-tree")] +
-#    MLLIB_DECISION_TREE_TEST_OPTS)]
+if MLLIB_SPARK_VERSION >= 1.2:
+    MLLIB_DECISION_TREE_TEST_OPTS += [
+        # Ensemble type: RandomForest
+        OptionSet("ensemble-type", ["RandomForest"]),
+        # Path to training dataset (if not given, use random data).
+        OptionSet("training-data", [""]),
+        # Path to test dataset (only used if training dataset given).
+        # If not given, hold out part of training data for validation.
+        OptionSet("test-data", [""]),
+        # Fraction of data to hold out for testing (ignored if given training and test dataset).
+        OptionSet("test-data-fraction", [0.2], can_scale=False),
+        # Number of trees. If 1, then run DecisionTree. If >1, then run RandomForest.
+        OptionSet("num-trees", [1, 10], can_scale=False),
+        # Feature subset sampling strategy: auto, all, sqrt, log2, onethird
+        # (only used for RandomForest)
+        OptionSet("feature-subset-strategy", ["auto"])
+    ]
+
+MLLIB_TESTS += [("decision-tree", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("decision-tree")] +
+    MLLIB_DECISION_TREE_TEST_OPTS)]
 
 # Recommendation Tests #
 MLLIB_RECOMMENDATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
@@ -376,20 +509,20 @@ MLLIB_RECOMMENDATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
      # The number of products
      OptionSet("num-products", [5000000], can_scale=True),
      # The number of ratings
-     OptionSet("num-ratings", [100000000], can_scale=True),
+     OptionSet("num-ratings", [50000000], can_scale=True),
      # The number of iterations for ALS
-     OptionSet("num-iterations", [20]),
+     OptionSet("num-iterations", [10]),
      # The rank of the factorized matrix model
-     OptionSet("rank", [20]),
+     OptionSet("rank", [10]),
      # The regularization parameter
-     OptionSet("reg-param", [1.0]),
+     OptionSet("reg-param", [0.1]),
      # Whether to use implicit preferences or not
      FlagSet("implicit-prefs", [False])
 ]
 
-#MLLIB_TESTS += [("als", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("als")] +
-#    MLLIB_RECOMMENDATION_TEST_OPTS)]
+MLLIB_TESTS += [("als", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("als")] +
+    MLLIB_RECOMMENDATION_TEST_OPTS)]
 
 # Clustering Tests #
 MLLIB_CLUSTERING_TEST_OPTS = MLLIB_COMMON_OPTS + [
@@ -403,103 +536,104 @@ MLLIB_CLUSTERING_TEST_OPTS = MLLIB_COMMON_OPTS + [
      OptionSet("num-iterations", [20])
 ]
 
-#MLLIB_TESTS += [("kmeans", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("kmeans"),
-#    OptionSet("reg-param", [0.0])] + MLLIB_CLUSTERING_TEST_OPTS)]
+MLLIB_TESTS += [("kmeans", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("kmeans")] + MLLIB_CLUSTERING_TEST_OPTS)]
 
 # Linear Algebra Tests #
 MLLIB_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
-     # The number of rows for the matrix
-     OptionSet("num-rows", [1000000], can_scale=True),
-     # The number of columns for the matrix
-     OptionSet("num-cols", [1000], can_scale=True),
-     # The number of top singular values wanted for SVD and PCA
-     OptionSet("rank", [50]),
-     # Regularization Parameter (Not used in these tests)
-     OptionSet("reg-param", [0.0]),
-     # Number of iterations (not used in these tests)
-     OptionSet("num-iterations", [0])
+    # The number of rows for the matrix
+    OptionSet("num-rows", [1000000], can_scale=True),
+    # The number of columns for the matrix
+    OptionSet("num-cols", [1000], can_scale=True),
+    # The number of top singular values wanted for SVD and PCA
+    OptionSet("rank", [50], can_scale=True)
+]
+# Linear Algebra Tests which take more time (slightly smaller settings) #
+MLLIB_BIG_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
+    # The number of rows for the matrix
+    OptionSet("num-rows", [800000], can_scale=True),
+    # The number of columns for the matrix
+    OptionSet("num-cols", [800], can_scale=True),
+    # The number of top singular values wanted for SVD and PCA
+    OptionSet("rank", [40], can_scale=True)
 ]
 
-#MLLIB_TESTS += [("svd", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_LINALG_TEST_OPTS)]
+MLLIB_TESTS += [("svd", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("svd")] + MLLIB_BIG_LINALG_TEST_OPTS)]
 
-#MLLIB_TESTS += [("pca", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("pca")] + MLLIB_LINALG_TEST_OPTS)]
+MLLIB_TESTS += [("pca", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("pca")] + MLLIB_LINALG_TEST_OPTS)]
 
-#MLLIB_TESTS += [("summary-statistics", "mllib.perf.onepointoh.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("summary-statistics")] +
-#    MLLIB_LINALG_TEST_OPTS)]
-
-# Algorithms available with Spark-1.1 #
-
-# Logistic Regression with L-BFGS #
-#MLLIB_TESTS += [("lr-lbfgs", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("lr-lbfgs"),
-#    OptionSet("convergence-tol", [1e-5])] + MLLIB_CLASSIFICATION_TEST_OPTS)]
-
-#MLLIB_TESTS += [("decision-tree-1.1", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("decision-tree")] +
-#    MLLIB_DECISION_TREE_TEST_OPTS)]
+MLLIB_TESTS += [("summary-statistics", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("summary-statistics")] +
+    MLLIB_LINALG_TEST_OPTS)]
 
 # Statistic Toolkit Tests #
-MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS + [
-      # Regularization Parameter (Not used in these tests)
-      OptionSet("reg-param", [0.0]),
-      # Number of iterations (not used in these tests)
-      OptionSet("num-iterations", [0])
-]
+MLLIB_STATS_TEST_OPTS = MLLIB_COMMON_OPTS
 
-#MLLIB_TESTS += [("pearson", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("pearson"),
-#    OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [1000], can_scale=True)] +
-#    MLLIB_STATS_TEST_OPTS)]
+MLLIB_PEARSON_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                          [OptionSet("num-rows", [10000000], can_scale=True),
+                           OptionSet("num-cols", [1000], can_scale=True)]
 
-#MLLIB_TESTS += [("spearman", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("spearman"),
-#    OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [100], can_scale=True)] +
-#    MLLIB_STATS_TEST_OPTS)]
+MLLIB_SPEARMAN_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                           [OptionSet("num-rows", [5000000], can_scale=True),
+                            OptionSet("num-cols", [100], can_scale=True)]
 
-#MLLIB_TESTS += [("chi-sq-feature", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("chi-sq-feature"),
-#    OptionSet("num-rows", [10000000], can_scale=True), OptionSet("num-cols", [500], can_scale=True)] +
-#    MLLIB_STATS_TEST_OPTS)]
+MLLIB_CHI_SQ_FEATURE_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                                 [OptionSet("num-rows", [10000000], can_scale=True),
+                                  OptionSet("num-cols", [500], can_scale=True)]
 
-#MLLIB_TESTS += [("chi-sq-gof", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("chi-sq-gof"),
-#    OptionSet("num-rows", [50000000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] + 
-#    MLLIB_STATS_TEST_OPTS)]
+MLLIB_CHI_SQ_GOF_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                             [OptionSet("num-rows", [50000000], can_scale=True),
+                              OptionSet("num-cols", [0], can_scale=True)]
 
-#MLLIB_TESTS += [("chi-sq-mat", "mllib.perf.onepointone.TestRunner", SCALE_FACTOR,
-#    COMMON_JAVA_OPTS, [ConstantOption("chi-sq-matrix"),
-#    OptionSet("num-rows", [50000], can_scale=True), OptionSet("num-cols", [0], can_scale=True)] +
-#    MLLIB_STATS_TEST_OPTS)]
+MLLIB_CHI_SQ_MAT_TEST_OPTS = MLLIB_STATS_TEST_OPTS + \
+                             [OptionSet("num-rows", [20000], can_scale=True),
+                              OptionSet("num-cols", [0], can_scale=True)]
 
-# Skip downloading and building Spark
-SPARK_SKIP_PREP = False
+if MLLIB_SPARK_VERSION >= 1.1:
+    MLLIB_TESTS += [("pearson", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("pearson")] + MLLIB_PEARSON_TEST_OPTS)]
 
-SPARK_SKIP_TESTS = False
-STREAMING_SKIP_TESTS = False
-MLLIB_SKIP_TESTS = False
+    MLLIB_TESTS += [("spearman", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("spearman")] + MLLIB_SPEARMAN_TEST_OPTS)]
 
-# Skip building and packaging project tests (requires respective perf tests to already be packaged
-# in the project's target directory).
-SPARK_SKIP_TEST_PREP = False
-STREAMING_SKIP_TEST_PREP = False
-MLLIB_SKIP_TEST_PREP = False
+    MLLIB_TESTS += [("chi-sq-feature", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-feature")] + MLLIB_CHI_SQ_FEATURE_TEST_OPTS)]
 
-# Skip warming up local disks (warm-up is only necesary on EC2).
-SKIP_DISK_WARMUP = True
+    MLLIB_TESTS += [("chi-sq-gof", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-gof")] + MLLIB_CHI_SQ_GOF_TEST_OPTS)]
 
-# Total number of bytes used to warm up each local directory.
-DISK_WARMUP_BYTES = 200 * 1024 * 1024
+    MLLIB_TESTS += [("chi-sq-mat", "mllib.perf." + MLLIB_SPARK_VERSION_STR + ".TestRunner", SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("chi-sq-mat")] + MLLIB_CHI_SQ_MAT_TEST_OPTS)]
 
-# Number of files to create when warming up each local directory. Bytes will be evenly divided
-# across files.
-DISK_WARMUP_FILES = 200
+# Python MLlib tests
+PYTHON_MLLIB_TESTS = []
 
-# Prompt for confirmation when deleting temporary files.
-PROMPT_FOR_DELETES = True
+PYTHON_MLLIB_TESTS += [("python-glm-classification", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("GLMClassificationTest")] +
+                         MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
 
-# Use a custom configuration directory
-SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
+PYTHON_MLLIB_TESTS += [("python-glm-regression", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("GLMRegressionTest")] +
+                         MLLIB_GLM_REGRESSION_TEST_OPTS)]
+
+PYTHON_MLLIB_TESTS += [("python-naive-bayes", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("NaiveBayesTest")] +
+                         NAIVE_BAYES_TEST_OPTS)]
+
+PYTHON_MLLIB_TESTS += [("python-als", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("ALSTest")] +
+                         MLLIB_RECOMMENDATION_TEST_OPTS)]
+
+PYTHON_MLLIB_TESTS += [("python-kmeans", "mllib_tests.py", SCALE_FACTOR,
+                         MLLIB_JAVA_OPTS, [ConstantOption("KMeansTest")] + MLLIB_CLUSTERING_TEST_OPTS)]
+
+if MLLIB_SPARK_VERSION >= 1.1:
+    PYTHON_MLLIB_TESTS += [("python-pearson", "mllib_tests.py", SCALE_FACTOR,
+                             MLLIB_JAVA_OPTS, [ConstantOption("PearsonCorrelationTest")] +
+                             MLLIB_PEARSON_TEST_OPTS)]
+
+    PYTHON_MLLIB_TESTS += [("python-spearman", "mllib_tests.py", SCALE_FACTOR,
+                             MLLIB_JAVA_OPTS, [ConstantOption("SpearmanCorrelationTest")] +
+                             MLLIB_SPEARMAN_TEST_OPTS)]

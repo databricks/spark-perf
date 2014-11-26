@@ -10,13 +10,20 @@ class Cluster(object):
     Functionality for interacting with a Spark cluster.
     """
 
-    def __init__(self, spark_home, spark_conf_dir=None):
+    def __init__(self, spark_home, spark_conf_dir=None, commit_sha="unknown"):
         self.spark_home = spark_home
         self.spark_conf_dir = spark_conf_dir or "%s/conf" % spark_home
+        self.commit_sha = commit_sha
 
         # Get a list of slaves by parsing the slaves file in SPARK_CONF_DIR.
-        slaves_file_raw = open("%s/slaves" % self.spark_conf_dir, 'r').read().split("\n")
-        self.slaves = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
+        slaves_file_path = "%s/slaves" % self.spark_conf_dir
+        if os.path.isfile(slaves_file_path):
+            slaves_file_raw = open(slaves_file_path, 'r').read().split("\n")
+            self.slaves = filter(lambda x: not x.startswith("#") and not x is "", slaves_file_raw)
+        else:
+            print "WARNING: No slaves file found at path: %s" % slaves_file_path + "\n" \
+                + "\t...We will assume no slaves exist."
+            self.slaves = []
 
     def sync_spark(self):
         print("Syncing Spark directory to the slaves")
@@ -28,11 +35,13 @@ class Cluster(object):
         run_cmds_parallel(copy_spark)
 
     def stop(self):
-        print "Stopping Spark cluster"
+        print("Stopping Spark standalone cluster...")
         run_cmd("%s/sbin/stop-all.sh" % self.spark_home)
 
     def start(self):
+        print("Starting a Spark standalone cluster to use for testing...")
         run_cmd("%s/sbin/start-all.sh" % self.spark_home)
+        time.sleep(5)
 
     def ensure_spark_stopped_on_slaves(self):
         """
@@ -48,6 +57,8 @@ class Cluster(object):
                 time.sleep(10)
             else:
                 stop = True
+        # Allow some extra time for slaves to fully terminate.
+        time.sleep(5)
 
     def warmup_disks(self, bytes_to_write, disk_warmup_files):
         """

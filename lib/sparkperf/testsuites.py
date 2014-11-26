@@ -2,6 +2,7 @@ import itertools
 import os
 from subprocess import Popen, PIPE
 import sys
+import json
 
 from sparkperf import PROJ_DIR
 from sparkperf.commands import run_cmd, SBT_CMD
@@ -32,6 +33,16 @@ class PerfTestSuite(object):
         raise NotImplementedError
 
     @classmethod
+    def before_run_tests(cls, config, out_file):
+        """
+        This is called before tests in this suite are run.
+        It is useful for logging test suite specific messages.
+
+        :param out_file: a python file handler to the output file
+        """
+        pass
+
+    @classmethod
     def run_tests(cls, cluster, config, tests_to_run, test_group_name, output_filename):
         """
         Run a set of tests from this performance suite.
@@ -51,6 +62,8 @@ class PerfTestSuite(object):
         print("Running %d tests in %s.\n" % (num_tests_to_run, test_group_name))
         failed_tests = []
 
+        cls.before_run_tests(config, out_file)
+
         for short_name, main_class_or_script, scale_factor, java_opt_sets, opt_sets in tests_to_run:
             print(OUTPUT_DIVIDER_STRING)
             print("Running test command: '%s' ..." % main_class_or_script)
@@ -67,10 +80,18 @@ class PerfTestSuite(object):
                     append_config_to_file(stdout_filename, java_opt_list, opt_list)
                     append_config_to_file(stderr_filename, java_opt_list, opt_list)
                     java_opts_str = " ".join(java_opt_list)
+                    java_opts_str += " -Dsparkperf.commitSHA=" + cluster.commit_sha
+                    if hasattr(config, 'SPARK_EXECUTOR_URI'):
+                        java_opts_str += " -Dspark.executor.uri=" + config.SPARK_EXECUTOR_URI
+                    if hasattr(config, 'SPARK_MESOS_COARSE') and config.SPARK_MESOS_COARSE:
+                        java_opts_str += " -Dspark.mesos.coarse=true"
                     cmd = cls.get_spark_submit_cmd(cluster, config, main_class_or_script, opt_list,
                                                    stdout_filename, stderr_filename)
                     print("\nSetting env var SPARK_SUBMIT_OPTS: %s" % java_opts_str)
                     test_env["SPARK_SUBMIT_OPTS"] = java_opts_str
+                    if hasattr(config, 'MESOS_NATIVE_LIBRARY'):
+                        print("\nSetting env var MESOS_NATIVE_LIBRARY: %s" % config.MESOS_NATIVE_LIBRARY)
+                        test_env["MESOS_NATIVE_LIBRARY"] = config.MESOS_NATIVE_LIBRARY
                     print("Running command: %s\n" % cmd)
                     Popen(cmd, shell=True, env=test_env).wait()
                     result_string = cls.process_output(config, short_name, opt_list,
@@ -121,6 +142,11 @@ class SparkTests(JVMPerfTestSuite):
         run_cmd("cd %s/spark-tests; %s clean assembly" % (PROJ_DIR, SBT_CMD))
 
     @classmethod
+    def before_run_tests(cls, config, out_file):
+        out_file.write("# Test name, test options, median, std dev, min, first, last\n")
+        out_file.flush()
+
+    @classmethod
     def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
         with open(stdout_filename, "r") as stdout_file:
             output = stdout_file.read()
@@ -130,15 +156,16 @@ class SparkTests(JVMPerfTestSuite):
             print(output)
             sys.exit(1)
         result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
-        result_list = result_line.replace(results_token, "").split(",")
+        result_json = result_line.replace(results_token, "")
+        result_dict = json.loads(result_json)
+        times = [r['time'] for r in result_dict['results']]
         err_msg = ("Expecting at least %s results "
-                   "but only found %s" % (config.IGNORED_TRIALS + 1, len(result_list)))
-        assert len(result_list) > config.IGNORED_TRIALS, err_msg
-        result_list = result_list[config.IGNORED_TRIALS:]
+                   "but only found %s" % (config.IGNORED_TRIALS + 1, len(times)))
+        assert len(times) > config.IGNORED_TRIALS, err_msg
+        times = times[config.IGNORED_TRIALS:]
 
         result_string = "%s, %s, " % (short_name, " ".join(opt_list))
-
-        result_string += "%s, %.3f, %s, %s, %s\n" % stats_for_results(result_list)
+        result_string += "%s, %.3f, %s, %s, %s\n" % stats_for_results(times)
 
         sys.stdout.flush()
         return result_string
@@ -164,8 +191,64 @@ class StreamingTests(JVMPerfTestSuite):
         return str(result_string)
 
 
-class MLlibTests(JVMPerfTestSuite):
-    test_jar_path = "%s/mllib-tests/target/mllib-perf-tests-assembly.jar" % PROJ_DIR
+class MLlibTestHelper(object):
+
+    @classmethod
+    def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
+        with open(stdout_filename, "r") as stdout_file:
+            output = stdout_file.read()
+        results_token = "results: "
+        result_string = ""
+        if results_token not in output:
+            result_string = "FAILED"
+        else:
+            result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
+            result_json = result_line.replace(results_token, "")
+            try:
+                result_dict = json.loads(result_json)
+            except:
+                print "Failed to parse JSON:\n", result_json
+                raise
+
+            num_results = len(result_dict['results'])
+            err_msg = ("Expecting at least %s results "
+                       "but only found %s" % (config.IGNORED_TRIALS + 1, num_results))
+            assert num_results > config.IGNORED_TRIALS, err_msg
+
+            # 2 modes: prediction problems (4 metrics) and others (time only)
+            if 'trainingTime' in result_dict['results'][0]:
+                # prediction problem
+                trainingTimes = [r['trainingTime'] for r in result_dict['results']]
+                testTimes = [r['testTime'] for r in result_dict['results']]
+                trainingMetrics = [r['trainingMetric'] for r in result_dict['results']]
+                testMetrics = [r['testMetric'] for r in result_dict['results']]
+                trainingTimes = trainingTimes[config.IGNORED_TRIALS:]
+                testTimes = testTimes[config.IGNORED_TRIALS:]
+                trainingMetrics = trainingMetrics[config.IGNORED_TRIALS:]
+                testMetrics = testMetrics[config.IGNORED_TRIALS:]
+                result_string += "Training time: %s, %.3f, %s, %s, %s\n" % \
+                                 stats_for_results(trainingTimes)
+                result_string += "Test time: %s, %.3f, %s, %s, %s\n" % \
+                                 stats_for_results(testTimes)
+                result_string += "Training Set Metric: %s, %.3f, %s, %s, %s\n" % \
+                                 stats_for_results(trainingMetrics)
+                result_string += "Test Set Metric: %s, %.3f, %s, %s, %s" % \
+                                 stats_for_results(testMetrics)
+            else:
+                # non-prediction problem
+                times = [r['time'] for r in result_dict['results']]
+                times = times[config.IGNORED_TRIALS:]
+                result_string += "Time: %s, %.3f, %s, %s, %s\n" % \
+                                 stats_for_results(times)
+
+        result_string = "%s, %s\n%s" % (short_name, " ".join(opt_list), result_string)
+
+        sys.stdout.flush()
+        return result_string
+
+
+class MLlibTests(JVMPerfTestSuite, MLlibTestHelper):
+    test_jar_path = "%s/mllib-tests/target/spark-perf-tests-assembly.jar" % PROJ_DIR
 
     @classmethod
     def build(cls):
@@ -173,30 +256,26 @@ class MLlibTests(JVMPerfTestSuite):
 
     @classmethod
     def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
-        with open(stdout_filename, "r") as stdout_file:
-            output = stdout_file.read()
-        results_token = "results: "
-        result = ""
-        if results_token not in output:
-            result = "FAILED"
-        else:
-            result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
-            result_list = result_line.replace(results_token, "").split(",")
-            err_msg = ("Expecting at least %s results "
-                       "but only found %s" % (config.IGNORED_TRIALS + 1, len(result_list)))
-            assert len(result_list) > config.IGNORED_TRIALS, err_msg
-            result_list = result_list[config.IGNORED_TRIALS:]
-            result += "Runtime: %s, %.3f, %s, %s, %s\n" % \
-                      stats_for_results([x.split(";")[0] for x in result_list])
-            result += "Train Set Metric: %s, %.3f, %s, %s, %s\n" %\
-                      stats_for_results([x.split(";")[1] for x in result_list])
-            result += "Test Set Metric: %s, %.3f, %s, %s, %s" %\
-                      stats_for_results([x.split(";")[2] for x in result_list])
+        return MLlibTestHelper.process_output(config, short_name, opt_list,
+                                              stdout_filename, stderr_filename)
 
-        result_string = "%s, %s\n%s" % (short_name, " ".join(opt_list), result)
 
-        sys.stdout.flush()
-        return result_string
+class PythonMLlibTests(PerfTestSuite, MLlibTestHelper):
+
+    @classmethod
+    def get_spark_submit_cmd(cls, cluster, config, main_class_or_script, opt_list, stdout_filename,
+                             stderr_filename):
+        spark_submit = "%s/bin/spark-submit" % cluster.spark_home
+        cmd = "%s --master %s pyspark-tests/%s %s 1>> %s 2>> %s" % (
+            spark_submit, config.SPARK_CLUSTER_URL,
+            main_class_or_script, " ".join(opt_list),
+            stdout_filename, stderr_filename)
+        return cmd
+
+    @classmethod
+    def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
+        return MLlibTestHelper.process_output(config, short_name, opt_list,
+                                              stdout_filename, stderr_filename)
 
 
 class PythonTests(PerfTestSuite):

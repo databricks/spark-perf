@@ -12,10 +12,11 @@ object SparkTestsBuild extends Build {
       version := "0.1",
       scalaVersion := "2.10.4",
       libraryDependencies ++= Seq(
-        "net.sf.jopt-simple" % "jopt-simple" % "4.5",
+        "net.sf.jopt-simple" % "jopt-simple" % "4.6",
         "org.scalatest" %% "scalatest" % "2.2.1" % "test",
         "com.google.guava" % "guava" % "14.0.1",
-        "org.apache.spark" %% "spark-core" % "1.0.0" % "provided"
+        "org.apache.spark" %% "spark-core" % "1.0.0" % "provided",
+        "org.json4s" %% "json4s-native" % "3.2.9"
       ),
       test in assembly := {},
       outputPath in assembly := file("target/spark-perf-tests-assembly.jar"),

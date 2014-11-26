@@ -3,12 +3,10 @@
 # config.py replacing the default lines that exist.
 
 # Required for running Spark and Shark tests.
-SPARK_COMMIT_ID = ""
 SHARK_COMMIT_ID = ""
 
 # Existing directories for Spark and Shark.
 SPARK_HOME_DIR = "YOUR LOCAL SPARK DIR"
-SHARK_HOME_DIR = "YOUR LOCAL SHARK DIR"
 
 # The following trick might not work for you depending on your dev station network config.
 import socket; SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname()
@@ -19,10 +17,11 @@ scale_factor = 0.000001
 JavaOptionSet("spark.executor.memory", ["9g"])',
 
 # Might want to update these:
-SPARK_SKIP_PREP = True
-SHARK_SKIP_PREP = True
-HIVE_SKIP_PREP = True
-
-SPARK_SKIP_TEST_PREP = True
-STREAMING_SKIP_TEST_PREP = True
-SHARK_SKIP_TEST_PREP = True
+RUN_SPARK_TESTS = True
+RUN_PYSPARK_TESTS = False
+RUN_STREAMING_TESTS = False
+RUN_MLLIB_TESTS = False
+PREP_SPARK_TESTS = True
+PREP_PYSPARK_TESTS = False
+PREP_STREAMING_TESTS = False
+PREP_MLLIB_TESTS = False
