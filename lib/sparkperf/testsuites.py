@@ -155,7 +155,7 @@ class SparkTests(JVMPerfTestSuite):
             print("Test did not produce expected results. Output was:")
             print(output)
             sys.exit(1)
-        result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
+        result_line = filter(lambda x: results_token in x, output.split("\n"))[-1]
         result_json = result_line.replace(results_token, "")
         result_dict = json.loads(result_json)
         times = [r['time'] for r in result_dict['results']]
@@ -202,7 +202,7 @@ class MLlibTestHelper(object):
         if results_token not in output:
             result_string = "FAILED"
         else:
-            result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
+            result_line = filter(lambda x: results_token in x, output.split("\n"))[-1]
             result_json = result_line.replace(results_token, "")
             try:
                 result_dict = json.loads(result_json)
@@ -298,7 +298,7 @@ class PythonTests(PerfTestSuite):
             print("Test did not produce expected results. Output was:")
             print(output)
             sys.exit(1)
-        result_line = filter(lambda x: results_token in x, output.split("\n"))[0]
+        result_line = filter(lambda x: results_token in x, output.split("\n"))[-1]
         result_list = result_line.replace(results_token, "").split(",")
         err_msg = ("Expecting at least %s results "
                    "but only found %s" % (config.IGNORED_TRIALS + 1, len(result_list)))
