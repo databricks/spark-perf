@@ -5,7 +5,7 @@
 #   USE_CLUSTER_SPARK = False
 #   SPARK_COMMIT_ID = os.environ["SPARK_COMMIT_ID"]
 
-FWDIR="$(cd "`dirname "$0"`"; pwd)"
+FWDIR="$(cd "`dirname "$0"`/../"; pwd)"
 
 if [ "$#" -lt 2 ]; then
   echo "Usage: config_file [commit_ids]"
