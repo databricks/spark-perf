@@ -60,7 +60,8 @@ def make_spark_distribution(commit_id, target_dir, spark_git_repo, merge_commit_
         # running PySpark on YARN or when running on Java 6.  Since we'll be building and running
         # Spark on the same machines and using standalone mode, it should be safe to
         # disable this warning:
-        run_cmd("./make-distribution.sh --skip-java-test")
+        # The `-T 1C` enables parallel Maven builds with 1 thread per CPU core
+        run_cmd("./make-distribution.sh --skip-java-test -T 1C")
 
 
 def copy_configuration(conf_dir, target_dir):
