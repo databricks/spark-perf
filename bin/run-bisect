@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+# For this to work properly, your configuration file must set
+#   USE_CLUSTER_SPARK = False
+#   SPARK_COMMIT_ID = os.environ["SPARK_COMMIT_ID"]
+
+FWDIR="$(cd "`dirname "$0"`"; pwd)"
+
+if [ "$#" -ne 4 ]; then
+  echo "Test every Nth commit between two commits"
+  echo "Usage: oldest_commit newest_commit N config_file"
+  exit 1
+fi
+
+oldestCommit="$1"
+newestCommit="$2"
+NR="$3"
+configFile="$4"
+
+# Find the SHAs of every NRth commit between two git commits:
+cd "$FWDIR/spark-build-cache/master"
+git fetch
+versions=($(git log --oneline "$oldestCommit..$newestCommit" | awk "NR == 0 || NR % $NR == 0" | cut -d ' ' -f1))
+versions+=("$oldestCommit")
+versions+=("$newestCommit")
+cd "$FWDIR"
+
+echo "Going to test against ${#versions[@]} commits using config file $configFile"
+echo "Commits (every ${NR}th commit between $newestCommit and $oldestCommit):  ${versions[@]}"
+read -p "Confirm? " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]
+then
+   echo "Exiting!"
+   exit 1
+fi
+
+./bin/run-multiple-versions $configFile $versions

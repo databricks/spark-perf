@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# Build and run against multiple Spark versions.
+# For this to work properly, your configuration file must set
+#   USE_CLUSTER_SPARK = False
+#   SPARK_COMMIT_ID = os.environ["SPARK_COMMIT_ID"]
+
+FWDIR="$(cd "`dirname "$0"`"; pwd)"
+
+if [ "$#" -lt 2 ]; then
+  echo "Usage: config_file [commit_ids]"
+  exit 1
+fi
+
+configFile="$1"
+versions=( "${@:2}" )
+numVersions=${#versions[@]}
+
+echored() { echo -e "\033[31m$@\033[0m"; }
+
+echo "Going to test against $numVersions commits using config file $configFile"
+
+set +e
+
+for version in ${versions[@]}
+do
+  echo "Testing against commit $version"
+  export SPARK_COMMIT_ID="$version"
+  ./bin/run --config $configFile
+  if (($? > 0)); then
+    echored "Error testing commit $version; skipping this version"
+  fi
+done
