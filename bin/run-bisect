@@ -35,4 +35,4 @@ then
    exit 1
 fi
 
-./bin/run-multiple-versions $configFile $versions
+./bin/run-multiple-versions $configFile ${versions[@]}
