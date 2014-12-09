@@ -193,7 +193,7 @@ SPARK_KEY_VAL_TEST_OPTS = [
     FlagSet("hash-records", [False]),
     # Storage location if HDFS persistence is used
     OptionSet("storage-location", [
-        os.getenv("HDFS_URL", "") + "/spark-perf-kv-data"])
+        HDFS_URL + "/spark-perf-kv-data"])
 ]
 
 
