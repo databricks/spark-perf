@@ -33,16 +33,20 @@ abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends
   val HASH_RECORDS =     ("hash-records", "Use hashes instead of padded numbers for keys and values")
   val WAIT_FOR_EXIT =    ("wait-for-exit", "JVM will not exit until input is received from stdin")
 
+  val longOptions = Seq(NUM_RECORDS)
   val intOptions = Seq(NUM_TRIALS, INTER_TRIAL_WAIT, REDUCE_TASKS, KEY_LENGTH, VALUE_LENGTH, UNIQUE_KEYS,
-    UNIQUE_VALUES, NUM_RECORDS, NUM_PARTITIONS, RANDOM_SEED)
+    UNIQUE_VALUES, NUM_PARTITIONS, RANDOM_SEED)
   val stringOptions = Seq(PERSISTENCE_TYPE, STORAGE_LOCATION)
   val booleanOptions = Seq(WAIT_FOR_EXIT, HASH_RECORDS)
-  val options = intOptions ++ stringOptions  ++ booleanOptions
+  val options = longOptions ++ intOptions ++ stringOptions  ++ booleanOptions
 
   val parser = new OptionParser()
   var optionSet: OptionSet = _
   var rdd: RDD[_] = _
 
+  longOptions.map{case (opt, desc) =>
+    parser.accepts(opt, desc).withRequiredArg().ofType(classOf[Long]).required()
+  }
   intOptions.map{case (opt, desc) =>
     parser.accepts(opt, desc).withRequiredArg().ofType(classOf[Int]).required()
   }
@@ -63,7 +67,7 @@ abstract class KVDataTest(sc: SparkContext, dataType: String = "string") extends
   }
 
   override def createInputData() = {
-    val numRecords: Int = optionSet.valueOf(NUM_RECORDS._1).asInstanceOf[Int]
+    val numRecords: Long = optionSet.valueOf(NUM_RECORDS._1).asInstanceOf[Long]
     val uniqueKeys: Int = optionSet.valueOf(UNIQUE_KEYS._1).asInstanceOf[Int]
     val keyLength: Int = optionSet.valueOf(KEY_LENGTH._1).asInstanceOf[Int]
     val uniqueValues: Int = optionSet.valueOf(UNIQUE_VALUES._1).asInstanceOf[Int]
