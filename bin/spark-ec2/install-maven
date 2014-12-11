@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+# Script for installing Maven on spark-ec2 clusters
+
+MVN_VERSION=3.2.3
+MVN_MD5=2fcfdb327eb94b8595d97ee4181ef0a6
+
+# wget http://www.apache.org/dyn/closer.cgi/maven/maven-3/$MVN_VERSION/binaries/apache-maven-$MVN_VERSION-bin.tar.gz
+wget http://apache.claz.org/maven/maven-3/$MVN_VERSION/binaries/apache-maven-$MVN_VERSION-bin.tar.gz
+md5=`md5sum apache-maven-$MVN_VERSION-bin.tar.gz | awk '{ print $1 }'`
+
+if [ $md5 != $MVN_MD5 ]
+then
+  echo "MD5 sums didn't match; exiting"
+  exit -1
+fi
+
+sudo mkdir /usr/local/apache-maven
+tar -xzf apache-maven-$MVN_VERSION-bin.tar.gz
+sudo cp -r apache-maven-$MVN_VERSION /usr/local/apache-maven
+
+echo "export M2_HOME=/usr/local/apache-maven/apache-maven-$MVN_VERSION/" >> ~/.bash_profile
+echo 'export M2=$M2_HOME/bin' >> ~/.bash_profile
+echo 'export PATH=$M2:$PATH' >> ~/.bash_profile
+
+echo "Finished installing maven.  Re-source ~/.bash_profile for changes to take effect"

@@ -1,6 +1,10 @@
 package mllib.perf.onepointone
 
-import mllib.perf.onepointone.util.DataGenerator
+import org.json4s.JsonDSL._
+import org.json4s.JsonAST._
+
+import scala.util.Random
+
 import org.apache.spark.mllib.linalg.{Matrices, Vectors, Matrix, Vector}
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.random.RandomRDDs
@@ -8,10 +12,12 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.Statistics
 import org.apache.spark.rdd.RDD
 
-import scala.util.Random
+import mllib.perf.onepointone.util.DataGenerator
 
-/** Parent class for the tests for the statistics toolbox
-  */
+
+/**
+ * Parent class for the tests for the statistics toolbox
+ */
 abstract class StatTests[T](sc: SparkContext) extends PerfTest {
 
   def runTest(rdd: T)
@@ -27,14 +33,12 @@ abstract class StatTests[T](sc: SparkContext) extends PerfTest {
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
 
-  override def run(): (Double, Double, Double) = {
-
+  override def run(): JValue = {
     val start = System.currentTimeMillis()
     runTest(rdd)
     val end = System.currentTimeMillis()
     val time = (end - start).toDouble / 1000.0
-
-    (time, 0.0, 0.0)
+    Map("time" -> time)
   }
 }
 
@@ -69,7 +73,8 @@ class ChiSquaredFeatureTest(sc: SparkContext) extends StatTests[RDD[LabeledPoint
     val n: Int = intOptionValue(NUM_COLS)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
-    rdd = DataGenerator.generateClassificationLabeledPoints(sc, m, n, 0.5, 1.0, numPartitions,seed, true).cache()
+    rdd = DataGenerator.generateClassificationLabeledPoints(sc, m, n, 0.5, 1.0, numPartitions,
+      seed, chiSq = true).cache()
 
     // Materialize rdd
     println("Num Examples: " + rdd.count())

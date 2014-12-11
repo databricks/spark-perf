@@ -1,6 +1,8 @@
 package mllib.perf.onepointoh
 
-import mllib.perf.onepointoh.util.DataGenerator
+import org.json4s.JsonDSL._
+import org.json4s.JsonAST._
+
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.mllib.classification._
@@ -15,36 +17,90 @@ import org.apache.spark.mllib.tree.impurity.{Gini, Variance}
 import org.apache.spark.mllib.tree.model.DecisionTreeModel
 import org.apache.spark.rdd.RDD
 
+import mllib.perf.onepointoh.util.DataGenerator
+
 /** Parent class for tests which run on a large dataset. */
 abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends PerfTest {
 
-  def runTest(rdd: RDD[LabeledPoint], numIterations: Int): M
+  def runTest(rdd: RDD[LabeledPoint]): M
 
   def validate(model: M, rdd: RDD[LabeledPoint]): Double
 
-  val NUM_EXAMPLES =  ("num-examples",   "number of examples for regression tests")
-  val NUM_FEATURES =  ("num-features",   "number of features of each example for regression tests")
-  val STEP_SIZE =     ("step-size",   "step size for SGD")
+  val NUM_EXAMPLES =
+    ("num-examples", "number of examples for regression and classification tests")
+  val NUM_FEATURES =
+    ("num-features", "number of features of each example for regression and classification tests")
 
   intOptions = intOptions ++ Seq(NUM_FEATURES)
-  longOptions = Seq(NUM_EXAMPLES)
-  doubleOptions = doubleOptions ++ Seq(STEP_SIZE)
+  longOptions = longOptions ++ Seq(NUM_EXAMPLES)
 
   var rdd: RDD[LabeledPoint] = _
   var testRdd: RDD[LabeledPoint] = _
 
+  override def run(): JValue = {
+    var start = System.currentTimeMillis()
+    val model = runTest(rdd)
+    val trainingTime = (System.currentTimeMillis() - start).toDouble / 1000.0
+
+    start = System.currentTimeMillis()
+    val trainingMetric = validate(model, rdd)
+    val testTime = (System.currentTimeMillis() - start).toDouble / 1000.0
+
+    val testMetric = validate(model, testRdd)
+    Map("trainingTime" -> trainingTime, "testTime" -> testTime,
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
+  }
+
+  /**
+   * For classification
+   * @param predictions RDD over (prediction, truth) for each instance
+   * @return Percent correctly classified
+   */
+  def calculateAccuracy(predictions: RDD[(Double, Double)], numExamples: Long): Double = {
+    predictions.map{case (pred, label) =>
+      if (pred == label) 1.0 else 0.0
+    }.sum() * 100.0 / numExamples
+  }
+
+  /**
+   * For regression
+   * @param predictions RDD over (prediction, truth) for each instance
+   * @return Root mean squared error (RMSE)
+   */
+  def calculateRMSE(predictions: RDD[(Double, Double)], numExamples: Long): Double = {
+    val error = predictions.map{ case (pred, label) =>
+      (pred-label) * (pred-label)
+    }.sum()
+    math.sqrt(error / numExamples)
+  }
 }
 
-abstract class RegressionTest(sc: SparkContext)
+/** Parent class for Generalized Linear Model (GLM) tests */
+abstract class GLMTests(sc: SparkContext)
   extends RegressionAndClassificationTests[GeneralizedLinearModel](sc) {
+
+  val STEP_SIZE =     ("step-size",   "step size for SGD")
+  val NUM_ITERATIONS =      ("num-iterations",   "number of iterations for the algorithm")
+  val REG_TYPE =      ("reg-type",   "type of regularization: none, l1, l2")
+  val REG_PARAM =      ("reg-param",   "the regularization parameter against overfitting")
+
+  intOptions = intOptions ++ Seq(NUM_ITERATIONS)
+  doubleOptions = doubleOptions ++ Seq(STEP_SIZE, REG_PARAM)
+  stringOptions = stringOptions ++ Seq(REG_TYPE)
+}
+
+class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
 
   val INTERCEPT =  ("intercept",   "intercept for random data generation")
   val EPS =  ("epsilon",   "scale factor for the noise during data generation")
+  val LOSS =  ("loss",   "loss to minimize. Supported: l2 (squared error).")
 
   doubleOptions = doubleOptions ++ Seq(INTERCEPT, EPS)
+  stringOptions = stringOptions ++ Seq(LOSS)
 
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
+
   override def createInputData(seed: Long) = {
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
     val numFeatures: Int = intOptionValue(NUM_FEATURES)
@@ -53,8 +109,8 @@ abstract class RegressionTest(sc: SparkContext)
     val intercept: Double = doubleOptionValue(INTERCEPT)
     val eps: Double = doubleOptionValue(EPS)
 
-    val data = DataGenerator.generateLabeledPoints(sc, math.ceil(numExamples*1.25).toLong,
-      numFeatures, intercept, eps, numPartitions,seed)
+    val data = DataGenerator.generateLabeledPoints(sc, math.ceil(numExamples * 1.25).toLong,
+      numFeatures, intercept, eps, numPartitions, seed)
 
     val split = data.randomSplit(Array(0.8, 0.2), seed)
 
@@ -67,43 +123,64 @@ abstract class RegressionTest(sc: SparkContext)
 
   override def validate(model: GeneralizedLinearModel, rdd: RDD[LabeledPoint]): Double = {
     val numExamples = rdd.count()
-
     val predictions: RDD[(Double, Double)] = rdd.map { example =>
       (model.predict(example.features), example.label)
     }
-    val error = predictions.map{case (pred, label) =>
-      (pred-label) * (pred-label)
-    }.sum()
-
-    math.sqrt(error / numExamples)
+    calculateRMSE(predictions, numExamples)
   }
 
-  override def run(): (Double, Double, Double) = {
+  override def runTest(rdd: RDD[LabeledPoint]): GeneralizedLinearModel = {
+    val stepSize = doubleOptionValue(STEP_SIZE)
+    val loss = stringOptionValue(LOSS)
+    val regType = stringOptionValue(REG_TYPE)
+    val regParam = doubleOptionValue(REG_PARAM)
     val numIterations = intOptionValue(NUM_ITERATIONS)
 
-    val start = System.currentTimeMillis()
-    val model = runTest(rdd, numIterations)
-    val end = System.currentTimeMillis()
-    val time = (end - start).toDouble / 1000.0
+    if (!Array("l2").contains(loss)) {
+      throw new IllegalArgumentException(
+        s"GLMRegressionTest run with unknown loss ($loss).  Supported values: l2.")
+    }
+    if (!Array("none", "l1", "l2").contains(regType)) {
+      throw new IllegalArgumentException(
+        s"GLMRegressionTest run with unknown regType ($regType).  Supported values: none, l1, l2.")
+    }
 
-    val metricOnTrain = validate(model, rdd)
-    val metric = validate(model, testRdd)
-
-    (time, metricOnTrain, metric)
+    (loss, regType) match {
+      case ("l2", "none") =>
+        val lr = new LinearRegressionWithSGD().setIntercept(addIntercept = true)
+        lr.optimizer.setNumIterations(numIterations).setStepSize(stepSize)
+        lr.run(rdd)
+      case ("l2", "l1") =>
+        val lasso = new LassoWithSGD().setIntercept(addIntercept = true)
+        lasso.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
+        lasso.run(rdd)
+      case ("l2", "l2") =>
+        val rr = new RidgeRegressionWithSGD().setIntercept(addIntercept = true)
+        rr.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
+        rr.run(rdd)
+    }
   }
 }
 
-abstract class ClassificationTest[M](sc: SparkContext)
-  extends RegressionAndClassificationTests[M](sc) {
+class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
 
   val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
   val SCALE =  ("scale-factor",   "scale factor for the noise during data generation")
-  val SMOOTHING =     ("nb-lambda",   "the smoothing parameter lambda for Naive Bayes")
+  val LOSS =  ("loss",   "loss to minimize. Supported: logistic, hinge (SVM).")
 
-  doubleOptions = doubleOptions ++ Seq(THRESHOLD, SCALE, SMOOTHING)
+  doubleOptions = doubleOptions ++ Seq(THRESHOLD, SCALE)
+  stringOptions = stringOptions ++ Seq(LOSS)
 
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
+
+  override def validate(model: GeneralizedLinearModel, rdd: RDD[LabeledPoint]): Double = {
+    val numExamples = rdd.count()
+    val predictions: RDD[(Double, Double)] = rdd.map { example =>
+      (model.predict(example.features), example.label)
+    }
+    calculateAccuracy(predictions, numExamples)
+  }
 
   override def createInputData(seed: Long) = {
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
@@ -114,7 +191,7 @@ abstract class ClassificationTest[M](sc: SparkContext)
     val sf: Double = doubleOptionValue(SCALE)
 
     val data = DataGenerator.generateClassificationLabeledPoints(sc,
-      math.ceil(numExamples*1.25).toLong, numFeatures, threshold, sf, numPartitions,seed)
+      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, sf, numPartitions, seed)
 
     val split = data.randomSplit(Array(0.8, 0.2), seed)
 
@@ -125,39 +202,51 @@ abstract class ClassificationTest[M](sc: SparkContext)
     println("Num Examples: " + rdd.count())
   }
 
-  override def run(): (Double, Double, Double) = {
+  override def runTest(rdd: RDD[LabeledPoint]): GeneralizedLinearModel = {
+    val stepSize = doubleOptionValue(STEP_SIZE)
+    val loss = stringOptionValue(LOSS)
+    val regType = stringOptionValue(REG_TYPE)
+    val regParam = doubleOptionValue(REG_PARAM)
     val numIterations = intOptionValue(NUM_ITERATIONS)
 
-    val start = System.currentTimeMillis()
-    val model = runTest(rdd, numIterations)
-    val end = System.currentTimeMillis()
-    val time = (end - start).toDouble / 1000.0
-    val metricOnTrain = validate(model, rdd)
-    val metric = validate(model, testRdd)
+    if (!Array("logistic", "hinge").contains(loss)) {
+      throw new IllegalArgumentException(
+        s"GLMClassificationTest run with unknown loss ($loss).  Supported values: logistic, hinge.")
+    }
+    if (!Array("none", "l1", "l2").contains(regType)) {
+      throw new IllegalArgumentException(s"GLMClassificationTest run with unknown regType" +
+        s" ($regType).  Supported values: none, l1, l2.")
+    }
 
-    (time, metricOnTrain, metric)
-  }
-
-  def calculateAccuracy(predictions: RDD[(Double, Double)], numExamples: Long): Double = {
-    predictions.map{case (pred, label) =>
-      if (pred == label) 1.0 else 0.0
-    }.sum() * 100.0 / numExamples
+    (loss, regType) match {
+      case ("logistic", "none") =>
+        LogisticRegressionWithSGD.train(rdd, numIterations, stepSize)
+      case ("hinge", "l2") =>
+        SVMWithSGD.train(rdd, numIterations, stepSize, regParam)
+      case _ =>
+        throw new IllegalArgumentException(
+          s"GLMClassificationTest given incompatible (loss, regType) = ($loss, $regType)." +
+          s" Note the set of supported combinations increases in later Spark versions.")
+    }
   }
 }
 
 abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
 
-  def runTest(rdd: RDD[Rating], numIterations: Int, rank: Int): MatrixFactorizationModel
+  def runTest(rdd: RDD[Rating]): MatrixFactorizationModel
 
   val NUM_USERS =    ("num-users",   "number of users for recommendation tests")
   val NUM_PRODUCTS = ("num-products", "number of features of each example for recommendation tests")
   val NUM_RATINGS =  ("num-ratings",   "number of ratings for recommendation tests")
   val RANK =         ("rank", "rank of factorized matrices for recommendation tests")
   val IMPLICIT =     ("implicit-prefs", "use implicit ratings")
+  val NUM_ITERATIONS =  ("num-iterations",   "number of iterations for the algorithm")
+  val REG_PARAM =      ("reg-param",   "the regularization parameter against overfitting")
 
-  intOptions = intOptions ++ Seq(NUM_USERS, NUM_PRODUCTS, RANK)
+  intOptions = intOptions ++ Seq(NUM_USERS, NUM_PRODUCTS, RANK, NUM_ITERATIONS)
   longOptions = longOptions ++ Seq(NUM_RATINGS)
   booleanOptions = booleanOptions ++ Seq(IMPLICIT)
+  doubleOptions = doubleOptions ++ Seq(REG_PARAM)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
 
@@ -173,7 +262,7 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
 
     val data = DataGenerator.generateRatings(sc, numUsers, numProducts,
-      math.ceil(numRatings*1.25).toLong, implicitRatings,numPartitions,seed)
+      math.ceil(numRatings * 1.25).toLong, implicitRatings,numPartitions,seed)
 
     rdd = data._1.cache()
     testRdd = data._2
@@ -184,8 +273,8 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
   }
 
   def validate(model: MatrixFactorizationModel,
-               data: RDD[Rating],
-               implicitPrefs: Boolean): Double = {
+               data: RDD[Rating]): Double = {
+    val implicitPrefs: Boolean = booleanOptionValue(IMPLICIT)
     val predictions: RDD[Rating] = model.predict(data.map(x => (x.user, x.product)))
     val predictionsAndRatings: RDD[(Double, Double)] = predictions.map{ x =>
       def mapPredictedRating(r: Double) = if (implicitPrefs) math.max(math.min(r, 1.0), 0.0) else r
@@ -195,32 +284,31 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     math.sqrt(predictionsAndRatings.map(x => (x._1 - x._2) * (x._1 - x._2)).mean())
   }
 
-  override def run(): (Double, Double, Double) = {
-    val numIterations: Int = intOptionValue(NUM_ITERATIONS)
-    val rank: Int = intOptionValue(RANK)
-    val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
+  override def run(): JValue = {
+    var start = System.currentTimeMillis()
+    val model = runTest(rdd)
+    val trainingTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
-    val start = System.currentTimeMillis()
-    val model = runTest(rdd, numIterations, rank)
-    val end = System.currentTimeMillis()
-    val time = (end - start).toDouble / 1000.0
+    start = System.currentTimeMillis()
+    val trainingMetric = validate(model, rdd)
+    val testTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
-    val trainError = validate(model, rdd,implicitRatings)
-    val testError = validate(model, testRdd,implicitRatings)
-    (time, trainError, testError)
-
+    val testMetric = validate(model, testRdd)
+    Map("trainingTime" -> trainingTime, "testTime" -> testTime,
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
   }
 }
 
 abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
 
-  def runTest(rdd: RDD[Vector], numIterations: Int, numCenters: Int): KMeansModel
+  def runTest(rdd: RDD[Vector]): KMeansModel
 
   val NUM_POINTS =    ("num-points",   "number of points for clustering tests")
   val NUM_COLUMNS =   ("num-columns",   "number of columns for each point for clustering tests")
   val NUM_CENTERS =   ("num-centers",   "number of centers for clustering tests")
+  val NUM_ITERATIONS =      ("num-iterations",   "number of iterations for the algorithm")
 
-  intOptions = intOptions ++ Seq(NUM_CENTERS, NUM_COLUMNS)
+  intOptions = intOptions ++ Seq(NUM_CENTERS, NUM_COLUMNS, NUM_ITERATIONS)
   longOptions = longOptions ++ Seq(NUM_POINTS)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
@@ -255,114 +343,51 @@ abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
     println("Num Examples: " + rdd.count())
   }
 
-  override def run(): (Double, Double, Double) = {
-    val numIterations: Int = intOptionValue(NUM_ITERATIONS)
-    val k: Int = intOptionValue(NUM_CENTERS)
+  override def run(): JValue = {
+    var start = System.currentTimeMillis()
+    val model = runTest(rdd)
+    val trainingTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
-    val start = System.currentTimeMillis()
-    val model = runTest(rdd, numIterations, k)
-    val end = System.currentTimeMillis()
-    val time = (end - start).toDouble / 1000.0
-    val trainError = validate(model, rdd)
-    val testError = validate(model, testRdd)
+    start = System.currentTimeMillis()
+    val trainingMetric = validate(model, rdd)
+    val testTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
-    (time, trainError, testError)
-  }
-}
-
-// Regression Algorithms
-class LinearRegressionTest(sc: SparkContext) extends RegressionTest(sc) {
-  override def runTest(rdd: RDD[LabeledPoint], numIterations: Int): LinearRegressionModel = {
-    val stepSize = doubleOptionValue(STEP_SIZE)
-    val lr = new LinearRegressionWithSGD().setIntercept(addIntercept = true)
-    lr.optimizer.setNumIterations(numIterations).setStepSize(stepSize)
-
-    lr.run(rdd)
-  }
-}
-
-class RidgeRegressionTest(sc: SparkContext) extends RegressionTest(sc) {
-  override def runTest(rdd: RDD[LabeledPoint], numIterations: Int): RidgeRegressionModel = {
-    val stepSize = doubleOptionValue(STEP_SIZE)
-    val regParam = doubleOptionValue(REGULARIZATION)
-    val rr = new RidgeRegressionWithSGD().setIntercept(addIntercept = true)
-    rr.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
-
-    rr.run(rdd)
-  }
-}
-
-class LassoTest(sc: SparkContext) extends RegressionTest(sc) {
-  override def runTest(rdd: RDD[LabeledPoint], numIterations: Int): LassoModel = {
-    val stepSize = doubleOptionValue(STEP_SIZE)
-    val regParam = doubleOptionValue(REGULARIZATION)
-    val lasso = new LassoWithSGD().setIntercept(addIntercept = true)
-    lasso.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
-
-    lasso.run(rdd)
+    val testMetric = validate(model, testRdd)
+    Map("trainingTime" -> trainingTime, "testTime" -> testTime,
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
   }
 }
 
 // Classification Algorithms
-class LogisticRegressionTest(sc: SparkContext)
-  extends ClassificationTest[LogisticRegressionModel](sc) {
 
-  override def validate(model: LogisticRegressionModel, rdd: RDD[LabeledPoint]): Double = {
-    val numExamples = rdd.count()
+class NaiveBayesTest(sc: SparkContext)
+  extends RegressionAndClassificationTests[NaiveBayesModel](sc) {
 
-    val predictions: RDD[(Double, Double)] = rdd.map { example =>
-      (model.predict(example.features), example.label)
-    }
-    calculateAccuracy(predictions, numExamples)
-  }
+  val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
+  val SCALE =  ("scale-factor",   "scale factor for the noise during data generation")
+  val SMOOTHING =     ("nb-lambda",   "the smoothing parameter lambda for Naive Bayes")
 
-  override def runTest(rdd: RDD[LabeledPoint], numIterations: Int): LogisticRegressionModel = {
-    val stepSize = doubleOptionValue(STEP_SIZE)
+  doubleOptions = doubleOptions ++ Seq(THRESHOLD, SCALE, SMOOTHING)
 
-    LogisticRegressionWithSGD.train(rdd, numIterations, stepSize)
-  }
-}
+  val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
+  addOptionsToParser()
 
-class NaiveBayesTest(sc: SparkContext) extends ClassificationTest[NaiveBayesModel](sc) {
-
-  override def validate(model: NaiveBayesModel, rdd: RDD[LabeledPoint]): Double = {
-    val numExamples = rdd.count()
-
-    val predictions: RDD[(Double, Double)] = rdd.map { example =>
-      (model.predict(example.features), example.label)
-    }
-    calculateAccuracy(predictions, numExamples)
-  }
-
-  override def runTest(rdd: RDD[LabeledPoint], numIterations: Int): NaiveBayesModel = {
-    val lambda = doubleOptionValue(SMOOTHING)
-
-    NaiveBayes.train(rdd, lambda)
-  }
-}
-
-class SVMTest(sc: SparkContext) extends ClassificationTest[SVMModel](sc) {
-
-  override def validate(model: SVMModel, rdd: RDD[LabeledPoint]): Double = {
-    val numExamples = rdd.count()
-
-    val predictions: RDD[(Double, Double)] = rdd.map { example =>
-      (model.predict(example.features), example.label)
-    }
-    calculateAccuracy(predictions, numExamples)
-  }
-
+  /** Note: using same data generation as for GLMClassificationTest, but should change later */
   override def createInputData(seed: Long) = {
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
     val numFeatures: Int = intOptionValue(NUM_FEATURES)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    
+
+    val threshold: Double = doubleOptionValue(THRESHOLD)
     val sf: Double = doubleOptionValue(SCALE)
 
-    val data = DataGenerator.generateLabeledPoints(sc, math.ceil(numExamples*1.25).toLong,
-      numFeatures, 0.0, sf, numPartitions,seed, "SVM")
+    val data = DataGenerator.generateClassificationLabeledPoints(sc,
+      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, sf, numPartitions, seed)
+    val dataNonneg = data.map { lp =>
+      LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.map(math.abs)))
+    }
 
-    val split = data.randomSplit(Array(0.8, 0.2), seed)
+    val split = dataNonneg.randomSplit(Array(0.8, 0.2), seed)
 
     rdd = split(0).cache()
     testRdd = split(1)
@@ -371,21 +396,27 @@ class SVMTest(sc: SparkContext) extends ClassificationTest[SVMModel](sc) {
     println("Num Examples: " + rdd.count())
   }
 
-  override def runTest(rdd: RDD[LabeledPoint], numIterations: Int): SVMModel = {
-    val stepSize = doubleOptionValue(STEP_SIZE)
-    val regParam = doubleOptionValue(REGULARIZATION)
+  override def validate(model: NaiveBayesModel, rdd: RDD[LabeledPoint]): Double = {
+    val numExamples = rdd.count()
+    val predictions: RDD[(Double, Double)] = rdd.map { example =>
+      (model.predict(example.features), example.label)
+    }
+    calculateAccuracy(predictions, numExamples)
+  }
 
-    SVMWithSGD.train(rdd, numIterations, stepSize, regParam)
+  override def runTest(rdd: RDD[LabeledPoint]): NaiveBayesModel = {
+    val lambda = doubleOptionValue(SMOOTHING)
+    NaiveBayes.train(rdd, lambda)
   }
 }
 
 // Recommendation
 class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
-  override def runTest(rdd: RDD[Rating],
-                       numIterations: Int,
-                       rank: Int): MatrixFactorizationModel = {
-    val regParam = doubleOptionValue(REGULARIZATION)
-    val seed = intOptionValue(RANDOM_SEED)+12
+  override def runTest(rdd: RDD[Rating]): MatrixFactorizationModel = {
+    val numIterations: Int = intOptionValue(NUM_ITERATIONS)
+    val rank: Int = intOptionValue(RANK)
+    val regParam = doubleOptionValue(REG_PARAM)
+    val seed = intOptionValue(RANDOM_SEED) + 12
 
     new ALS().setIterations(numIterations).setRank(rank).setSeed(seed).setLambda(regParam).run(rdd)
   }
@@ -393,24 +424,19 @@ class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
 
 // Clustering
 class KMeansTest(sc: SparkContext) extends ClusteringTests(sc) {
-  override def runTest(rdd: RDD[Vector], numIterations: Int, numCenters: Int): KMeansModel = {
-    KMeans.train(rdd, numCenters, numIterations)
+  override def runTest(rdd: RDD[Vector]): KMeansModel = {
+    val numIterations: Int = intOptionValue(NUM_ITERATIONS)
+    val k: Int = intOptionValue(NUM_CENTERS)
+    KMeans.train(rdd, k, numIterations)
   }
 }
 
 /**
- * Parent class for tests which run on a large dataset.
- *
- * This class is specific to [[org.apache.spark.mllib.tree.DecisionTree]].
- * It should eventually be generalized and merged with
- * [[RegressionAndClassificationTests]]
+ * Parent class for DecisionTree-based tests which run on a large dataset.
  */
-abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
+abstract class DecisionTreeTests(sc: SparkContext)
+  extends RegressionAndClassificationTests[DecisionTreeModel](sc) {
 
-  def runTest(rdd: RDD[LabeledPoint]): DecisionTreeModel
-
-  val NUM_EXAMPLES = ("num-examples", "number of examples for regression tests")
-  val NUM_FEATURES = ("num-features", "number of features of each example for regression tests")
   val LABEL_TYPE =
     ("label-type", "Type of label: 0 indicates regression, 2+ indicates " +
       "classification with this many classes")
@@ -422,67 +448,30 @@ abstract class DecisionTreeTests(sc: SparkContext) extends PerfTest {
   val TREE_DEPTH = ("tree-depth", "Depth of true decision tree model used to label examples.")
   val MAX_BINS = ("max-bins", "Maximum number of bins for the decision tree learning algorithm.")
 
-  intOptions = intOptions ++ Seq(NUM_FEATURES, LABEL_TYPE, TREE_DEPTH, MAX_BINS)
-  longOptions = longOptions ++ Seq(NUM_EXAMPLES)
-
+  intOptions = intOptions ++ Seq(LABEL_TYPE, TREE_DEPTH, MAX_BINS)
   doubleOptions = doubleOptions ++ Seq(FRAC_CATEGORICAL_FEATURES, FRAC_BINARY_FEATURES)
 
   val options = intOptions ++ stringOptions ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
 
-  var rdd: RDD[LabeledPoint] = _
-  var testRdd: RDD[LabeledPoint] = _
   var categoricalFeaturesInfo: Map[Int, Int] = Map.empty
 
-  def computeRMSE(model: DecisionTreeModel, rdd: RDD[LabeledPoint]): Double = {
-    val numExamples = rdd.count()
-
-    val predictions: RDD[(Double, Double)] = rdd.map { example =>
-      (model.predict(example.features), example.label)
-    }
-    val error = predictions.map { case (pred, label) =>
-      (pred - label) * (pred - label)
-    }.sum()
-
-    math.sqrt(error / numExamples)
-  }
-
-  // When we have a general Model in the new API, we won't need these anymore. We can just move both
-  // to PerfTest
-  def computeAccuracy(model: DecisionTreeModel, rdd: RDD[LabeledPoint]): Double = {
-    val numExamples = rdd.count()
-
-    val predictions: RDD[(Double, Double)] = rdd.map { example =>
-      (model.predict(example.features), example.label)
-    }
-    predictions.map { case (pred, label) =>
-      val pred01 = if (pred > 0.5) 1 else 0
-      if (pred01 == label) 1.0 else 0.0
-    }.sum() * 100.0 / numExamples
-  }
-
   def validate(model: DecisionTreeModel, rdd: RDD[LabeledPoint]): Double = {
+    val numExamples = rdd.count()
+    val predictions: RDD[(Double, Double)] = rdd.map { example =>
+      (model.predict(example.features), example.label)
+    }
     val labelType: Int = intOptionValue(LABEL_TYPE)
-    rdd.cache()
     if (labelType == 0) {
-      computeRMSE(model, rdd)
+      calculateRMSE(predictions, numExamples)
     } else {
-      computeAccuracy(model, rdd)
+      val thresholdedPredictions = predictions.map { case (pred, truth) =>
+        val pred01 = if (pred > 0.5) 1.0 else 0.0 // only needed for Spark 1.0, not later versions
+        (pred01, truth)
+      }
+      calculateAccuracy(thresholdedPredictions, numExamples)
     }
   }
-
-  override def run(): (Double, Double, Double) = {
-
-    val start = System.currentTimeMillis()
-    val model = runTest(rdd)
-    println(model)
-    val end = System.currentTimeMillis()
-    val time = (end - start).toDouble / 1000.0
-    val trainAccuracy = validate(model, rdd)
-    val testError = validate(model, testRdd)
-    (time, trainAccuracy, testError)
-  }
-
 }
 
 class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
@@ -500,7 +489,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
 
     val (rdd_, categoricalFeaturesInfo_) =
-      DataGenerator.generateDecisionTreeLabeledPoints(sc, math.ceil(numExamples*1.25).toLong,
+      DataGenerator.generateDecisionTreeLabeledPoints(sc, math.ceil(numExamples * 1.25).toLong,
         numFeatures, numPartitions, labelType,
         fracCategoricalFeatures, fracBinaryFeatures, treeDepth, seed)
 
@@ -527,7 +516,8 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
       DecisionTree.train(rdd, Classification, Gini, treeDepth,
         maxBins, QuantileStrategy.Sort, categoricalFeaturesInfo)
     } else {
-      throw new IllegalArgumentException(s"Bad label-type parameter given to DecisionTreeTest: $labelType." +
+      throw new IllegalArgumentException(
+        s"Bad label-type parameter given to DecisionTreeTest: $labelType." +
         s"  Only 0 (regression) or 2 (binary classification) supported for Spark 1.0.")
     }
   }

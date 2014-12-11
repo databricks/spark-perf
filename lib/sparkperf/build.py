@@ -106,4 +106,4 @@ class SparkBuildManager(object):
             # Copy the completed build to a directory named after the SHA.
             run_cmd("mv %s %s" % (os.path.join(self._master_spark, "dist"), cluster_dir))
         copy_configuration(conf_dir, cluster_dir)
-        return Cluster(spark_home=cluster_dir, spark_conf_dir=conf_dir)
+        return Cluster(spark_home=cluster_dir, spark_conf_dir=conf_dir, commit_sha=sha)

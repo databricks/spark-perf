@@ -1,16 +1,19 @@
 package streaming.perf
 
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
-import org.apache.spark.{SparkContext, SparkConf, Logging}
+import org.apache.spark.{SparkContext, SparkConf}
 import joptsimple.{OptionSet, OptionParser}
 
-abstract class PerfTest extends Logging {
+abstract class PerfTest {
 
   val BATCH_DURATION = ("batch-duration", "duration of the batch size in milliseconds")
   val TOTAL_DURATION = ("total-duration", "Total duration of the test in seconds")
   val HDFS_URL = ("hdfs-url", "URL of the HDFS directory that is to be used for this test")
 
   val parser = new OptionParser()
+  val jarFile = System.getProperty("user.dir", "..") + "/streaming-tests/target/streaming-perf-tests-assembly.jar"
+  val sparkDir = Option(System.getenv("SPARK_HOME")).getOrElse("../spark/")
+
   var optionSet: OptionSet = _
   var testName: String = _
   var batchDurationMs: Long = _

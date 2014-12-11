@@ -113,7 +113,6 @@ object DataGenerator {
     (data, categoricalFeaturesInfo)
   }
 
-
   def randomBalancedDecisionTree(
       depth: Int,
       labelType: Int,
