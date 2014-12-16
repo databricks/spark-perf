@@ -238,7 +238,7 @@ class TeraInputFormat extends FileInputFormat[Array[Byte], Array[Byte]] {
         value = new Array[Byte](TeraInputFormat.VALUE_LEN)
       }
       buffer.copyToArray(key, 0, TeraInputFormat.KEY_LEN)
-      buffer.copyToArray(value, TeraInputFormat.KEY_LEN, TeraInputFormat.VALUE_LEN)
+      buffer.takeRight(TeraInputFormat.VALUE_LEN).copyToArray(value, 0, TeraInputFormat.VALUE_LEN)
       offset += TeraInputFormat.RECORD_LEN
       true
     }

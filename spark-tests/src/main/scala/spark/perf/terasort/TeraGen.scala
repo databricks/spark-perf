@@ -80,7 +80,8 @@ object TeraGen {
         generateRecord(rowBytes, rand, recordNumber)
         recordNumber.add(one)
         rowBytes.copyToArray(key, 0, TeraInputFormat.KEY_LEN)
-        rowBytes.copyToArray(value, TeraInputFormat.KEY_LEN, TeraInputFormat.VALUE_LEN)
+        rowBytes.takeRight(TeraInputFormat.VALUE_LEN).copyToArray(value, 0, 
+          TeraInputFormat.VALUE_LEN)
         (key, value)
       }
     }
@@ -172,5 +173,4 @@ object TeraGen {
     recBuf(98) = 0xEE.toByte
     recBuf(99) = 0xFF.toByte
   }
-
 }
