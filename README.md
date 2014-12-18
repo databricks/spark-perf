@@ -72,3 +72,9 @@ The following sections describe some additional settings to change for certain t
 ## Acknowledgements
 
 This testing framework started as a port + heavy modification of an earlier Spark performance testing framework written by @dennybritz.
+
+
+## License
+
+This project is licensed under the Apache 2.0 License. See LICENSE for full
+license text.
