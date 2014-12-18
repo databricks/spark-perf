@@ -248,7 +248,7 @@ class MLlibTestHelper(object):
 
 
 class MLlibTests(JVMPerfTestSuite, MLlibTestHelper):
-    test_jar_path = "%s/mllib-tests/target/spark-perf-tests-assembly.jar" % PROJ_DIR
+    test_jar_path = "%s/mllib-tests/target/mllib-perf-tests-assembly.jar" % PROJ_DIR
 
     @classmethod
     def build(cls):

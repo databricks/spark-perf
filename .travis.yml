@@ -13,5 +13,5 @@ script:
   - sbt/sbt assembly test
   - cd ../streaming-tests
   - sbt/sbt assembly test
-#  - cd ../mllib-tests
-#  - sbt/sbt assembly test
+  - cd ../mllib-tests
+  - sbt/sbt assembly test
