@@ -40,7 +40,7 @@ The following sections describe some additional settings to change for certain t
    SPARK_DRIVER_MEMORY = 512m
    spark.executor.memory = 2g
    ```
-3. Uncomment at least one `SPARK_TESTS` entry
+3. Uncomment at least one `SPARK_TESTS` entry.
 
 ### Running on an existing Spark cluster
 1. SSH into the machine hosting the standalone master
@@ -53,7 +53,7 @@ The following sections describe some additional settings to change for certain t
    SPARK_DRIVER_MEMORY = <depends on your hardware>
    spark.executor.memory = <depends on your hardware>
    ```
-3. Uncomment at least one `SPARK_TESTS` entry
+3. Uncomment at least one `SPARK_TESTS` entry.
 
 ### Running on a spark-ec2 cluster with a custom Spark version
 1. Launch an EC2 cluster with [Spark's EC2 scripts](https://spark.apache.org/docs/latest/ec2-scripts.html).
@@ -66,15 +66,14 @@ The following sections describe some additional settings to change for certain t
    SPARK_DRIVER_MEMORY = <depends on your hardware>
    spark.executor.memory = <depends on your hardware>
    ```
-3. uncomment at least one `SPARK_TESTS` entry
+3. Uncomment at least one `SPARK_TESTS` entry.
 
 
 ## Acknowledgements
 
-This testing framework started as a port + heavy modification of an earlier Spark performance testing framework written by @dennybritz.
+This testing framework started as a port + heavy modification of an earlier Spark performance testing framework written by [@dennybritz](https://github.com/dennybritz).
 
 
 ## License
 
-This project is licensed under the Apache 2.0 License. See LICENSE for full
-license text.
+This project is licensed under the Apache 2.0 License. See LICENSE for full license text.
