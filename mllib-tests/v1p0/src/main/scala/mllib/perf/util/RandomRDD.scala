@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package mllib.perf.onepointoh.util
+package mllib.perf.util
 
-import mllib.perf.onepointoh.util.random.RandomDataGenerator
+import mllib.perf.util.random.RandomDataGenerator
 import org.apache.spark.mllib.linalg.{DenseVector, Vector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{Partition, SparkContext, TaskContext}

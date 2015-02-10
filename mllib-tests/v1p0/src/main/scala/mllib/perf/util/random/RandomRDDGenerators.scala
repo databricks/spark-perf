@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package mllib.perf.onepointoh.util.random
+package mllib.perf.util.random
 
-import mllib.perf.onepointoh.util.{RandomRDD, RandomVectorRDD}
+import mllib.perf.util.{RandomRDD, RandomVectorRDD}
 import org.apache.spark.SparkContext
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.mllib.linalg.Vector

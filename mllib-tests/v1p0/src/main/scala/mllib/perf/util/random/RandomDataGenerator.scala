@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package mllib.perf.onepointoh.util.random
+package mllib.perf.util.random
 
 import cern.jet.random.Poisson
 import cern.jet.random.engine.DRand

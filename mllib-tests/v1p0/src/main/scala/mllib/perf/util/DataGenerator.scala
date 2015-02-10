@@ -1,6 +1,6 @@
-package mllib.perf.onepointoh.util
+package mllib.perf.util
 
-import mllib.perf.onepointoh.util.random._
+import mllib.perf.util.random._
 
 import scala.collection.mutable
 
