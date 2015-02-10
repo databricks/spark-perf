@@ -6,7 +6,7 @@ import AssemblyKeys._
 /**
  * Build settings for MLlib. To build against a specific Spark version (e.g., 1.1.0), use
  * {{{
- * sbt -Dspark.version=1.1.0 ...
+ * sbt -Dspark.version=1.1.0 clean ...
  * }}}
  */
 object MLlibTestsBuild extends Build {
