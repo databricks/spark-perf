@@ -10,7 +10,7 @@ object MLlibTestsBuild extends Build {
   // version and building like that. If you want to use an older build, i.e. a build that doesn't
   // have some of the new features, it's easiest to comment out the project with the recent
   // features from the root build. For example, in order to build with the Spark 1.0.0 release,
-  // comment out .dependsOn(onepointone) from root.
+  // comment out .dependsOn(v1p0) from root.
 
   lazy val commonSettings = Seq(
     organization := "org.spark-project",
@@ -45,29 +45,29 @@ object MLlibTestsBuild extends Build {
         case PathList("application.conf", xs@_*) => MergeStrategy.concat
         case _ => MergeStrategy.first
       }
-    )).aggregate(onepointtwo).dependsOn(onepointtwo) //aggregate(onepointoh, onepointone, onepointtwo).dependsOn(onepointoh, onepointone, onepointtwo)
+    )).aggregate(v1p2).dependsOn(v1p2) //aggregate(v1p0, v1p1, v1p2).dependsOn(v1p0, v1p1, v1p2)
 
-  lazy val onepointtwo = Project(
-    "onepointtwo",
-    file("onepointtwo"),
+  lazy val v1p2 = Project(
+    "v1p2",
+    file("v1p2"),
     settings = commonSettings ++ Seq(
       //should be set to 1.2.0 or higher
       libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.2.0" % "provided"
     )
   )
 
-  lazy val onepointone = Project(
-    "onepointone",
-    file("onepointone"),
+  lazy val v1p1 = Project(
+    "v1p1",
+    file("v1p1"),
     settings = commonSettings ++ Seq(
       //should be set to 1.1.0 or higher
       libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.1.0" % "provided"
     )
   )
 
-  lazy val onepointoh = Project(
-    "onepointoh",
-    file("onepointoh"),
+  lazy val v1p0 = Project(
+    "v1p0",
+    file("v1p0"),
     settings = commonSettings ++ Seq(
       //should be set to 1.0.0 or higher
       libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.0.0" % "provided"
