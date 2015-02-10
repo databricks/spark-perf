@@ -3,24 +3,27 @@ import sbt.Keys._
 import sbtassembly.Plugin._
 import AssemblyKeys._
 
-
+/**
+ * Build settings for MLlib. To build against a specific Spark version (e.g., 1.1.0), use
+ * {{{
+ * sbt -Dspark.version=1.1.0 ...
+ * }}}
+ */
 object MLlibTestsBuild extends Build {
 
-  // Building the mllib tests is tricky. The easiset way is to set the mllib snapshots to the same
-  // version and building like that. If you want to use an older build, i.e. a build that doesn't
-  // have some of the new features, it's easiest to comment out the project with the recent
-  // features from the root build. For example, in order to build with the Spark 1.0.0 release,
-  // comment out .dependsOn(v1p0) from root.
+  val sparkVersion = settingKey[String]("Spark version to test against.")
 
   lazy val commonSettings = Seq(
     organization := "org.spark-project",
     version := "0.1",
     scalaVersion := "2.10.4",
+    sparkVersion := sys.props.get("spark.version").getOrElse("1.2.1"),
     libraryDependencies ++= Seq(
       "net.sf.jopt-simple" % "jopt-simple" % "4.6",
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
       "org.slf4j" % "slf4j-log4j12" % "1.7.2",
-      "org.json4s" %% "json4s-native" % "3.2.9"
+      "org.json4s" %% "json4s-native" % "3.2.9",
+      "org.apache.spark" %% "spark-mllib" % sparkVersion.value % "provided"
     )
   )
 
@@ -28,6 +31,15 @@ object MLlibTestsBuild extends Build {
     "mllib-perf",
     file("."),
     settings = assemblySettings ++ commonSettings ++ Seq(
+      scalaSource in Compile := {
+        val targetFolder = sparkVersion.value match {
+          case v if v.startsWith("1.0.") => "v1p0"
+          case v if v.startsWith("1.1.") => "v1p1"
+          case v if v.startsWith("1.2.") => "v1p2"
+          case _ => throw new IllegalArgumentException(s"Do not support Spark $sparkVersion.")
+        }
+        baseDirectory.value / targetFolder / "src"
+      },
       test in assembly := {},
       outputPath in assembly := file("target/mllib-perf-tests-assembly.jar"),
       assemblyOption in assembly ~= { _.copy(includeScala = false) },
@@ -45,32 +57,5 @@ object MLlibTestsBuild extends Build {
         case PathList("application.conf", xs@_*) => MergeStrategy.concat
         case _ => MergeStrategy.first
       }
-    )).aggregate(v1p2).dependsOn(v1p2) //aggregate(v1p0, v1p1, v1p2).dependsOn(v1p0, v1p1, v1p2)
-
-  lazy val v1p2 = Project(
-    "v1p2",
-    file("v1p2"),
-    settings = commonSettings ++ Seq(
-      //should be set to 1.2.0 or higher
-      libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.2.0" % "provided"
-    )
-  )
-
-  lazy val v1p1 = Project(
-    "v1p1",
-    file("v1p1"),
-    settings = commonSettings ++ Seq(
-      //should be set to 1.1.0 or higher
-      libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.1.0" % "provided"
-    )
-  )
-
-  lazy val v1p0 = Project(
-    "v1p0",
-    file("v1p0"),
-    settings = commonSettings ++ Seq(
-      //should be set to 1.0.0 or higher
-      libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.0.0" % "provided"
-    )
-  )
+    ))
 }
