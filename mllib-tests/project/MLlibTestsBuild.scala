@@ -36,6 +36,7 @@ object MLlibTestsBuild extends Build {
           case v if v.startsWith("1.0.") => "v1p0"
           case v if v.startsWith("1.1.") => "v1p1"
           case v if v.startsWith("1.2.") => "v1p2"
+          case v if v.startsWith("1.3.") => "v1p3"
           case _ => throw new IllegalArgumentException(s"Do not support Spark $sparkVersion.")
         }
         baseDirectory.value / targetFolder / "src"
