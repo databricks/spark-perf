@@ -1,4 +1,4 @@
-package mllib.perf.onepointtwo.util
+package mllib.perf.util
 
 import scala.collection.mutable
 

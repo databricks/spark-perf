@@ -1,4 +1,4 @@
-package mllib.perf.onepointtwo
+package mllib.perf
 
 import scala.collection.JavaConverters._
 

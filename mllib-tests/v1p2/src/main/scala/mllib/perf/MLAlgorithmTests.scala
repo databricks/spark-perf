@@ -1,4 +1,4 @@
-package mllib.perf.onepointtwo
+package mllib.perf
 
 import org.json4s.JsonDSL._
 import org.json4s.JsonAST._
@@ -15,7 +15,7 @@ import org.apache.spark.mllib.tree.RandomForest
 import org.apache.spark.mllib.tree.model.RandomForestModel
 import org.apache.spark.rdd.RDD
 
-import mllib.perf.onepointtwo.util.{DataLoader, DataGenerator}
+import mllib.perf.util.{DataLoader, DataGenerator}
 
 /** Parent class for tests which run on a large dataset. */
 abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends PerfTest {

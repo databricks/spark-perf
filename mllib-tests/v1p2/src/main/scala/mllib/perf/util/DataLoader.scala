@@ -1,4 +1,4 @@
-package mllib.perf.onepointtwo.util
+package mllib.perf.util
 
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.regression._
@@ -63,7 +63,7 @@ object DataLoader {
    *         categoricalFeaturesInfo is a map of categorical feature arities, and
    *         numClasses = number of classes label can take.
    */
-  private[onepointtwo] def loadLibSVMFiles(
+  private[perf] def loadLibSVMFiles(
       sc: SparkContext,
       numPartitions: Int,
       trainingDataPath: String,
