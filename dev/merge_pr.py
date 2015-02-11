@@ -34,7 +34,7 @@ import urllib2
 
 # Location of your Spark git development area
 # Remote name which points to the Gihub site
-PR_REMOTE_NAME = os.environ.get("SPARK_PERF_PR_REMOTE_NAME", "origin")
+PR_REMOTE_NAME = os.environ.get("SPARK_PERF_PR_REMOTE_NAME", "databricks")
 PUSH_REMOTE_NAME = PR_REMOTE_NAME
 
 GITHUB_BASE = "https://github.com/databricks/spark-perf/pull"
@@ -42,7 +42,7 @@ GITHUB_API_BASE = "https://api.github.com/repos/databricks/spark-perf"
 # Prefix added to temporary branches
 BRANCH_PREFIX = "PR_TOOL"
 
-os.chdir(os.path.join(__file__, "../"))
+os.chdir(os.path.join(os.path.dirname(__file__), "../"))
 
 
 def get_json(url):
