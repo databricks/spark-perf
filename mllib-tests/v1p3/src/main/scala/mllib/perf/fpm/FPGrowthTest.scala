@@ -22,6 +22,9 @@ class FPGrowthTest(sc: SparkContext) extends PerfTest {
   intOptions = intOptions ++ Seq(NUM_BASKETS, AVG_BASKET_SIZE, NUM_ITEMS)
   doubleOptions = doubleOptions ++ Seq(MIN_SUPPORT)
 
+  val options = intOptions ++ stringOptions ++ booleanOptions ++ doubleOptions ++ longOptions
+  addOptionsToParser()
+
   private var baskets: RDD[Array[Int]] = _
 
   override def createInputData(seed: Long): Unit = {
