@@ -9,7 +9,7 @@ import org.json4s.jackson.JsonMethods._
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
-import main.scala.mllib.perf.fpm.FPGrowthTest
+import mllib.perf.fpm.FPGrowthTest
 
 object TestRunner {
     def main(args: Array[String]) {

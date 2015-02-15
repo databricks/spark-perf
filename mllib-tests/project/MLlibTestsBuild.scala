@@ -39,7 +39,7 @@ object MLlibTestsBuild extends Build {
           case v if v.startsWith("1.3.") => "v1p3"
           case _ => throw new IllegalArgumentException(s"Do not support Spark $sparkVersion.")
         }
-        baseDirectory.value / targetFolder / "src"
+        baseDirectory.value / targetFolder / "src" / "main" / "scala"
       },
       test in assembly := {},
       outputPath in assembly := file("target/mllib-perf-tests-assembly.jar"),

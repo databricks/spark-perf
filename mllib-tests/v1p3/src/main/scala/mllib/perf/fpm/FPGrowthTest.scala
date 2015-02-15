@@ -1,4 +1,4 @@
-package main.scala.mllib.perf.fpm
+package mllib.perf.fpm
 
 import org.apache.commons.math3.distribution.BinomialDistribution
 import org.apache.commons.math3.random.Well19937c
