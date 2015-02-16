@@ -566,7 +566,7 @@ MLLIB_TESTS += [("summary-statistics", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_LINALG_TEST_OPTS)]
 
 MLLIB_BLOCK_MATRIX_MULT_TEST_OPTS = MLLIB_COMMON_OPTS + [
-    OptionSet("m", [100000], can_scale=True),
+    OptionSet("m", [20000], can_scale=True),
     OptionSet("k", [10000], can_scale=False),
     OptionSet("n", [10000], can_scale=False),
     OptionSet("block-size", [1024], can_scale=False)]
