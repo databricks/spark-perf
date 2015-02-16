@@ -59,7 +59,8 @@ class BlockMatrixMultTest(sc: SparkContext) extends PerfTest {
         val ni = math.min(n - colBlockId * blockSize, blockSize).toInt
         ((rowBlockId, colBlockId), Matrices.randn(mi, ni, random))
       }
-    }
+    }.cache()
+    logInfo(s"Generated ${blocks.count()} blocks.")
     new BlockMatrix(blocks, blockSize, blockSize, m, n)
   }
 
