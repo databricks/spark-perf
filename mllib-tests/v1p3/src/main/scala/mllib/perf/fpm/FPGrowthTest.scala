@@ -38,7 +38,7 @@ class FPGrowthTest(sc: SparkContext) extends PerfTest {
         val rng = new Well19937c(seed ^ idx)
         val binom = new BinomialDistribution(rng, maxRatio * avgBasketSize, 1.0 / maxRatio)
         part.map { i =>
-          val basketSize = binom.getNumberOfTrials()
+          val basketSize = binom.sample()
           // Use math.pow to create a skewed item distribution.
           val items = Array.fill(basketSize)((numItems * math.pow(rng.nextDouble(), 0.1)).toInt)
           items.toSet[Int].toArray // dedup
@@ -55,6 +55,7 @@ class FPGrowthTest(sc: SparkContext) extends PerfTest {
     val start = System.currentTimeMillis()
     val model = new FPGrowth()
       .setMinSupport(doubleOptionValue(MIN_SUPPORT))
+      .setNumPartitions(baskets.partitions.length * 8)
       .run(baskets)
     val numFreqItemsets = model.freqItemsets.count()
     val duration = (System.currentTimeMillis() - start) / 1000.0
