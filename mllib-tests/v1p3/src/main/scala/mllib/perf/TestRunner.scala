@@ -10,6 +10,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
 import mllib.perf.fpm.FPGrowthTest
+import mllib.perf.linalg.BlockMatrixMultTest
 
 object TestRunner {
     def main(args: Array[String]) {
@@ -44,6 +45,7 @@ object TestRunner {
         case "chi-sq-gof" => new ChiSquaredGoFTest(sc)
         case "chi-sq-mat" => new ChiSquaredMatTest(sc)
         case "fp-growth" => new FPGrowthTest(sc)
+        case "block-matrix-mult" => new BlockMatrixMultTest(sc)
       }
       test.initialize(testName, perfTestArgs)
       // Generate a new dataset for each test
