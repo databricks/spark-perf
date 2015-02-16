@@ -20,8 +20,12 @@ class Word2VecTest(sc: SparkContext) extends PerfTest {
   val NUM_ITERATIONS = ("num-iterations", "number of iterations")
   val MIN_COUNT = ("min-count", "minimum count for a word to be included")
 
-  val avgSentenceLength = 16
+  intOptions ++= Seq(NUM_SENTENCES, NUM_WORDS, VECTOR_SIZE, NUM_ITERATIONS, MIN_COUNT)
 
+  val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
+  addOptionsToParser()
+
+  private val avgSentenceLength = 16
   private var sentences: RDD[Seq[String]] = _
 
   override def createInputData(seed: Long): Unit = {

@@ -9,6 +9,8 @@ import org.json4s.jackson.JsonMethods._
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
+import mllib.perf.feature.Word2VecTest
+
 object TestRunner {
     def main(args: Array[String]) {
       if (args.size < 1) {
@@ -41,6 +43,7 @@ object TestRunner {
         case "chi-sq-feature" => new ChiSquaredFeatureTest(sc)
         case "chi-sq-gof" => new ChiSquaredGoFTest(sc)
         case "chi-sq-mat" => new ChiSquaredMatTest(sc)
+        case "word2vec" => new Word2VecTest(sc)
       }
       test.initialize(testName, perfTestArgs)
       // Generate a new dataset for each test
