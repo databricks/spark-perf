@@ -10,6 +10,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
 import mllib.perf.feature.Word2VecTest
+import mllib.perf.fpm.FPGrowthTest
 
 object TestRunner {
     def main(args: Array[String]) {
@@ -43,6 +44,7 @@ object TestRunner {
         case "chi-sq-feature" => new ChiSquaredFeatureTest(sc)
         case "chi-sq-gof" => new ChiSquaredGoFTest(sc)
         case "chi-sq-mat" => new ChiSquaredMatTest(sc)
+        case "fp-growth" => new FPGrowthTest(sc)
         case "word2vec" => new Word2VecTest(sc)
       }
       test.initialize(testName, perfTestArgs)
