@@ -37,7 +37,7 @@ class BlockMatrixMultTest(sc: SparkContext) extends PerfTest {
     val random = new Random(seed)
 
     A = randn(m, k, blockSize, numPartitions, seed ^ random.nextLong())
-    B = randn(k, n, blockSize, numPartitions, seed ^ random.nextLong())
+    B = randn(k, n, blockSize, numPartitions, seed ^ random.nextLong())
   }
 
   def randn(
