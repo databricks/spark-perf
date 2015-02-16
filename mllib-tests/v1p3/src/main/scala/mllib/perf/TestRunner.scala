@@ -9,6 +9,7 @@ import org.json4s.jackson.JsonMethods._
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
+import mllib.perf.feature.Word2VecTest
 import mllib.perf.fpm.FPGrowthTest
 
 object TestRunner {
@@ -44,6 +45,7 @@ object TestRunner {
         case "chi-sq-gof" => new ChiSquaredGoFTest(sc)
         case "chi-sq-mat" => new ChiSquaredMatTest(sc)
         case "fp-growth" => new FPGrowthTest(sc)
+        case "word2vec" => new Word2VecTest(sc)
       }
       test.initialize(testName, perfTestArgs)
       // Generate a new dataset for each test
