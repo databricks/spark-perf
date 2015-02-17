@@ -17,7 +17,7 @@ class FeaturesGenerator:
     @staticmethod
     def generateContinuousData(sc, numExamples, numFeatures, numPartitions, seed):
         def mapPart(idx, part):
-            rng = numpy.random.RandomState((seed ^ idx) & 0xffffffff)
+            rng = numpy.random.RandomState(hash(str(seed ^ idx)) & 0xffffffff)
             for i in part:
                 yield Vectors.dense(rng.rand(numFeatures))
         return sc.parallelize(xrange(numExamples), numPartitions).mapPartitionsWithIndex(mapPart)
@@ -37,7 +37,7 @@ class LabeledDataGenerator:
         """
         assert labelType == 0 or labelType == 2, \
             "LabeledDataGenerator.generateGLMData given invalid labelType: %r" % labelType
-        rng = numpy.random.RandomState(seed & 0xffffffff)
+        rng = numpy.random.RandomState(hash(str(seed ^ -1)) & 0xffffffff)
         weights = rng.rand(numFeatures)
         featuresRDD = FeaturesGenerator.generateContinuousData(sc, numExamples, numFeatures, numPartitions, seed)
         def makeLP(features):
@@ -67,7 +67,7 @@ class RatingGenerator:
             "RatingGenerator.generateRatingData given numRatings=%d too large for numUsers=%d, numProducts=%d" \
             % (numRatings, numUsers, numProducts)
         def mapPart(idx, part):
-            rng = numpy.random.RandomState((seed ^ idx) & 0xffffffff)
+            rng = numpy.random.RandomState(hash(str(seed ^ idx)) & 0xffffffff)
             for i in part:
                 user = rng.randint(numUsers)
                 prod = rng.randint(numProducts)
