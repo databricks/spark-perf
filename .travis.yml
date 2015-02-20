@@ -9,8 +9,8 @@ before_install:
   - sudo pip install nose
 cache:
   directories:
-  - $HOME/.m2
-  - $HOME/.ivy2
+    - $HOME/.m2
+    - $HOME/.ivy2
 script:
   - ./run-tests.sh
   - cd spark-tests
