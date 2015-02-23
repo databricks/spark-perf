@@ -7,11 +7,12 @@ jdk:
   - openjdk7
 sudo: false
 before_install:
-  - sudo pip install nose
+  - pip install -t $HOME/lib/site-python nose
 cache:
   directories:
     - $HOME/.m2
     - $HOME/.ivy2
+    - $HOME/lib
 script:
   - ./run-tests.sh
   - cd spark-tests
