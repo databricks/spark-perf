@@ -10,9 +10,7 @@ before_install:
   - pip install -t $HOME/lib/site-python nose
 cache:
   directories:
-    - $HOME/.m2
     - $HOME/.ivy2
-    - $HOME/lib
 script:
   - ./run-tests.sh
   - cd spark-tests
