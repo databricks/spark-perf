@@ -9,6 +9,7 @@ import org.json4s.jackson.JsonMethods._
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
+import mllib.perf.clustering.GaussianMixtureTest
 import mllib.perf.feature.Word2VecTest
 import mllib.perf.fpm.FPGrowthTest
 import mllib.perf.linalg.BlockMatrixMultTest
@@ -48,6 +49,7 @@ object TestRunner {
         case "fp-growth" => new FPGrowthTest(sc)
         case "block-matrix-mult" => new BlockMatrixMultTest(sc)
         case "word2vec" => new Word2VecTest(sc)
+        case "gmm" => new GaussianMixtureTest(sc)
       }
       test.initialize(testName, perfTestArgs)
       // Generate a new dataset for each test
