@@ -17,7 +17,7 @@ object MLlibTestsBuild extends Build {
     organization := "org.spark-project",
     version := "0.1",
     scalaVersion := "2.10.4",
-    sparkVersion := sys.props.get("spark.version").getOrElse("1.2.1"),
+    sparkVersion := sys.props.get("spark.version").getOrElse("1.3.1"),
     libraryDependencies ++= Seq(
       "net.sf.jopt-simple" % "jopt-simple" % "4.6",
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
@@ -37,6 +37,7 @@ object MLlibTestsBuild extends Build {
           case v if v.startsWith("1.1.") => "v1p1"
           case v if v.startsWith("1.2.") => "v1p2"
           case v if v.startsWith("1.3.") => "v1p3"
+          case v if v.startsWith("1.4.") => "v1p4"
           case _ => throw new IllegalArgumentException(s"Do not support Spark $sparkVersion.")
         }
         baseDirectory.value / targetFolder / "src" / "main" / "scala"
