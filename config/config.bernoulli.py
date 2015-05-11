@@ -12,7 +12,6 @@ import socket
 
 from sparkperf.config_utils import FlagSet, JavaOptionSet, OptionSet, ConstantOption
 
-
 # ================================ #
 #  Standard Configuration Options  #
 # ================================ #
@@ -84,10 +83,10 @@ RUN_PYTHON_MLLIB_TESTS = False
 
 # Which tests to prepare. Set this to true for the first
 # installation or whenever you make a change to the tests.
-PREP_SPARK_TESTS = True
+PREP_SPARK_TESTS = False
 PREP_PYSPARK_TESTS = False
 PREP_STREAMING_TESTS = False
-PREP_MLLIB_TESTS = True
+PREP_MLLIB_TESTS = False
 
 # Whether to warm up local disks (warm-up is only necesary on EC2).
 DISK_WARMUP = False
@@ -365,8 +364,8 @@ MLLIB_TESTS = []
 MLLIB_PERF_TEST_RUNNER = "mllib.perf.TestRunner"
 
 # Set this to 1.0, 1.1, 1.2, ... (the major version) to test MLlib with a particular Spark version.
-# Note: You should also build mllib-perf using -Dspark.version to specify the same version.
-MLLIB_SPARK_VERSION = 1.2
+# Note: You should also build mllib-perf using -Dspark.ConstantOption to specify the same version.
+MLLIB_SPARK_VERSION = 1.4
 
 MLLIB_JAVA_OPTS = COMMON_JAVA_OPTS
 if MLLIB_SPARK_VERSION >= 1.1:
@@ -452,17 +451,32 @@ NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     OptionSet("nb-lambda", [1.0]),
 ]
 
-NAIVE_BAYES_TEST_OPTS_MULTINOMIAL = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
-    OptionSet("model-type", ["multinomial"]),
+
+NAIVE_BAYES_TEST_OPTS_MULTINOMIAL = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS +  [
+    # Expected fraction of examples which are negative
+    OptionSet("per-negative", [0.3]),
+    # The scale factor for the noise in feature values
+    OptionSet("scale-factor", [1.0]),
+    # Naive Bayes smoothing lambda.
+    OptionSet("nb-lambda", [1.0]),
+    # MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    OptionSet("model-type", ["Multinomial"]),
 ]
 
 NAIVE_BAYES_TEST_OPTS_BERNOULLI = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
-    OptionSet("model-type", ["bernoulli"]),
+    # Expected fraction of examples which are negative
+    OptionSet("per-negative", [0.3]),
+    # The scale factor for the noise in feature values
+    OptionSet("scale-factor", [1.0]),
+    # Naive Bayes smoothing lambda.
+    OptionSet("nb-lambda", [1.0]),
+    # MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    OptionSet("model-type", ["Bernoulli"]),
 ]
 
-MLLIB_TESTS += [("naive-bayes-multinomial", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-    MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
-    NAIVE_BAYES_TEST_OPTS_MULTINOMIAL)]
+# MLLIB_TESTS += [("naive-bayes-multinomial", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
+#     MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
+#     NAIVE_BAYES_TEST_OPTS_MULTINOMIAL)]
 
 MLLIB_TESTS += [("naive-bayes-bernoulli", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
