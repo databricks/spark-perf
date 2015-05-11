@@ -18,7 +18,6 @@ abstract class PerfTest extends Logging {
   /** Initialize internal state based on arguments */
   def initialize(testName_ : String, otherArgs: Array[String]) {
     testName = testName_
-    System.err.println(s"PerfTest V4 initialize: otherArgs=${otherArgs.mkString(",")}")
     optionSet = parser.parse(otherArgs:_*)
   }
 
