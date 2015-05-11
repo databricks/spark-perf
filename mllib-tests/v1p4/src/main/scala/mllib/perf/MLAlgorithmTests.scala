@@ -377,9 +377,12 @@ class NaiveBayesTest(sc: SparkContext)
   val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
   val SCALE =  ("scale-factor",   "scale factor for the noise during data generation")
   val SMOOTHING =     ("nb-lambda",   "the smoothing parameter lambda for Naive Bayes")
+  val MODEL_TYPE = ("model-type", "either multinomial (default) or bernoulli")
 
+  System.err.println("We got model-type folks")
   doubleOptions = doubleOptions ++ Seq(THRESHOLD, SCALE, SMOOTHING)
-
+  stringOptions = stringOptions ++ Seq(MODEL_TYPE)
+  System.err.println(s"longOptions are ${longOptions.mkString(",")}")
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
 
@@ -417,7 +420,9 @@ class NaiveBayesTest(sc: SparkContext)
 
   override def runTest(rdd: RDD[LabeledPoint]): NaiveBayesModel = {
     val lambda = doubleOptionValue(SMOOTHING)
-    NaiveBayes.train(rdd, lambda)
+    System.err.println(s"About to retrieve $MODEL_TYPE ..")
+    val modelType = stringOptionValue(MODEL_TYPE)
+    NaiveBayes.train(rdd, lambda, modelType)
   }
 }
 

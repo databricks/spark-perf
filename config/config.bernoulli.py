@@ -18,7 +18,7 @@ from sparkperf.config_utils import FlagSet, JavaOptionSet, OptionSet, ConstantOp
 # ================================ #
 
 # Point to an installation of Spark on the cluster.
-SPARK_HOME_DIR = "/shared/picpy"
+SPARK_HOME_DIR = "/shared/sparkup"
 
 # Use a custom configuration directory
 SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
@@ -27,7 +27,7 @@ SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
 # For local clusters: "spark://%s:7077" % socket.gethostname()
 # For Yarn clusters: "yarn"
 # Otherwise, the default uses the specified EC2 cluster
-SPARK_CLUSTER_URL = spark://localhost:7077 # open("/root/spark-ec2/cluster-url", 'r').readline().strip()
+SPARK_CLUSTER_URL = "spark://mellyrn.local:7077" # open("/root/spark-ec2/cluster-url", 'r').readline().strip()
 IS_YARN_MODE = "yarn" in SPARK_CLUSTER_URL
 IS_MESOS_MODE = "mesos" in SPARK_CLUSTER_URL
 
@@ -76,7 +76,7 @@ RESTART_SPARK_CLUSTER = RESTART_SPARK_CLUSTER and not IS_YARN_MODE
 RSYNC_SPARK_HOME = True
 
 # Which tests to run
-RUN_SPARK_TESTS = True
+RUN_SPARK_TESTS = False
 RUN_PYSPARK_TESTS = False
 RUN_STREAMING_TESTS = False
 RUN_MLLIB_TESTS = True
@@ -449,12 +449,24 @@ NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # The scale factor for the noise in feature values
     OptionSet("scale-factor", [1.0]),
     # Naive Bayes smoothing lambda.
-    OptionSet("nb-lambda", [1.0])
+    OptionSet("nb-lambda", [1.0]),
 ]
 
-MLLIB_TESTS += [("naive-bayes", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
+NAIVE_BAYES_TEST_OPTS_MULTINOMIAL = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    OptionSet("model-type", ["multinomial"]),
+]
+
+NAIVE_BAYES_TEST_OPTS_BERNOULLI = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    OptionSet("model-type", ["bernoulli"]),
+]
+
+MLLIB_TESTS += [("naive-bayes-multinomial", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
-    NAIVE_BAYES_TEST_OPTS)]
+    NAIVE_BAYES_TEST_OPTS_MULTINOMIAL)]
+
+MLLIB_TESTS += [("naive-bayes-bernoulli", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
+    NAIVE_BAYES_TEST_OPTS_BERNOULLI)]
 
 # Decision Trees #
 MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
