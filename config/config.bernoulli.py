@@ -130,7 +130,7 @@ assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
 # If set, removes the first N trials for each test from all reported statistics. Useful for
 # tests which have outlier behavior due to JIT and other system cache warm-ups. If any test
 # returns fewer N + 1 results, an exception is thrown.
-IGNORED_TRIALS = 2
+IGNORED_TRIALS = 0
 
 # Command used to launch Scala or Java.
 
@@ -474,9 +474,9 @@ NAIVE_BAYES_TEST_OPTS_BERNOULLI = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     OptionSet("model-type", ["Bernoulli"]),
 ]
 
-# MLLIB_TESTS += [("naive-bayes-multinomial", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-#     MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
-#     NAIVE_BAYES_TEST_OPTS_MULTINOMIAL)]
+MLLIB_TESTS += [("naive-bayes-multinomial", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
+    NAIVE_BAYES_TEST_OPTS_MULTINOMIAL)]
 
 MLLIB_TESTS += [("naive-bayes-bernoulli", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
