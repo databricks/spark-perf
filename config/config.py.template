@@ -445,18 +445,20 @@ MLLIB_TESTS += [("glm-classification", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
 
 
 
-if MLLIB_SPARK_VERSION >= 1.4:
-    NAIVE_BAYES_TEST_OPTS_MULTINOMIAL = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS +  [
-        # Expected fraction of examples which are negative
-        OptionSet("per-negative", [0.3]),
-        # The scale factor for the noise in feature values
-        OptionSet("scale-factor", [1.0]),
-        # Naive Bayes smoothing lambda.
-        OptionSet("nb-lambda", [1.0]),
-        # MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
-        OptionSet("model-type", ["Multinomial"]),
-    ]
+NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    # Expected fraction of examples which are negative
+    OptionSet("per-negative", [0.3]),
+    # The scale factor for the noise in feature values
+    OptionSet("scale-factor", [1.0]),
+    # Naive Bayes smoothing lambda.
+    OptionSet("nb-lambda", [1.0])
+]
 
+MLLIB_TESTS += [("naive-bayes", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
+    MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
+    NAIVE_BAYES_TEST_OPTS)]
+
+if MLLIB_SPARK_VERSION >= 1.4:
     NAIVE_BAYES_TEST_OPTS_BERNOULLI = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
         # Expected fraction of examples which are negative
         OptionSet("per-negative", [0.3]),
@@ -468,26 +470,9 @@ if MLLIB_SPARK_VERSION >= 1.4:
         OptionSet("model-type", ["Bernoulli"]),
     ]
 
-    MLLIB_TESTS += [("naive-bayes-multinomial", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
-        NAIVE_BAYES_TEST_OPTS_MULTINOMIAL)]
-
     MLLIB_TESTS += [("naive-bayes-bernoulli", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
         MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
         NAIVE_BAYES_TEST_OPTS_BERNOULLI)]
-else:
-    NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
-        # Expected fraction of examples which are negative
-        OptionSet("per-negative", [0.3]),
-        # The scale factor for the noise in feature values
-        OptionSet("scale-factor", [1.0]),
-        # Naive Bayes smoothing lambda.
-        OptionSet("nb-lambda", [1.0])
-    ]
-
-    MLLIB_TESTS += [("naive-bayes", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
-        NAIVE_BAYES_TEST_OPTS)]
 
 
 # Decision Trees #
