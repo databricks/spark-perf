@@ -392,14 +392,21 @@ class NaiveBayesTest(sc: SparkContext)
 
     val threshold: Double = doubleOptionValue(THRESHOLD)
     val sf: Double = doubleOptionValue(SCALE)
+    val modelType = stringOptionValue(MODEL_TYPE)
 
-    val data = DataGenerator.generateClassificationLabeledPoints(sc,
+    val data = if (modelType == "Bernoulli") {
+      DataGenerator.generateBinaryLabeledPoints(sc,
+        math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, numPartitions, seed)
+    } else {
+      val negdata = DataGenerator.generateClassificationLabeledPoints(sc,
       math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, sf, numPartitions, seed)
-    val dataNonneg = data.map { lp =>
-      LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.map(math.abs)))
+      val dataNonneg = negdata.map { lp =>
+        LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.map(math.abs)))
+      }
+      dataNonneg
     }
 
-    val split = dataNonneg.randomSplit(Array(0.8, 0.2), seed)
+    val split = data.randomSplit(Array(0.8, 0.2), seed)
 
     rdd = split(0).cache()
     testRdd = split(1)

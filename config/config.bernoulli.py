@@ -474,9 +474,9 @@ NAIVE_BAYES_TEST_OPTS_BERNOULLI = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     OptionSet("model-type", ["Bernoulli"]),
 ]
 
-MLLIB_TESTS += [("naive-bayes-multinomial", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-    MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
-    NAIVE_BAYES_TEST_OPTS_MULTINOMIAL)]
+# MLLIB_TESTS += [("naive-bayes-multinomial", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
+#     MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
+#     NAIVE_BAYES_TEST_OPTS_MULTINOMIAL)]
 
 MLLIB_TESTS += [("naive-bayes-bernoulli", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
