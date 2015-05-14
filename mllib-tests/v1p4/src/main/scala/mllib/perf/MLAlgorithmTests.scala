@@ -377,9 +377,10 @@ class NaiveBayesTest(sc: SparkContext)
   val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
   val SCALE =  ("scale-factor",   "scale factor for the noise during data generation")
   val SMOOTHING =     ("nb-lambda",   "the smoothing parameter lambda for Naive Bayes")
+  val MODEL_TYPE = ("model-type", "either multinomial (default) or bernoulli")
 
   doubleOptions = doubleOptions ++ Seq(THRESHOLD, SCALE, SMOOTHING)
-
+  stringOptions = stringOptions ++ Seq(MODEL_TYPE)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
 
@@ -391,14 +392,21 @@ class NaiveBayesTest(sc: SparkContext)
 
     val threshold: Double = doubleOptionValue(THRESHOLD)
     val sf: Double = doubleOptionValue(SCALE)
+    val modelType = stringOptionValue(MODEL_TYPE)
 
-    val data = DataGenerator.generateClassificationLabeledPoints(sc,
+    val data = if (modelType == "Bernoulli") {
+      DataGenerator.generateBinaryLabeledPoints(sc,
+        math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, numPartitions, seed)
+    } else {
+      val negdata = DataGenerator.generateClassificationLabeledPoints(sc,
       math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, sf, numPartitions, seed)
-    val dataNonneg = data.map { lp =>
-      LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.map(math.abs)))
+      val dataNonneg = negdata.map { lp =>
+        LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.map(math.abs)))
+      }
+      dataNonneg
     }
 
-    val split = dataNonneg.randomSplit(Array(0.8, 0.2), seed)
+    val split = data.randomSplit(Array(0.8, 0.2), seed)
 
     rdd = split(0).cache()
     testRdd = split(1)
@@ -417,9 +425,12 @@ class NaiveBayesTest(sc: SparkContext)
 
   override def runTest(rdd: RDD[LabeledPoint]): NaiveBayesModel = {
     val lambda = doubleOptionValue(SMOOTHING)
-    NaiveBayes.train(rdd, lambda)
+
+    val modelType = stringOptionValue(MODEL_TYPE)
+    NaiveBayes.train(rdd, lambda, modelType)
   }
 }
+
 
 // Recommendation
 class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {

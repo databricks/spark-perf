@@ -55,6 +55,18 @@ object DataGenerator {
       numRows, numPartitions, seed)
   }
 
+  def generateBinaryLabeledPoints(
+      sc: SparkContext,
+      numRows: Long,
+      numCols: Int,
+      threshold: Double,
+      numPartitions: Int,
+      seed: Long = System.currentTimeMillis()): RDD[LabeledPoint] = {
+
+    RandomRDDs.randomRDD(sc, new BinaryLabeledDataGenerator(numCols,threshold),
+      numRows, numPartitions, seed)
+  }
+
   /**
    * @param labelType  0 = regression with labels in [0,1].  Values >= 2 indicate classification.
    * @param fracCategorical  Fraction of columns/features to be categorical.
@@ -333,6 +345,29 @@ class ClassLabelGenerator(
 
   override def copy(): ClassLabelGenerator =
     new ClassLabelGenerator(numFeatures, threshold, scaleFactor, chiSq)
+}
+
+class BinaryLabeledDataGenerator(
+  private val numFeatures: Int,
+  private val threshold: Double) extends RandomDataGenerator[LabeledPoint] {
+
+  private val rng = new java.util.Random()
+
+  override def nextValue(): LabeledPoint = {
+    val y = if (rng.nextDouble() < threshold) 0.0 else 1.0
+    val x = Array.fill[Double](numFeatures) {
+      if (rng.nextDouble() < threshold) 0.0 else 1.0
+    }
+    LabeledPoint(y, Vectors.dense(x))
+  }
+
+  override def setSeed(seed: Long) {
+    rng.setSeed(seed)
+  }
+
+  override def copy(): BinaryLabeledDataGenerator =
+    new BinaryLabeledDataGenerator(numFeatures, threshold)
+
 }
 
 class LinearDataGenerator(
