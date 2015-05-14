@@ -443,15 +443,15 @@ MLLIB_TESTS += [("glm-classification", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("glm-classification")] +
     MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
 
-
-
 NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # Expected fraction of examples which are negative
     OptionSet("per-negative", [0.3]),
     # The scale factor for the noise in feature values
     OptionSet("scale-factor", [1.0]),
     # Naive Bayes smoothing lambda.
-    OptionSet("nb-lambda", [1.0])
+    OptionSet("nb-lambda", [1.0]),
+    # Model type: either Multinomial or Bernoulli
+    OptionSet("model-type", ["Multinomial"]),    
 ]
 
 MLLIB_TESTS += [("naive-bayes", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
@@ -473,7 +473,6 @@ if MLLIB_SPARK_VERSION >= 1.4:
     MLLIB_TESTS += [("naive-bayes-bernoulli", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
         MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
         NAIVE_BAYES_TEST_OPTS_BERNOULLI)]
-
 
 # Decision Trees #
 MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
