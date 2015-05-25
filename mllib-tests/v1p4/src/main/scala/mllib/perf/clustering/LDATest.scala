@@ -17,8 +17,9 @@ class LDATest(sc: SparkContext) extends PerfTest {
   val Num_VOCABULARY = ("num-vocab", "number of terms in vocabulary")
   val NUM_TOPICS = ("num-topics", "number of topics to infer")
   val NUM_ITERATIONS = ("num-iterations", "number of iterations for the algorithm")
+  val DOCUMENT_LENGTH = ("document-length", "number of words per document for the algorithm")
 
-  intOptions ++= Seq(Num_VOCABULARY, NUM_TOPICS, NUM_ITERATIONS)
+  intOptions ++= Seq(Num_VOCABULARY, NUM_TOPICS, NUM_ITERATIONS, DOCUMENT_LENGTH)
   longOptions ++= Seq(Num_DOCUMENTS)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
@@ -26,24 +27,25 @@ class LDATest(sc: SparkContext) extends PerfTest {
   var data: RDD[(Long, Vector)] = _
 
   override def createInputData(seed: Long): Unit = {
-
     val numDocs = longOptionValue(Num_DOCUMENTS)
     val numVocab = intOptionValue(Num_VOCABULARY)
     val k = intOptionValue(NUM_TOPICS)
 
     val numPartitions = intOptionValue(NUM_PARTITIONS)
-    val maxDocLength = 100
-    val maxOccurence = 5 // max occurence of a term in one document
+    val docLength = intOptionValue(DOCUMENT_LENGTH)
 
-    val data = sc.parallelize(0L until numDocs, numPartitions)
+    data = sc.parallelize(0L until numDocs, numPartitions)
       .mapPartitionsWithIndex { (idx, part) =>
       val rng = new Well19937c(seed ^ idx)
-      val nnz = math.min(numVocab, maxDocLength)
       part.map { case docIndex =>
+        var currentSize = 0
         val entries = MHashMap[Int, Int]()
-        while (entries.size < nnz) {
-          entries += ((rng.nextInt(numVocab), rng.nextInt(maxOccurence)))
+        while (currentSize < docLength) {
+          val index = rng.nextInt(numVocab)
+          entries(index) = entries.getOrElse(index, 0) + 1
+          currentSize += 1
         }
+
         val iter = entries.toSeq.map(v => (v._1, v._2.toDouble))
         (docIndex, Vectors.sparse(numVocab, iter))
       }
@@ -63,6 +65,4 @@ class LDATest(sc: SparkContext) extends PerfTest {
     println(duration)
     "time" -> duration
   }
-
-
 }
