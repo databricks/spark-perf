@@ -19,8 +19,8 @@ For questions, bug reports, or feature requests, please [open an issue on GitHub
 
 - Spark Core RDD
   - list coming soon
-- SQL and DataFrames (coming soon)
-
+- SQL and DataFrames
+  - coming soon
 - Machine Learning
   - glm-regression: Generalized Linear Regression Model
   - glm-classification: Generalized Linear Classification Model
