@@ -4,7 +4,7 @@
 
 This is a performance testing framework for [Apache Spark](http://spark.apache.org) 1.0+.
 
-**Features**:
+## Features
 
 - Suites of performance tests for Spark, PySpark, Spark Streaming, and MLlib.
 - Parameterized test configurations:
@@ -15,7 +15,7 @@ This is a performance testing framework for [Apache Spark](http://spark.apache.o
 
 For questions, bug reports, or feature requests, please [open an issue on GitHub](https://github.com/databricks/spark-perf/issues).
 
-## Requirements
+## Dependencies
 
 The `spark-perf` scripts require Python 2.7+.  If you're using an earlier version of Python, you may need to install the `argparse` library using `easy_install argparse`.
 
@@ -67,11 +67,6 @@ The following sections describe some additional settings to change for certain t
    spark.executor.memory = <depends on your hardware>
    ```
 3. Uncomment at least one `SPARK_TESTS` entry.
-
-
-## Acknowledgements
-
-This testing framework started as a port + heavy modification of an earlier Spark performance testing framework written by [@dennybritz](https://github.com/dennybritz).
 
 
 ## License
