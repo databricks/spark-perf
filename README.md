@@ -15,6 +15,39 @@ This is a performance testing framework for [Apache Spark](http://spark.apache.o
 
 For questions, bug reports, or feature requests, please [open an issue on GitHub](https://github.com/databricks/spark-perf/issues).
 
+## Coverage
+
+- Spark Core RDD
+  - list coming soon
+- SQL and DataFrames (coming soon)
+
+- Machine Learning
+  - glm-regression: Generalized Linear Regression Model
+  - glm-classification: Generalized Linear Classification Model
+  - naive-bayes: Naive Bayes
+  - naive-bayes-bernoulli: Bernoulli Naive Bayes
+  - decision-tree: Decision Tree
+  - als: Alternating Least Squares
+  - kmeans: K-Means clustering
+  - gmm: Gaussian Mixture Model
+  - svd: Singular Value Decomposition
+  - pca: Principal Component Analysis
+  - summary-statistics: Summary Statistics (min, max, ...)
+  - block-matrix-mult: Matrix Multiplication
+  - pearson: Pearson's Correlation
+  - spearman: Spearman's Correlation
+  - chi-sq-feature/gof/mat: Chi-square Tests
+  - word2vec: Word2Vec distributed presentation of words
+  - fp-growth: FP-growth frequent item sets
+  - python-glm-classification: Generalized Linear Classification Model
+  - python-glm-regression: Generalized Linear Regression Model
+  - python-naive-bayes: Naive Bayes
+  - python-als: Alternating Least Squares
+  - python-kmeans: K-Means clustering
+  - python-pearson: Pearson's Correlation
+  - python-spearman: Spearman's Correlation
+
+
 ## Dependencies
 
 The `spark-perf` scripts require Python 2.7+.  If you're using an earlier version of Python, you may need to install the `argparse` library using `easy_install argparse`.
