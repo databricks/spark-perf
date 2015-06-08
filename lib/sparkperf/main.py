@@ -78,7 +78,7 @@ elif config.USE_CLUSTER_SPARK:
     cluster = Cluster(spark_home=config.SPARK_HOME_DIR, spark_conf_dir=config.SPARK_CONF_DIR)
 else:
     cluster = spark_build_manager.get_cluster(config.SPARK_COMMIT_ID, config.SPARK_CONF_DIR,
-                                              config.SPARK_MERGE_COMMIT_INTO_MASTER)
+                                              config.SPARK_MERGE_COMMIT_INTO_MASTER, config.IS_YARN_MODE)
 
 # rsync Spark to all nodes in case there is a change in Worker config
 if should_restart_cluster and should_rsync_spark_home:
