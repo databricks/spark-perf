@@ -9,7 +9,7 @@ import org.json4s.jackson.JsonMethods._
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
-import mllib.perf.clustering.{LDATest, GaussianMixtureTest}
+import mllib.perf.clustering.{EMLDATest, OnlineLDATest, GaussianMixtureTest}
 import mllib.perf.feature.Word2VecTest
 import mllib.perf.fpm.FPGrowthTest
 import mllib.perf.linalg.BlockMatrixMultTest
@@ -50,7 +50,8 @@ object TestRunner {
         case "block-matrix-mult" => new BlockMatrixMultTest(sc)
         case "word2vec" => new Word2VecTest(sc)
         case "gmm" => new GaussianMixtureTest(sc)
-        case "lda" => new LDATest(sc)
+        case "emlda" => new EMLDATest(sc)
+        case "onlinelda" => new OnlineLDATest(sc)
       }
       test.initialize(testName, perfTestArgs)
       // Generate a new dataset for each test

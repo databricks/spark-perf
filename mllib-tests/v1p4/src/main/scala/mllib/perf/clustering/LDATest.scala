@@ -3,7 +3,7 @@ package mllib.perf.clustering
 import mllib.perf.PerfTest
 import org.apache.commons.math3.random.Well19937c
 import org.apache.spark.SparkContext
-import org.apache.spark.mllib.clustering.LDA
+import org.apache.spark.mllib.clustering.{OnlineLDAOptimizer, LDA}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.rdd.RDD
 import org.json4s.JValue
@@ -11,7 +11,7 @@ import org.json4s.JsonDSL._
 
 import scala.collection.mutable.{ArrayBuilder => MArrayBuilder, HashMap => MHashMap}
 
-class LDATest(sc: SparkContext) extends PerfTest {
+abstract class LDATest(sc: SparkContext) extends PerfTest {
 
   val Num_DOCUMENTS = ("num-documents", "number of documents in corpus")
   val Num_VOCABULARY = ("num-vocab", "number of terms in vocabulary")
@@ -52,7 +52,9 @@ class LDATest(sc: SparkContext) extends PerfTest {
     }.cache()
     logInfo(s"Number of documents = ${data.count()}.")
   }
+}
 
+class EMLDATest(sc: SparkContext) extends LDATest(sc: SparkContext){
   override def run(): JValue = {
     val k = intOptionValue(NUM_TOPICS)
     val numIterations = intOptionValue(NUM_ITERATIONS)
@@ -60,6 +62,23 @@ class LDATest(sc: SparkContext) extends PerfTest {
     val lda = new LDA()
       .setK(k)
       .setMaxIterations(numIterations)
+      .setOptimizer("em")
+    val model = lda.run(data)
+    val duration = (System.currentTimeMillis() - start) / 1e3
+    println(duration)
+    "time" -> duration
+  }
+}
+
+class OnlineLDATest(sc: SparkContext) extends LDATest(sc: SparkContext){
+  override def run(): JValue = {
+    val k = intOptionValue(NUM_TOPICS)
+    val numIterations = intOptionValue(NUM_ITERATIONS)
+    val start = System.currentTimeMillis()
+    val lda = new LDA()
+      .setK(k)
+      .setMaxIterations(numIterations)
+      .setOptimizer("online")
     val model = lda.run(data)
     val duration = (System.currentTimeMillis() - start) / 1e3
     println(duration)
