@@ -2,8 +2,8 @@
 
 # Script for installing Maven on spark-ec2 clusters
 
-MVN_VERSION=3.2.5
-MVN_MD5=b2d88f02bd3a08a9df1f0b0126ebd8dc
+MVN_VERSION=3.3.3
+MVN_MD5=794b3b7961200c542a7292682d21ba36
 
 # wget http://www.apache.org/dyn/closer.cgi/maven/maven-3/$MVN_VERSION/binaries/apache-maven-$MVN_VERSION-bin.tar.gz
 wget http://apache.claz.org/maven/maven-3/$MVN_VERSION/binaries/apache-maven-$MVN_VERSION-bin.tar.gz
