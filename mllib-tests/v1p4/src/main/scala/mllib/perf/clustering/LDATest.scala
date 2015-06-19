@@ -87,3 +87,4 @@ class OnlineLDATest(sc: SparkContext) extends LDATest(sc: SparkContext){
     "time" -> duration
   }
 }
+
