@@ -1,15 +1,17 @@
 package mllib.perf.clustering
 
 import mllib.perf.PerfTest
-import org.apache.commons.math3.random.Well19937c
-import org.apache.spark.SparkContext
-import org.apache.spark.mllib.clustering.{OnlineLDAOptimizer, LDA}
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
-import org.apache.spark.rdd.RDD
+
 import org.json4s.JValue
 import org.json4s.JsonDSL._
 
-import scala.collection.mutable.{ArrayBuilder => MArrayBuilder, HashMap => MHashMap}
+import scala.collection.mutable.{HashMap => MHashMap}
+
+import org.apache.commons.math3.random.Well19937c
+import org.apache.spark.SparkContext
+import org.apache.spark.mllib.clustering.LDA
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.rdd.RDD
 
 abstract class LDATest(sc: SparkContext) extends PerfTest {
 

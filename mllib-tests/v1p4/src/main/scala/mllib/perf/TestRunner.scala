@@ -34,6 +34,9 @@ object TestRunner {
         case "als" => new ALSTest(sc)
         // clustering
         case "kmeans" => new KMeansTest(sc)
+        case "gmm" => new GaussianMixtureTest(sc)
+        case "emlda" => new EMLDATest(sc)
+        case "onlinelda" => new OnlineLDATest(sc)
         // trees
         case "decision-tree" => new DecisionTreeTest(sc)
         // linalg
@@ -49,9 +52,6 @@ object TestRunner {
         case "fp-growth" => new FPGrowthTest(sc)
         case "block-matrix-mult" => new BlockMatrixMultTest(sc)
         case "word2vec" => new Word2VecTest(sc)
-        case "gmm" => new GaussianMixtureTest(sc)
-        case "emlda" => new EMLDATest(sc)
-        case "onlinelda" => new OnlineLDATest(sc)
       }
       test.initialize(testName, perfTestArgs)
       // Generate a new dataset for each test

@@ -571,7 +571,7 @@ MLLIB_LDA_TEST_OPTS = MLLIB_COMMON_OPTS + [
     OptionSet("num-iterations", [20]),
     OptionSet("document-length", [100])]
 
-if MLLIB_SPARK_VERSION >= 1.3:
+if MLLIB_SPARK_VERSION >= 1.4:
     MLLIB_TESTS += [("emlda", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
         MLLIB_JAVA_OPTS, [ConstantOption("emlda")] + MLLIB_LDA_TEST_OPTS)]
 
