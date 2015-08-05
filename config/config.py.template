@@ -501,8 +501,8 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
 
 if MLLIB_SPARK_VERSION >= 1.2:
     MLLIB_DECISION_TREE_TEST_OPTS += [
-        # Ensemble type: RandomForest
-        OptionSet("ensemble-type", ["RandomForest"]),
+        # Ensemble type: RandomForest, GradientBoostedTrees
+        OptionSet("ensemble-type", ["RandomForest", "GradientBoostedTrees"]),
         # Path to training dataset (if not given, use random data).
         OptionSet("training-data", [""]),
         # Path to test dataset (only used if training dataset given).
@@ -514,22 +514,6 @@ if MLLIB_SPARK_VERSION >= 1.2:
         OptionSet("num-trees", [1, 10], can_scale=False),
         # Feature subset sampling strategy: auto, all, sqrt, log2, onethird
         # (only used for RandomForest)
-        OptionSet("feature-subset-strategy", ["auto"])
-    ]
-    MLLIB_DECISION_TREE_TEST_OPTS += [
-        # Ensemble type: GradientBoostedTrees
-        OptionSet("ensemble-type", ["GradientBoostedTrees"]),
-        # Path to training dataset (if not given, use random data).
-        OptionSet("training-data", [""]),
-        # Path to test dataset (only used if training dataset given).
-        # If not given, hold out part of training data for validation.
-        OptionSet("test-data", [""]),
-        # Fraction of data to hold out for testing (ignored if given training and test dataset).
-        OptionSet("test-data-fraction", [0.2], can_scale=False),
-        # Number of trees.
-        OptionSet("num-trees", [10], can_scale=False),
-        #Feature subset sampling strategy: auto, all, sqrt, log2, onethird
-        #(only used for RandomForest)
         OptionSet("feature-subset-strategy", ["auto"])
     ]
 

@@ -1,23 +1,22 @@
 package mllib.perf
 
-import org.apache.spark.mllib.tree.configuration.{Algo, QuantileStrategy, Strategy, BoostingStrategy}
-import org.apache.spark.mllib.tree.loss.{SquaredError, LogLoss}
-import org.json4s.JsonDSL._
 import org.json4s.JsonAST._
+import org.json4s.JsonDSL._
 
 import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
 import org.apache.spark.mllib.classification._
-import org.apache.spark.mllib.clustering.{KMeansModel, KMeans}
+import org.apache.spark.mllib.clustering.{KMeans, KMeansModel}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
-import org.apache.spark.mllib.recommendation.{Rating, MatrixFactorizationModel, ALS}
+import org.apache.spark.mllib.recommendation.{ALS, MatrixFactorizationModel, Rating}
 import org.apache.spark.mllib.regression._
-import org.apache.spark.mllib.tree.impurity.{Variance, Gini}
 import org.apache.spark.mllib.tree.{GradientBoostedTrees, RandomForest}
+import org.apache.spark.mllib.tree.configuration.{Algo, BoostingStrategy, QuantileStrategy, Strategy}
+import org.apache.spark.mllib.tree.impurity.{Gini, Variance}
+import org.apache.spark.mllib.tree.loss.{LogLoss, SquaredError}
 import org.apache.spark.mllib.tree.model.{GradientBoostedTreesModel, RandomForestModel}
 import org.apache.spark.rdd.RDD
 
-import mllib.perf.util.{DataLoader, DataGenerator}
+import mllib.perf.util.{DataGenerator, DataLoader}
 
 /** Parent class for tests which run on a large dataset. */
 abstract class RegressionAndClassificationTests[M](sc: SparkContext) extends PerfTest {
@@ -609,7 +608,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
           Left(RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees,
             featureSubsetStrategy, "gini", treeDepth, maxBins, this.getRandomSeed))
         case "GradientBoostedTrees" =>
-          val treeStrategy = new Strategy(Algo.Classification, Gini, treeDepth,
+          val treeStrategy = new Strategy(Algo.Classification, Variance, treeDepth,
             labelType, maxBins, QuantileStrategy.Sort, categoricalFeaturesInfo)
           val boostingStrategy = BoostingStrategy(treeStrategy, LogLoss, numTrees,
             learningRate = 0.1)
