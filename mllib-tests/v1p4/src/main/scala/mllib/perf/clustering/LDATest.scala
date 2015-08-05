@@ -67,7 +67,6 @@ class EMLDATest(sc: SparkContext) extends LDATest(sc: SparkContext){
       .setOptimizer("em")
     val model = lda.run(data)
     val duration = (System.currentTimeMillis() - start) / 1e3
-    println(duration)
     "time" -> duration
   }
 }
@@ -83,7 +82,6 @@ class OnlineLDATest(sc: SparkContext) extends LDATest(sc: SparkContext){
       .setOptimizer("online")
     val model = lda.run(data)
     val duration = (System.currentTimeMillis() - start) / 1e3
-    println(duration)
     "time" -> duration
   }
 }
