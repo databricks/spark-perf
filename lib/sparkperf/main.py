@@ -121,7 +121,7 @@ elif run_streaming_tests:
         "tests, but %s was not already present") % StreamingTests.test_jar_path
 
 if should_prep_mllib_tests:
-    MLlibTests.build()
+    MLlibTests.build(config.MLLIB_SPARK_VERSION)
 elif run_mllib_tests:
     assert MLlibTests.is_built(), ("You tried to skip packaging the MLlib perf " +
         "tests, but %s was not already present") % MLlibTests.test_jar_path

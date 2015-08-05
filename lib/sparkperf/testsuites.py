@@ -251,8 +251,8 @@ class MLlibTests(JVMPerfTestSuite, MLlibTestHelper):
     test_jar_path = "%s/mllib-tests/target/mllib-perf-tests-assembly.jar" % PROJ_DIR
 
     @classmethod
-    def build(cls):
-        run_cmd("cd %s/mllib-tests; %s clean assembly" % (PROJ_DIR, SBT_CMD))
+    def build(cls, spark_version):
+        run_cmd("cd %s/mllib-tests; %s -Dspark.version=%s.0 clean assembly" % (PROJ_DIR, SBT_CMD, spark_version))
 
     @classmethod
     def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
