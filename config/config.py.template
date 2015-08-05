@@ -512,6 +512,22 @@ if MLLIB_SPARK_VERSION >= 1.2:
         # (only used for RandomForest)
         OptionSet("feature-subset-strategy", ["auto"])
     ]
+    MLLIB_DECISION_TREE_TEST_OPTS += [
+        # Ensemble type: GradientBoostedTrees
+        OptionSet("ensemble-type", ["GradientBoostedTrees"]),
+        # Path to training dataset (if not given, use random data).
+        OptionSet("training-data", [""]),
+        # Path to test dataset (only used if training dataset given).
+        # If not given, hold out part of training data for validation.
+        OptionSet("test-data", [""]),
+        # Fraction of data to hold out for testing (ignored if given training and test dataset).
+        OptionSet("test-data-fraction", [0.2], can_scale=False),
+        # Number of trees.
+        OptionSet("num-trees", [10], can_scale=False),
+        #Feature subset sampling strategy: auto, all, sqrt, log2, onethird
+        #(only used for RandomForest)
+        OptionSet("feature-subset-strategy", ["auto"])
+    ]
 
 MLLIB_TESTS += [("decision-tree", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("decision-tree")] +
