@@ -15,22 +15,22 @@ import org.apache.spark.rdd.RDD
 
 abstract class LDATest(sc: SparkContext) extends PerfTest {
 
-  val Num_DOCUMENTS = ("num-documents", "number of documents in corpus")
-  val Num_VOCABULARY = ("num-vocab", "number of terms in vocabulary")
+  val NUM_DOCUMENTS = ("num-documents", "number of documents in corpus")
+  val NUM_VOCABULARY = ("num-vocab", "number of terms in vocabulary")
   val NUM_TOPICS = ("num-topics", "number of topics to infer")
   val NUM_ITERATIONS = ("num-iterations", "number of iterations for the algorithm")
   val DOCUMENT_LENGTH = ("document-length", "number of words per document for the algorithm")
 
-  intOptions ++= Seq(Num_VOCABULARY, NUM_TOPICS, NUM_ITERATIONS, DOCUMENT_LENGTH)
-  longOptions ++= Seq(Num_DOCUMENTS)
+  intOptions ++= Seq(NUM_VOCABULARY, NUM_TOPICS, NUM_ITERATIONS, DOCUMENT_LENGTH)
+  longOptions ++= Seq(NUM_DOCUMENTS)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
 
   var data: RDD[(Long, Vector)] = _
 
   override def createInputData(seed: Long): Unit = {
-    val numDocs = longOptionValue(Num_DOCUMENTS)
-    val numVocab = intOptionValue(Num_VOCABULARY)
+    val numDocs = longOptionValue(NUM_DOCUMENTS)
+    val numVocab = intOptionValue(NUM_VOCABULARY)
     val k = intOptionValue(NUM_TOPICS)
 
     val numPartitions = intOptionValue(NUM_PARTITIONS)
