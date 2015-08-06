@@ -9,7 +9,7 @@ import org.json4s.jackson.JsonMethods._
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
-import mllib.perf.clustering.GaussianMixtureTest
+import mllib.perf.clustering.{EMLDATest, OnlineLDATest, GaussianMixtureTest}
 import mllib.perf.feature.Word2VecTest
 import mllib.perf.fpm.FPGrowthTest
 import mllib.perf.linalg.BlockMatrixMultTest
@@ -34,6 +34,9 @@ object TestRunner {
         case "als" => new ALSTest(sc)
         // clustering
         case "kmeans" => new KMeansTest(sc)
+        case "gmm" => new GaussianMixtureTest(sc)
+        case "emlda" => new EMLDATest(sc)
+        case "onlinelda" => new OnlineLDATest(sc)
         // trees
         case "decision-tree" => new DecisionTreeTest(sc)
         // linalg
@@ -49,7 +52,6 @@ object TestRunner {
         case "fp-growth" => new FPGrowthTest(sc)
         case "block-matrix-mult" => new BlockMatrixMultTest(sc)
         case "word2vec" => new Word2VecTest(sc)
-        case "gmm" => new GaussianMixtureTest(sc)
       }
       test.initialize(testName, perfTestArgs)
       // Generate a new dataset for each test
