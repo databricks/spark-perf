@@ -11,7 +11,7 @@ import org.apache.spark.SparkContext
 
 import mllib.perf.clustering.GaussianMixtureTest
 import mllib.perf.feature.Word2VecTest
-import mllib.perf.fpm.FPGrowthTest
+import mllib.perf.fpm.{FPGrowthTest, PrefixSpanTest}
 import mllib.perf.linalg.BlockMatrixMultTest
 
 object TestRunner {
@@ -33,12 +33,14 @@ object TestRunner {
         // recommendation
         case "als" => new ALSTest(sc)
         // clustering
+        case "gmm" => new GaussianMixtureTest(sc)
         case "kmeans" => new KMeansTest(sc)
         // trees
         case "decision-tree" => new DecisionTreeTest(sc)
         // linalg
         case "svd" => new SVDTest(sc)
         case "pca" => new PCATest(sc)
+        case "block-matrix-mult" => new BlockMatrixMultTest(sc)
         // stats
         case "summary-statistics" => new ColumnSummaryStatisticsTest(sc)
         case "pearson" => new PearsonCorrelationTest(sc)
@@ -46,10 +48,11 @@ object TestRunner {
         case "chi-sq-feature" => new ChiSquaredFeatureTest(sc)
         case "chi-sq-gof" => new ChiSquaredGoFTest(sc)
         case "chi-sq-mat" => new ChiSquaredMatTest(sc)
-        case "fp-growth" => new FPGrowthTest(sc)
-        case "block-matrix-mult" => new BlockMatrixMultTest(sc)
+        // feature
         case "word2vec" => new Word2VecTest(sc)
-        case "gmm" => new GaussianMixtureTest(sc)
+        // frequent pattern mining
+        case "fp-growth" => new FPGrowthTest(sc)
+        case "prefix-span" => new PrefixSpanTest(sc)
       }
       test.initialize(testName, perfTestArgs)
       // Generate a new dataset for each test
