@@ -17,7 +17,7 @@ object MLlibTestsBuild extends Build {
     organization := "org.spark-project",
     version := "0.1",
     scalaVersion := "2.10.4",
-    sparkVersion := sys.props.getOrElse("spark.version", default="1.3.1"),
+    sparkVersion := sys.props.getOrElse("spark.version", default="1.5.0-SNAPSHOT"),
     libraryDependencies ++= Seq(
       "net.sf.jopt-simple" % "jopt-simple" % "4.6",
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
