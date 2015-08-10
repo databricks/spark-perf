@@ -4,6 +4,8 @@ import org.json4s.JsonAST._
 import org.json4s.JsonDSL._
 
 import org.apache.spark.SparkContext
+import org.apache.spark.ml.classification.{GBTClassificationModel, RandomForestClassificationModel}
+import org.apache.spark.ml.regression.{GBTRegressionModel, RandomForestRegressionModel}
 import org.apache.spark.mllib.classification._
 import org.apache.spark.mllib.clustering.{KMeans, KMeansModel}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
@@ -11,7 +13,7 @@ import org.apache.spark.mllib.recommendation.{ALS, MatrixFactorizationModel, Rat
 import org.apache.spark.mllib.regression._
 import org.apache.spark.mllib.tree.{GradientBoostedTrees, RandomForest}
 import org.apache.spark.mllib.tree.configuration.{Algo, BoostingStrategy, QuantileStrategy, Strategy}
-import org.apache.spark.mllib.tree.impurity.{Gini, Variance}
+import org.apache.spark.mllib.tree.impurity.Variance
 import org.apache.spark.mllib.tree.loss.{LogLoss, SquaredError}
 import org.apache.spark.mllib.tree.model.{GradientBoostedTreesModel, RandomForestModel}
 import org.apache.spark.rdd.RDD
@@ -458,8 +460,16 @@ class KMeansTest(sc: SparkContext) extends ClusteringTests(sc) {
 /**
  * Parent class for DecisionTree-based tests which run on a large dataset.
  */
+sealed trait DecisionTreeModel
+case class MLlibRFModel(model: RandomForestModel) extends DecisionTreeModel
+case class MLlibGBTModel(model: GradientBoostedTreesModel) extends DecisionTreeModel
+case class MLRFRegressionModel(model: RandomForestRegressionModel) extends DecisionTreeModel
+case class MLRFClassificationModel(model: RandomForestClassificationModel) extends DecisionTreeModel
+case class MLGBTRegressionModel(model: GBTRegressionModel) extends DecisionTreeModel
+case class MLGBTClassificationModel(model: GBTClassificationModel) extends DecisionTreeModel
+
 abstract class DecisionTreeTests(sc: SparkContext)
-  extends RegressionAndClassificationTests[Either[RandomForestModel, GradientBoostedTreesModel]](
+  extends RegressionAndClassificationTests[DecisionTreeModel](
     sc) {
 
   val TEST_DATA_FRACTION =
@@ -490,13 +500,12 @@ abstract class DecisionTreeTests(sc: SparkContext)
 
   protected var labelType = -1
 
-  def validate(model: Either[RandomForestModel, GradientBoostedTreesModel], rdd: RDD[LabeledPoint])
-    : Double = {
+  def validate(model: DecisionTreeModel, rdd: RDD[LabeledPoint]): Double = {
     val numExamples = rdd.count()
     val predictions: RDD[(Double, Double)] = rdd.map { example =>
       model match {
-        case Left(rfModel) => (rfModel.predict(example.features), example.label)
-        case Right(gbtModel) => (gbtModel.predict(example.features), example.label)
+        case MLlibRFModel(rfModel) => (rfModel.predict(example.features), example.label)
+        case MLlibGBTModel(gbtModel) => (gbtModel.predict(example.features), example.label)
       }
     }
     val labelType: Int = intOptionValue(LABEL_TYPE)
@@ -576,8 +585,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     (splits, categoricalFeaturesInfo_, labelType)
   }
 
-  override def runTest(rdd: RDD[LabeledPoint])
-    : Either[RandomForestModel, GradientBoostedTreesModel] = {
+  override def runTest(rdd: RDD[LabeledPoint]): DecisionTreeModel = {
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
     val maxBins: Int = intOptionValue(MAX_BINS)
     val numTrees: Int = intOptionValue(NUM_TREES)
@@ -592,27 +600,27 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
       // Regression
       ensembleType match {
         case "RandomForest" =>
-          Left(RandomForest.trainRegressor(rdd, categoricalFeaturesInfo, numTrees, featureSubsetStrategy,
-            "variance", treeDepth, maxBins, this.getRandomSeed))
+          MLlibRFModel(RandomForest.trainRegressor(rdd, categoricalFeaturesInfo, numTrees,
+            featureSubsetStrategy, "variance", treeDepth, maxBins, this.getRandomSeed))
         case "GradientBoostedTrees" =>
           val treeStrategy = new Strategy(Algo.Regression, Variance, treeDepth,
             labelType, maxBins, QuantileStrategy.Sort, categoricalFeaturesInfo)
           val boostingStrategy = BoostingStrategy(treeStrategy, SquaredError, numIterations = 100,
             learningRate = 0.1)
-          Right(GradientBoostedTrees.train(rdd, boostingStrategy))
+          MLlibGBTModel(GradientBoostedTrees.train(rdd, boostingStrategy))
       }
     } else if (labelType >= 2) {
       // Classification
       ensembleType match {
         case "RandomForest" =>
-          Left(RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees,
+          MLlibRFModel(RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees,
             featureSubsetStrategy, "gini", treeDepth, maxBins, this.getRandomSeed))
         case "GradientBoostedTrees" =>
           val treeStrategy = new Strategy(Algo.Classification, Variance, treeDepth,
             labelType, maxBins, QuantileStrategy.Sort, categoricalFeaturesInfo)
           val boostingStrategy = BoostingStrategy(treeStrategy, LogLoss, numTrees,
             learningRate = 0.1)
-          Right(GradientBoostedTrees.train(rdd, boostingStrategy))
+          MLlibGBTModel(GradientBoostedTrees.train(rdd, boostingStrategy))
       }
     } else {
       throw new IllegalArgumentException(s"Bad label-type parameter " +
