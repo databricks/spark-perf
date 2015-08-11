@@ -1,13 +1,12 @@
 package mllib.perf
 
-import org.apache.spark.ml.attribute.{NumericAttribute, AttributeGroup, NominalAttribute}
-import org.apache.spark.sql.{SQLContext, DataFrame, Row}
+import org.apache.spark.ml.PredictionModel
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL._
 
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.classification.{GBTClassifier, RandomForestClassifier, GBTClassificationModel, RandomForestClassificationModel}
-import org.apache.spark.ml.regression.{GBTRegressor, RandomForestRegressor, GBTRegressionModel, RandomForestRegressionModel}
+import org.apache.spark.ml.classification.{GBTClassificationModel, GBTClassifier, RandomForestClassificationModel, RandomForestClassifier}
+import org.apache.spark.ml.regression.{GBTRegressionModel, GBTRegressor, RandomForestRegressionModel, RandomForestRegressor}
 import org.apache.spark.mllib.classification._
 import org.apache.spark.mllib.clustering.{KMeans, KMeansModel}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
@@ -19,6 +18,7 @@ import org.apache.spark.mllib.tree.impurity.Variance
 import org.apache.spark.mllib.tree.loss.{LogLoss, SquaredError}
 import org.apache.spark.mllib.tree.model.{GradientBoostedTreesModel, RandomForestModel}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
 import mllib.perf.util.{DataGenerator, DataLoader}
 
@@ -459,19 +459,20 @@ class KMeansTest(sc: SparkContext) extends ClusteringTests(sc) {
   }
 }
 
+// Decision-tree
+sealed trait TreeBasedModel
+case class MLlibRFModel(model: RandomForestModel) extends TreeBasedModel
+case class MLlibGBTModel(model: GradientBoostedTreesModel) extends TreeBasedModel
+case class MLRFRegressionModel(model: RandomForestRegressionModel) extends TreeBasedModel
+case class MLRFClassificationModel(model: RandomForestClassificationModel) extends TreeBasedModel
+case class MLGBTRegressionModel(model: GBTRegressionModel) extends TreeBasedModel
+case class MLGBTClassificationModel(model: GBTClassificationModel) extends TreeBasedModel
+
 /**
  * Parent class for DecisionTree-based tests which run on a large dataset.
  */
-sealed trait DecisionTreeModel
-case class MLlibRFModel(model: RandomForestModel) extends DecisionTreeModel
-case class MLlibGBTModel(model: GradientBoostedTreesModel) extends DecisionTreeModel
-case class MLRFRegressionModel(model: RandomForestRegressionModel) extends DecisionTreeModel
-case class MLRFClassificationModel(model: RandomForestClassificationModel) extends DecisionTreeModel
-case class MLGBTRegressionModel(model: GBTRegressionModel) extends DecisionTreeModel
-case class MLGBTClassificationModel(model: GBTClassificationModel) extends DecisionTreeModel
-
 abstract class DecisionTreeTests(sc: SparkContext)
-  extends RegressionAndClassificationTests[DecisionTreeModel](
+  extends RegressionAndClassificationTests[TreeBasedModel](
     sc) {
 
   val TEST_DATA_FRACTION =
@@ -502,34 +503,15 @@ abstract class DecisionTreeTests(sc: SparkContext)
 
   protected var labelType = -1
 
-  def validate(model: DecisionTreeModel, rdd: RDD[LabeledPoint]): Double = {
-    val sqlContext = new SQLContext(rdd.sparkContext)
+  def validate(model: TreeBasedModel, rdd: RDD[LabeledPoint]): Double = {
     val numExamples = rdd.count()
     val predictions: RDD[(Double, Double)] = model match {
-      case MLlibRFModel(rfModel) =>
-        rdd.map(example => (rfModel.predict(example.features), example.label))
-      case MLlibGBTModel(gbtModel) =>
-        rdd.map(example => (gbtModel.predict(example.features), example.label))
-      case MLRFRegressionModel(rfModel) =>
-        val results = rfModel.transform(sqlContext.createDataFrame(rdd))
-        results
-          .select(rfModel.getPredictionCol, rfModel.getLabelCol)
-          .map { case Row(prediction: Double, label: Double) => (prediction, label) }
-      case MLRFClassificationModel(rfModel) =>
-        val results = rfModel.transform(sqlContext.createDataFrame(rdd))
-        results
-          .select(rfModel.getPredictionCol, rfModel.getLabelCol)
-          .map { case Row(prediction: Double, label: Double) => (prediction, label) }
-      case MLGBTRegressionModel(gbtModel) =>
-        val results = gbtModel.transform(sqlContext.createDataFrame(rdd))
-        results
-          .select(gbtModel.getPredictionCol, gbtModel.getLabelCol)
-          .map { case Row(prediction: Double, label: Double) => (prediction, label) }
-      case MLGBTClassificationModel(gbtModel) =>
-        val results = gbtModel.transform(sqlContext.createDataFrame(rdd))
-        results
-          .select(gbtModel.getPredictionCol, gbtModel.getLabelCol)
-          .map { case Row(prediction: Double, label: Double) => (prediction, label) }
+      case MLlibRFModel(rfModel) => rfModel.predict(rdd.map(_.features)).zip(rdd.map(_.label))
+      case MLlibGBTModel(gbtModel) => gbtModel.predict(rdd.map(_.features)).zip(rdd.map(_.label))
+      case MLRFRegressionModel(rfModel) => makePredictions(rfModel, rdd)
+      case MLRFClassificationModel(rfModel) => makePredictions(rfModel, rdd)
+      case MLGBTRegressionModel(gbtModel) => makePredictions(gbtModel, rdd)
+      case MLGBTClassificationModel(gbtModel) => makePredictions(gbtModel, rdd)
     }
     val labelType: Int = intOptionValue(LABEL_TYPE)
     if (labelType == 0) {
@@ -537,6 +519,16 @@ abstract class DecisionTreeTests(sc: SparkContext)
     } else {
       calculateAccuracy(predictions, numExamples)
     }
+  }
+
+  private def makePredictions(
+      model: PredictionModel[Vector, _], rdd: RDD[LabeledPoint]): RDD[(Double, Double)] = {
+    val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
+    val dataFrame = sqlContext.createDataFrame(rdd)
+    val results = model.transform(dataFrame)
+    results
+      .select(model.getPredictionCol, model.getLabelCol)
+      .map { case Row(prediction: Double, label: Double) => (prediction, label) }
   }
 }
 
@@ -609,7 +601,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     (splits, categoricalFeaturesInfo_, labelType)
   }
 
-  override def runTest(rdd: RDD[LabeledPoint]): DecisionTreeModel = {
+  override def runTest(rdd: RDD[LabeledPoint]): TreeBasedModel = {
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
     val maxBins: Int = intOptionValue(MAX_BINS)
     val numTrees: Int = intOptionValue(NUM_TREES)
@@ -627,7 +619,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
           MLlibRFModel(RandomForest.trainRegressor(rdd, categoricalFeaturesInfo, numTrees,
             featureSubsetStrategy, "variance", treeDepth, maxBins, this.getRandomSeed))
         case "ml.RandomForest" =>
-          val sqlContext = new SQLContext(rdd.sparkContext)
+          val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
           val dataset = sqlContext.createDataFrame(rdd)
           val model = new RandomForestRegressor()
             .setImpurity("variance")
@@ -645,9 +637,11 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
             learningRate = 0.1)
           MLlibGBTModel(GradientBoostedTrees.train(rdd, boostingStrategy))
         case "ml.GradientBoostedTrees" =>
-          val sqlContext = new SQLContext(rdd.sparkContext)
+          val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
           val dataset = sqlContext.createDataFrame(rdd)
           val model = new GBTRegressor()
+            .setLossType("squared")
+            .setMaxBins(maxBins)
             .setMaxDepth(treeDepth)
             .setMaxIter(numTrees)
             .setStepSize(0.1)
@@ -662,7 +656,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
           MLlibRFModel(RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees,
             featureSubsetStrategy, "gini", treeDepth, maxBins, this.getRandomSeed))
         case "ml.RandomForest" =>
-          val sqlContext = new SQLContext(rdd.sparkContext)
+          val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
           val dataset = sqlContext.createDataFrame(rdd)
           val model = new RandomForestClassifier()
             .setImpurity("gini")
@@ -680,9 +674,11 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
             learningRate = 0.1)
           MLlibGBTModel(GradientBoostedTrees.train(rdd, boostingStrategy))
         case "ml.GradientBoostedTrees" =>
-          val sqlContext = new SQLContext(rdd.sparkContext)
+          val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
           val dataset = sqlContext.createDataFrame(rdd)
           val model = new GBTClassifier()
+            .setLossType("logistic")
+            .setMaxBins(maxBins)
             .setMaxDepth(treeDepth)
             .setMaxIter(numTrees)
             .setStepSize(0.1)
