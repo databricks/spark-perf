@@ -1,10 +1,10 @@
 package mllib.perf
 
-import org.apache.spark.ml.PredictionModel
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL._
 
 import org.apache.spark.SparkContext
+import org.apache.spark.ml.PredictionModel
 import org.apache.spark.ml.classification.{GBTClassificationModel, GBTClassifier, RandomForestClassificationModel, RandomForestClassifier}
 import org.apache.spark.ml.regression.{GBTRegressionModel, GBTRegressor, RandomForestRegressionModel, RandomForestRegressor}
 import org.apache.spark.mllib.classification._
@@ -18,7 +18,7 @@ import org.apache.spark.mllib.tree.impurity.Variance
 import org.apache.spark.mllib.tree.loss.{LogLoss, SquaredError}
 import org.apache.spark.mllib.tree.model.{GradientBoostedTreesModel, RandomForestModel}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.sql.Row
 
 import mllib.perf.util.{DataGenerator, DataLoader}
 
