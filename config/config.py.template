@@ -500,9 +500,9 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
 ]
 
 if MLLIB_SPARK_VERSION >= 1.2:
-    ensembleTypes = ["mllib.RandomForest"]
+    ensembleTypes = ["RandomForest"]
     if MLLIB_SPARK_VERSION >= 1.3:
-        ensembleTypes.append("mllib.GradientBoostedTrees")
+        ensembleTypes.append("GradientBoostedTrees")
     if MLLIB_SPARK_VERSION >= 1.4:
         ensembleTypes.extend(["ml.RandomForest", "ml.GradientBoostedTrees"])
     MLLIB_DECISION_TREE_TEST_OPTS += [

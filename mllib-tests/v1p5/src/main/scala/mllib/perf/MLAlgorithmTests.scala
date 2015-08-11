@@ -521,10 +521,11 @@ abstract class DecisionTreeTests(sc: SparkContext)
     }
   }
 
+  // TODO: generate DataFrame outside of `runTest` so it is not included in timing results
   private def makePredictions(
       model: PredictionModel[Vector, _], rdd: RDD[LabeledPoint]): RDD[(Double, Double)] = {
-    val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
-    val dataFrame = sqlContext.createDataFrame(rdd)
+    val labelType: Int = intOptionValue(LABEL_TYPE)
+    val dataFrame = DataGenerator.setMetadata(rdd, categoricalFeaturesInfo, labelType)
     val results = model.transform(dataFrame)
     results
       .select(model.getPredictionCol, model.getLabelCol)
@@ -533,7 +534,7 @@ abstract class DecisionTreeTests(sc: SparkContext)
 }
 
 class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
-  val supportedTreeTypes = Array("mllib.RandomForest", "mllib.GradientBoostedTrees",
+  val supportedTreeTypes = Array("RandomForest", "GradientBoostedTrees",
     "ml.RandomForest", "ml.GradientBoostedTrees")
 
   val ENSEMBLE_TYPE = ("ensemble-type", "Type of ensemble algorithm: " + supportedTreeTypes.mkString(" "))
@@ -601,6 +602,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     (splits, categoricalFeaturesInfo_, labelType)
   }
 
+  // TODO: generate DataFrame outside of `runTest` so it is not included in timing results
   override def runTest(rdd: RDD[LabeledPoint]): TreeBasedModel = {
     val treeDepth: Int = intOptionValue(TREE_DEPTH)
     val maxBins: Int = intOptionValue(MAX_BINS)
@@ -615,12 +617,12 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     if (labelType == 0) {
       // Regression
       ensembleType match {
-        case "mllib.RandomForest" =>
+        case "RandomForest" =>
           MLlibRFModel(RandomForest.trainRegressor(rdd, categoricalFeaturesInfo, numTrees,
             featureSubsetStrategy, "variance", treeDepth, maxBins, this.getRandomSeed))
         case "ml.RandomForest" =>
-          val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
-          val dataset = sqlContext.createDataFrame(rdd)
+          val labelType: Int = intOptionValue(LABEL_TYPE)
+          val dataset = DataGenerator.setMetadata(rdd, categoricalFeaturesInfo, labelType)
           val model = new RandomForestRegressor()
             .setImpurity("variance")
             .setMaxDepth(treeDepth)
@@ -630,15 +632,15 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
             .setSeed(this.getRandomSeed)
             .fit(dataset)
           MLRFRegressionModel(model)
-        case "mllib.GradientBoostedTrees" =>
+        case "GradientBoostedTrees" =>
           val treeStrategy = new Strategy(Algo.Regression, Variance, treeDepth,
             labelType, maxBins, QuantileStrategy.Sort, categoricalFeaturesInfo)
           val boostingStrategy = BoostingStrategy(treeStrategy, SquaredError, numTrees,
             learningRate = 0.1)
           MLlibGBTModel(GradientBoostedTrees.train(rdd, boostingStrategy))
         case "ml.GradientBoostedTrees" =>
-          val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
-          val dataset = sqlContext.createDataFrame(rdd)
+          val labelType: Int = intOptionValue(LABEL_TYPE)
+          val dataset = DataGenerator.setMetadata(rdd, categoricalFeaturesInfo, labelType)
           val model = new GBTRegressor()
             .setLossType("squared")
             .setMaxBins(maxBins)
@@ -652,12 +654,12 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     } else if (labelType >= 2) {
       // Classification
       ensembleType match {
-        case "mllib.RandomForest" =>
+        case "RandomForest" =>
           MLlibRFModel(RandomForest.trainClassifier(rdd, labelType, categoricalFeaturesInfo, numTrees,
             featureSubsetStrategy, "gini", treeDepth, maxBins, this.getRandomSeed))
         case "ml.RandomForest" =>
-          val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
-          val dataset = sqlContext.createDataFrame(rdd)
+          val labelType: Int = intOptionValue(LABEL_TYPE)
+          val dataset = DataGenerator.setMetadata(rdd, categoricalFeaturesInfo, labelType)
           val model = new RandomForestClassifier()
             .setImpurity("gini")
             .setMaxDepth(treeDepth)
@@ -667,15 +669,15 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
             .setSeed(this.getRandomSeed)
             .fit(dataset)
           MLRFClassificationModel(model)
-        case "mllib.GradientBoostedTrees" =>
+        case "GradientBoostedTrees" =>
           val treeStrategy = new Strategy(Algo.Classification, Variance, treeDepth,
             labelType, maxBins, QuantileStrategy.Sort, categoricalFeaturesInfo)
           val boostingStrategy = BoostingStrategy(treeStrategy, LogLoss, numTrees,
             learningRate = 0.1)
           MLlibGBTModel(GradientBoostedTrees.train(rdd, boostingStrategy))
         case "ml.GradientBoostedTrees" =>
-          val sqlContext = SQLContext.getOrCreate(rdd.sparkContext)
-          val dataset = sqlContext.createDataFrame(rdd)
+          val labelType: Int = intOptionValue(LABEL_TYPE)
+          val dataset = DataGenerator.setMetadata(rdd, categoricalFeaturesInfo, labelType)
           val model = new GBTClassifier()
             .setLossType("logistic")
             .setMaxBins(maxBins)
