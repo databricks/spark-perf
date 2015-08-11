@@ -500,9 +500,15 @@ MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
 ]
 
 if MLLIB_SPARK_VERSION >= 1.2:
+    ensembleTypes = ["RandomForest"]
+    if MLLIB_SPARK_VERSION >= 1.3:
+        ensembleTypes.append("GradientBoostedTrees")
+    if MLLIB_SPARK_VERSION >= 1.4:
+        ensembleTypes.extend(["ml.RandomForest", "ml.GradientBoostedTrees"])
     MLLIB_DECISION_TREE_TEST_OPTS += [
-        # Ensemble type: RandomForest, GradientBoostedTrees
-        OptionSet("ensemble-type", ["RandomForest", "GradientBoostedTrees"]),
+        # Ensemble type: mllib.RandomForest, mllib.GradientBoostedTrees,
+        #                ml.RandomForest, ml.GradientBoostedTrees
+        OptionSet("ensemble-type", ensembleTypes),
         # Path to training dataset (if not given, use random data).
         OptionSet("training-data", [""]),
         # Path to test dataset (only used if training dataset given).
