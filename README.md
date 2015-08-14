@@ -4,7 +4,7 @@
 
 This is a performance testing framework for [Apache Spark](http://spark.apache.org) 1.0+.
 
-**Features**:
+## Features
 
 - Suites of performance tests for Spark, PySpark, Spark Streaming, and MLlib.
 - Parameterized test configurations:
@@ -15,7 +15,40 @@ This is a performance testing framework for [Apache Spark](http://spark.apache.o
 
 For questions, bug reports, or feature requests, please [open an issue on GitHub](https://github.com/databricks/spark-perf/issues).
 
-## Requirements
+## Coverage
+
+- Spark Core RDD
+  - list coming soon
+- SQL and DataFrames
+  - coming soon
+- Machine Learning
+  - glm-regression: Generalized Linear Regression Model
+  - glm-classification: Generalized Linear Classification Model
+  - naive-bayes: Naive Bayes
+  - naive-bayes-bernoulli: Bernoulli Naive Bayes
+  - decision-tree: Decision Tree
+  - als: Alternating Least Squares
+  - kmeans: K-Means clustering
+  - gmm: Gaussian Mixture Model
+  - svd: Singular Value Decomposition
+  - pca: Principal Component Analysis
+  - summary-statistics: Summary Statistics (min, max, ...)
+  - block-matrix-mult: Matrix Multiplication
+  - pearson: Pearson's Correlation
+  - spearman: Spearman's Correlation
+  - chi-sq-feature/gof/mat: Chi-square Tests
+  - word2vec: Word2Vec distributed presentation of words
+  - fp-growth: FP-growth frequent item sets
+  - python-glm-classification: Generalized Linear Classification Model
+  - python-glm-regression: Generalized Linear Regression Model
+  - python-naive-bayes: Naive Bayes
+  - python-als: Alternating Least Squares
+  - python-kmeans: K-Means clustering
+  - python-pearson: Pearson's Correlation
+  - python-spearman: Spearman's Correlation
+
+
+## Dependencies
 
 The `spark-perf` scripts require Python 2.7+.  If you're using an earlier version of Python, you may need to install the `argparse` library using `easy_install argparse`.
 
@@ -40,7 +73,7 @@ The following sections describe some additional settings to change for certain t
    SPARK_DRIVER_MEMORY = 512m
    spark.executor.memory = 2g
    ```
-3. Uncomment at least one `SPARK_TESTS` entry
+3. Uncomment at least one `SPARK_TESTS` entry.
 
 ### Running on an existing Spark cluster
 1. SSH into the machine hosting the standalone master
@@ -53,7 +86,7 @@ The following sections describe some additional settings to change for certain t
    SPARK_DRIVER_MEMORY = <depends on your hardware>
    spark.executor.memory = <depends on your hardware>
    ```
-3. Uncomment at least one `SPARK_TESTS` entry
+3. Uncomment at least one `SPARK_TESTS` entry.
 
 ### Running on a spark-ec2 cluster with a custom Spark version
 1. Launch an EC2 cluster with [Spark's EC2 scripts](https://spark.apache.org/docs/latest/ec2-scripts.html).
@@ -66,9 +99,9 @@ The following sections describe some additional settings to change for certain t
    SPARK_DRIVER_MEMORY = <depends on your hardware>
    spark.executor.memory = <depends on your hardware>
    ```
-3. uncomment at least one `SPARK_TESTS` entry
+3. Uncomment at least one `SPARK_TESTS` entry.
 
 
-## Acknowledgements
+## License
 
-This testing framework started as a port + heavy modification of an earlier Spark performance testing framework written by @dennybritz.
+This project is licensed under the Apache 2.0 License. See LICENSE for full license text.

@@ -29,7 +29,7 @@ object DataGenerator {
   /** Creates a key-value int dataset but does not cache it, allowing for subsequent processing */
   private def generateIntData(
       sc: SparkContext,
-      numRecords: Int,
+      numRecords: Long,
       uniqueKeys: Int,
       uniqueValues: Int,
       numPartitions: Int,
@@ -57,7 +57,7 @@ object DataGenerator {
   /** Creates and materializes a (K, V) int dataset according to the supplied parameters. */
   def createKVIntDataSet(
       sc: SparkContext,
-      numRecords: Int,
+      numRecords: Long,
       uniqueKeys: Int,
       uniqueValues: Int,
       numPartitions: Int,
@@ -102,7 +102,7 @@ object DataGenerator {
   /** Creates and materializes a (K, V) string dataset according to the supplied parameters. */
   def createKVStringDataSet(
       sc: SparkContext,
-      numRecords: Int,
+      numRecords: Long,
       uniqueKeys: Int,
       keyLength: Int,
       uniqueValues: Int,

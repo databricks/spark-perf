@@ -160,6 +160,7 @@ if __name__ == "__main__":
     parser.add_option("--num-partitions", type="int", default=10)
     parser.add_option("--broadcast-size", type="int", default=1 << 20)
     parser.add_option("--random-seed", type="int", default=1)
+    parser.add_option("--storage-location", type="str", default="/")
     parser.add_option("--persistent-type", default="memory")
     parser.add_option("--wait-for-exit", action="store_true")
 

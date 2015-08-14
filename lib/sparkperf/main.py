@@ -22,6 +22,9 @@ parser = argparse.ArgumentParser(description='Run Spark performance tests. Befor
 parser.add_argument('--config-file', help='override default location of config file, must be a '
     'python file that ends in .py', default="%s/config/config.py" % PROJ_DIR)
 
+parser.add_argument('--additional-make-distribution-args',
+    help='additional arugments to pass to make-distribution.sh when building Spark', default="")
+
 args = parser.parse_args()
 assert args.config_file.endswith(".py"), "config filename must end with .py"
 
@@ -77,8 +80,12 @@ if config.IS_MESOS_MODE:
 elif config.USE_CLUSTER_SPARK:
     cluster = Cluster(spark_home=config.SPARK_HOME_DIR, spark_conf_dir=config.SPARK_CONF_DIR)
 else:
-    cluster = spark_build_manager.get_cluster(config.SPARK_COMMIT_ID, config.SPARK_CONF_DIR,
-                                              config.SPARK_MERGE_COMMIT_INTO_MASTER)
+    cluster = spark_build_manager.get_cluster(
+        commit_id=config.SPARK_COMMIT_ID,
+        conf_dir=config.SPARK_CONF_DIR,
+        merge_commit_into_master=config.SPARK_MERGE_COMMIT_INTO_MASTER,
+        is_yarn_mode=config.IS_YARN_MODE,
+        additional_make_distribution_args=args.additional_make_distribution_args)
 
 # rsync Spark to all nodes in case there is a change in Worker config
 if should_restart_cluster and should_rsync_spark_home:
@@ -114,7 +121,7 @@ elif run_streaming_tests:
         "tests, but %s was not already present") % StreamingTests.test_jar_path
 
 if should_prep_mllib_tests:
-    MLlibTests.build()
+    MLlibTests.build(config.MLLIB_SPARK_VERSION)
 elif run_mllib_tests:
     assert MLlibTests.is_built(), ("You tried to skip packaging the MLlib perf " +
         "tests, but %s was not already present") % MLlibTests.test_jar_path

@@ -16,12 +16,11 @@ class FeaturesGenerator:
 
     @staticmethod
     def generateContinuousData(sc, numExamples, numFeatures, numPartitions, seed):
-        n = numExamples / numPartitions
-        def gen(index):
-            rng = numpy.random.RandomState(hash(str(seed ^ index)))
-            for i in range(n):
+        def mapPart(idx, part):
+            rng = numpy.random.RandomState(hash(str(seed ^ idx)) & 0xffffffff)
+            for i in part:
                 yield Vectors.dense(rng.rand(numFeatures))
-        return sc.parallelize(range(numPartitions), numPartitions).flatMap(gen)
+        return sc.parallelize(xrange(numExamples), numPartitions).mapPartitionsWithIndex(mapPart)
 
 
 class LabeledDataGenerator:
@@ -38,7 +37,7 @@ class LabeledDataGenerator:
         """
         assert labelType == 0 or labelType == 2, \
             "LabeledDataGenerator.generateGLMData given invalid labelType: %r" % labelType
-        rng = numpy.random.RandomState(seed)
+        rng = numpy.random.RandomState(hash(str(seed ^ -1)) & 0xffffffff)
         weights = rng.rand(numFeatures)
         featuresRDD = FeaturesGenerator.generateContinuousData(sc, numExamples, numFeatures, numPartitions, seed)
         def makeLP(features):
@@ -67,15 +66,11 @@ class RatingGenerator:
         assert numRatings / numUsers <= numProducts, \
             "RatingGenerator.generateRatingData given numRatings=%d too large for numUsers=%d, numProducts=%d" \
             % (numRatings, numUsers, numProducts)
-        n = numRatings / numPartitions
-        def gen(index):
-            rng = numpy.random.RandomState(hash(str(seed ^ index)))
-            observed = set()
-            for i in range(n):
-                pair = (rng.randint(numUsers), rng.randint(numProducts))
-                while pair in observed:
-                    pair = (rng.randint(numUsers), rng.randint(numProducts))
-                observed.add(pair)
+        def mapPart(idx, part):
+            rng = numpy.random.RandomState(hash(str(seed ^ idx)) & 0xffffffff)
+            for i in part:
+                user = rng.randint(numUsers)
+                prod = rng.randint(numProducts)
                 rating = float(rng.randint(2)) if implicitPrefs else rng.rand() * 5
-                yield (pair[0], pair[1], rating)
-        return sc.parallelize(range(numPartitions), numPartitions).flatMap(gen)
+                yield (user, prod, rating)
+        return sc.parallelize(xrange(numRatings), numPartitions).mapPartitionsWithIndex(mapPart)

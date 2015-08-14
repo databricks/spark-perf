@@ -5,13 +5,17 @@ python:
   - 2.7
 jdk:
   - openjdk7
+sudo: false
 before_install:
-  - sudo pip install nose
+  - pip install -t $HOME/lib/site-python nose
+cache:
+  directories:
+    - $HOME/.ivy2
 script:
   - ./run-tests.sh
   - cd spark-tests
   - sbt/sbt assembly test
   - cd ../streaming-tests
   - sbt/sbt assembly test
-#  - cd ../mllib-tests
-#  - sbt/sbt assembly test
+  - cd ../mllib-tests
+  - sbt/sbt assembly test

@@ -38,7 +38,10 @@ def checkout_version(repo_dir, commit_id, merge_commit_into_master=False):
             run_cmd("git reset --hard %s" % commit_id)
 
 
-def make_spark_distribution(commit_id, target_dir, spark_git_repo, merge_commit_into_master=False):
+def make_spark_distribution(
+        commit_id, target_dir, spark_git_repo,
+        merge_commit_into_master=False, is_yarn_mode=False,
+        additional_make_distribution_args=""):
     """
     Download Spark, check out a specific version, and create a binary distribution.
 
@@ -60,8 +63,10 @@ def make_spark_distribution(commit_id, target_dir, spark_git_repo, merge_commit_
         # running PySpark on YARN or when running on Java 6.  Since we'll be building and running
         # Spark on the same machines and using standalone mode, it should be safe to
         # disable this warning:
-        # The `-T 1C` enables parallel Maven builds with 1 thread per CPU core
-        run_cmd("./make-distribution.sh --skip-java-test -T 1C")
+        if is_yarn_mode:
+            run_cmd("./make-distribution.sh --skip-java-test -Pyarn " + additional_make_distribution_args)
+        else:
+            run_cmd("./make-distribution.sh --skip-java-test " + additional_make_distribution_args)
 
 
 def copy_configuration(conf_dir, target_dir):
@@ -86,7 +91,7 @@ class SparkBuildManager(object):
         if not os.path.isdir(root_dir):
             os.makedirs(root_dir)
 
-    def get_cluster(self, commit_id, conf_dir, merge_commit_into_master=False):
+    def get_cluster(self, commit_id, conf_dir, merge_commit_into_master=False, is_yarn_mode=False, additional_make_distribution_args=""):
         if not os.path.isdir(self._master_spark):
             clone_spark(self._master_spark, self.spark_git_repo)
         # Get the SHA corresponding to the commit and check if we've already built this version:
@@ -103,7 +108,10 @@ class SparkBuildManager(object):
         else:
             logger.info("Could not find pre-compiled Spark with SHA %s" % sha)
             # Check out and build the requested version of Spark in the master spark directory
-            make_spark_distribution(commit_id, self._master_spark, self.spark_git_repo)
+            make_spark_distribution(
+                commit_id=commit_id, target_dir=self._master_spark, spark_git_repo=self.spark_git_repo,
+                merge_commit_into_master=merge_commit_into_master, is_yarn_mode=is_yarn_mode,
+                additional_make_distribution_args=additional_make_distribution_args)
             # Copy the completed build to a directory named after the SHA.
             run_cmd("mv %s %s" % (os.path.join(self._master_spark, "dist"), cluster_dir))
         copy_configuration(conf_dir, cluster_dir)
