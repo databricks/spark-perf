@@ -160,7 +160,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
       }
     } else {
       throw new IllegalArgumentException(
-        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs")
+        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs.")
     }
 
     (loss, regType) match {
@@ -253,13 +253,17 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
           s"GLMRegressionTest run with unknown regType ($regType) with sgd.  Supported values: none, l1, l2.")
       }
     } else if (Array("lbfgs").contains(optimizer)) {
+      if (Array("hinge").contains(loss)) {
+        throw new IllegalArgumentException(
+          s"GLMRegressionTest doesn't support hinge loss with lbfgs.")
+      }
       if (!Array("none", "elastic-net").contains(regType)) {
         throw new IllegalArgumentException(
           s"GLMRegressionTest run with unknown regType ($regType) with lbfgs.  Supported values: none, elastic-net.")
       }
     } else {
       throw new IllegalArgumentException(
-        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs")
+        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs.")
     }
 
     (loss, regType, optimizer) match {
