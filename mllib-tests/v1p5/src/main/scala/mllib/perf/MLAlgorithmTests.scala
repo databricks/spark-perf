@@ -84,7 +84,7 @@ abstract class GLMTests(sc: SparkContext)
   val STEP_SIZE =         ("step-size",   "step size for SGD")
   val NUM_ITERATIONS =    ("num-iterations",   "number of iterations for the algorithm")
   val REG_TYPE =          ("reg-type",   "type of regularization: none, l1, l2, elastic-net")
-  val ELASTIC_NET_PARAM = ("elastic-net-Param",   "elastic-net param, 0.0 for L2, and 1.0 for L1")
+  val ELASTIC_NET_PARAM = ("elastic-net-param",   "elastic-net param, 0.0 for L2, and 1.0 for L1")
   val REG_PARAM =         ("reg-param",   "the regularization parameter against overfitting")
   val OPTIMIZER =         ("optimizer", "optimization algorithm (elastic-net only supports lbfgs): sgd, lbfgs")
 
@@ -177,9 +177,9 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
         rr.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
         rr.run(rdd)
       case ("l2", "elastic-net") =>
-        println("WARNING: Liner Regression with elastic-net in ML package ignores numIterations, " +
-          "stepSize in Spark 1.5.")
-        val rr = new LinearRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam)
+        println("WARNING: Linear Regression with elastic-net in ML package uses LBFGS/OWLQN for optimization" +
+          " which ignores stepSize and uses numIterations for maxIter in Spark 1.5.")
+        val rr = new LinearRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam).setMaxIter(numIterations)
         val sqlContext = new SQLContext(rdd.context)
         import sqlContext.implicits._
         val mlModel = rr.fit(rdd.toDF())
@@ -274,9 +274,9 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
           " in this Spark version.")
         new LogisticRegressionWithLBFGS().run(rdd)
       case ("logistic", "elastic-net", _) =>
-        println("WARNING: Logistic Regression with elastic-net in ML package ignores numIterations, " +
-          "stepSize in Spark 1.5.")
-        val lor = new LogisticRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam)
+        println("WARNING: Logistic Regression with elastic-net in ML package uses LBFGS/OWLQN for optimization" +
+          " which ignores stepSize and uses numIterations for maxIter in Spark 1.5.")
+        val lor = new LogisticRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam).setMaxIter(numIterations)
         val sqlContext = new SQLContext(rdd.context)
         import sqlContext.implicits._
         val mlModel = lor.fit(rdd.toDF())
