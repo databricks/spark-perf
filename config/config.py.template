@@ -340,16 +340,13 @@ STREAMING_HDFS_RECOVERY_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_dura
     OptionSet("file-cleaner-delay", [300])
 ]
 
-STREAMING_RECEIVER_LOAD_BALANCE_TEST_OPTS = streaming_batch_duration_opts(2000) + [
-    OptionSet("total-duration", [30]),
-    OptionSet("hdfs-url", [HDFS_URL]),
-    OptionSet("total-executor-cores", [20], can_scale=True),
+STREAMING_RECEIVER_LOAD_BALANCE_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(2000) + [
+    OptionSet("total-executor-cores", [20]),
     OptionSet("num-executors", [5]),
-    OptionSet("num-trials", [5]),
 ]
 
 STREAMING_RECEIVER_FAILURE_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(2000) + [
-    OptionSet("num-receivers", [5], can_scale=True),
+    OptionSet("num-receivers", [5]),
 ]
 
 STREAMING_RECEIVER_TIMEOUT_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(2000) + [

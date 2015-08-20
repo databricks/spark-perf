@@ -39,16 +39,11 @@ class ReceiverLoadBalanceTest extends PerfTest {
 
   val NUM_EXECUTORS = ("num-executors", "number of executors")
 
-  val NUM_TRIALS = ("num-trials", "how many tests to run")
-
-  override def longOptions = super.longOptions ++ Seq(TOTAL_EXECUTOR_CORES, NUM_EXECUTORS, NUM_TRIALS)
+  override def longOptions = super.longOptions ++ Seq(TOTAL_EXECUTOR_CORES, NUM_EXECUTORS)
 
   override def run(): String = {
     val totalExecutorCores = longOptionValue(TOTAL_EXECUTOR_CORES).toInt
     require(totalExecutorCores > 0)
-
-    val numTrials = longOptionValue(NUM_TRIALS).toInt
-    require(numTrials > 0 && numTrials <= totalExecutorCores)
 
     val numExecutors = longOptionValue(NUM_EXECUTORS).toInt
     require(numExecutors > 0)
@@ -56,17 +51,8 @@ class ReceiverLoadBalanceTest extends PerfTest {
     if (ssc != null) {
       ssc.stop()
     }
-    // Select numTrials test cases. It must include "1" and "totalExecutorCores" if "numTrials != 1".
-    // But if "numTrials == 1", just test "totalExecutorCores".
-    val numReceiversTestCases = mutable.ArrayBuffer(1)
-    for (i <- 1 until numTrials if numReceiversTestCases.size < numTrials) {
-      val step = totalExecutorCores / (numTrials - 1)
-      numReceiversTestCases += numReceiversTestCases.last + step
-    }
-    if (numReceiversTestCases.last != totalExecutorCores) {
-      numReceiversTestCases(numReceiversTestCases.size - 1) = totalExecutorCores
-    }
-    for (numReceivers <- numReceiversTestCases) {
+
+    for (numReceivers <- 1 to totalExecutorCores) {
       println(s"Testing $numReceivers receivers")
       runTest(numReceivers, totalExecutorCores, numExecutors)
     }
@@ -124,9 +110,14 @@ class ReceiverLoadBalanceTest extends PerfTest {
       ssc.start()
 
       // Assume all receivers should start in totalDurationSec seconds
-      ssc.awaitTermination(totalDurationSec * 1000)
-      if (receiverLocations.size < numReceivers) {
-        throw new AssertionError(s"$numReceivers receivers cannot start in ${totalDurationSec} seconds")
+      val streamingStartTime = System.currentTimeMillis()
+      val timeout = totalDurationSec * 1000
+      while (receiverLocations.size < numReceivers) {
+        if (System.currentTimeMillis() < streamingStartTime + timeout) {
+          Thread.sleep(100)
+        } else {
+          throw new AssertionError(s"$numReceivers receivers cannot start in ${totalDurationSec} seconds")
+        }
       }
       val locationsToNumReceivers = receiverLocations.groupBy(_._2).map { case (location, values) =>
         (location, values.size)
