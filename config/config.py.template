@@ -441,8 +441,14 @@ if MLLIB_SPARK_VERSION >= 1.5:
         OptionSet("reg-type", ["elastic-net"]),
         # Runs with L2 (param = 0.0), L1 (param = 1.0), and mixing L1/L2.
         OptionSet("elastic-net-param", [0.0, 0.5, 1.0]),
-        # Runs with lambda = [0.0, 0.5, 1.0, 10.0]
-        OptionSet("reg-param", [0.0, 0.5, 1.0, 10.0])
+        # Runs with lambda = [0.0, 0.5]
+        OptionSet("reg-param", [0.0, 0.5]),
+        # The scale factor for the noise
+        OptionSet("epsilon", [0.1]),
+        # The intercept for the data
+        OptionSet("intercept", [0.0]),
+        # The step size is not used in LBFGS, but this is required in parameter checking.
+        OptionSet("step-size", [0.0])
     ]
 
     MLLIB_TESTS += [("glm-regression", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
@@ -477,8 +483,14 @@ if MLLIB_SPARK_VERSION >= 1.5:
         OptionSet("reg-type", ["elastic-net"]),
         # Runs with L2 (param = 0.0), L1 (param = 1.0), and mixing L1/L2.
         OptionSet("elastic-net-param", [0.0, 0.5, 1.0]),
-        # Runs with lambda = [0.0, 0.5, 1.0, 10.0]
-        OptionSet("reg-param", [0.0, 0.5, 1.0, 10.0])
+        # Runs with lambda = [0.0, 0.5]
+        OptionSet("reg-param", [0.0, 0.5]),
+        # The scale factor for the noise
+        OptionSet("epsilon", [0.1]),
+        # The intercept for the data
+        OptionSet("intercept", [0.0]),
+        # The step size is not used in LBFGS, but this is required in parameter checking.
+        OptionSet("step-size", [0.0])
     ]
 
     MLLIB_TESTS += [("glm-classification", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,

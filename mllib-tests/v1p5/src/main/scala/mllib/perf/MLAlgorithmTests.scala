@@ -89,7 +89,7 @@ abstract class GLMTests(sc: SparkContext)
   val OPTIMIZER =         ("optimizer", "optimization algorithm (elastic-net only supports lbfgs): sgd, lbfgs")
 
   intOptions = intOptions ++ Seq(NUM_ITERATIONS)
-  doubleOptions = doubleOptions ++ Seq(STEP_SIZE, REG_PARAM)
+  doubleOptions = doubleOptions ++ Seq(ELASTIC_NET_PARAM, STEP_SIZE, REG_PARAM)
   stringOptions = stringOptions ++ Seq(REG_TYPE, OPTIMIZER)
 }
 
