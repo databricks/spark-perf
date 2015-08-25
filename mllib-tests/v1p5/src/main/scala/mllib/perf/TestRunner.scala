@@ -35,7 +35,6 @@ object TestRunner {
         // clustering
         case "gmm" => new GaussianMixtureTest(sc)
         case "kmeans" => new KMeansTest(sc)
-        case "gmm" => new GaussianMixtureTest(sc)
         case "emlda" => new EMLDATest(sc)
         case "onlinelda" => new OnlineLDATest(sc)
         // trees
