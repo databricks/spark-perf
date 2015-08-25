@@ -439,8 +439,8 @@ if MLLIB_SPARK_VERSION >= 1.5:
         OptionSet("optimizer", ["lbfgs"]),
         # Using elastic-net regularization.
         OptionSet("reg-type", ["elastic-net"]),
-        # Runs with L2 (param = 0.0), L1 (param = 1.0), and mixing L1/L2.
-        OptionSet("elastic-net-param", [0.0, 0.5, 1.0]),
+        # Runs with L2 (param = 0.0), L1 (param = 1.0).
+        OptionSet("elastic-net-param", [0.0, 1.0]),
         # Runs with lambda = [0.0, 0.5]
         OptionSet("reg-param", [0.0, 0.5]),
         # The scale factor for the noise
@@ -481,8 +481,8 @@ if MLLIB_SPARK_VERSION >= 1.5:
         OptionSet("optimizer", ["lbfgs"]),
         # Using elastic-net regularization.
         OptionSet("reg-type", ["elastic-net"]),
-        # Runs with L2 (param = 0.0), L1 (param = 1.0), and mixing L1/L2.
-        OptionSet("elastic-net-param", [0.0, 0.5, 1.0]),
+        # Runs with L2 (param = 0.0), L1 (param = 1.0).
+        OptionSet("elastic-net-param", [0.0, 1.0]),
         # Runs with lambda = [0.0, 0.5]
         OptionSet("reg-param", [0.0, 0.5]),
         # The scale factor for the noise
@@ -505,7 +505,7 @@ NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # Naive Bayes smoothing lambda.
     OptionSet("nb-lambda", [1.0]),
     # Model type: either Multinomial or Bernoulli
-    OptionSet("model-type", ["Multinomial"]),
+    OptionSet("model-type", ["Multinomial"]),    
 ]
 
 MLLIB_TESTS += [("naive-bayes", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,

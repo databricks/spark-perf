@@ -253,9 +253,9 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
           s"GLMRegressionTest run with unknown regType ($regType) with sgd.  Supported values: none, l1, l2.")
       }
     } else if (Array("lbfgs").contains(optimizer)) {
-      if (Array("hinge").contains(loss)) {
+      if (!Array("logistic").contains(loss)) {
         throw new IllegalArgumentException(
-          s"GLMRegressionTest doesn't support hinge loss with lbfgs.")
+          s"GLMRegressionTest with lbfgs only supports logistic loss.")
       }
       if (!Array("none", "elastic-net").contains(regType)) {
         throw new IllegalArgumentException(
