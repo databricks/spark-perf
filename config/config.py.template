@@ -429,6 +429,32 @@ MLLIB_GLM_REGRESSION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
 MLLIB_TESTS += [("glm-regression", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("glm-regression")] + MLLIB_GLM_REGRESSION_TEST_OPTS)]
 
+if MLLIB_SPARK_VERSION >= 1.5:
+    MLLIB_GLM_ELASTIC_NET_REGRESSION_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+        # Loss to minimize: l2 (squared error)
+        OptionSet("loss", ["l2"]),
+        # The max number of iterations for LBFGS/OWLQN
+        OptionSet("num-iterations", [20]),
+        # LBFGS/OWLQN is used with elastic-net regularization.
+        OptionSet("optimizer", ["lbfgs"]),
+        # Using elastic-net regularization.
+        OptionSet("reg-type", ["elastic-net"]),
+        # Runs with L2 (param = 0.0), L1 (param = 1.0).
+        OptionSet("elastic-net-param", [0.0, 1.0]),
+        # Runs with lambda = [0.0, 0.5]
+        OptionSet("reg-param", [0.0, 0.5]),
+        # The scale factor for the noise
+        OptionSet("epsilon", [0.1]),
+        # The intercept for the data
+        OptionSet("intercept", [0.0]),
+        # The step size is not used in LBFGS, but this is required in parameter checking.
+        OptionSet("step-size", [0.0])
+    ]
+
+    MLLIB_TESTS += [("glm-regression", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("glm-regression")] +
+        MLLIB_GLM_ELASTIC_NET_REGRESSION_TEST_OPTS)]
+
 # Classification Tests #
 MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
      # Expected fraction of examples which are negative
@@ -446,6 +472,30 @@ MLLIB_GLM_CLASSIFICATION_TEST_OPTS = MLLIB_CLASSIFICATION_TEST_OPTS + [
 MLLIB_TESTS += [("glm-classification", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("glm-classification")] +
     MLLIB_GLM_CLASSIFICATION_TEST_OPTS)]
+
+if MLLIB_SPARK_VERSION >= 1.5:
+    MLLIB_GLM_ELASTIC_NET_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_CLASSIFICATION_TEST_OPTS + [
+        # In GLM classification with elastic-net regularization, only logistic loss is supported.
+        OptionSet("loss", ["logistic"]),
+        # LBFGS/OWLQN is used with elastic-net regularization.
+        OptionSet("optimizer", ["lbfgs"]),
+        # Using elastic-net regularization.
+        OptionSet("reg-type", ["elastic-net"]),
+        # Runs with L2 (param = 0.0), L1 (param = 1.0).
+        OptionSet("elastic-net-param", [0.0, 1.0]),
+        # Runs with lambda = [0.0, 0.5]
+        OptionSet("reg-param", [0.0, 0.5]),
+        # The scale factor for the noise
+        OptionSet("epsilon", [0.1]),
+        # The intercept for the data
+        OptionSet("intercept", [0.0]),
+        # The step size is not used in LBFGS, but this is required in parameter checking.
+        OptionSet("step-size", [0.0])
+    ]
+
+    MLLIB_TESTS += [("glm-classification", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("glm-classification")] +
+        MLLIB_GLM_ELASTIC_NET_CLASSIFICATION_TEST_OPTS)]
 
 NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # Expected fraction of examples which are negative
