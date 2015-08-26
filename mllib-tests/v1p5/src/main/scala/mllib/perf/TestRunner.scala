@@ -9,7 +9,7 @@ import org.json4s.jackson.JsonMethods._
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 
-import mllib.perf.clustering.GaussianMixtureTest
+import mllib.perf.clustering.{EMLDATest, GaussianMixtureTest, OnlineLDATest}
 import mllib.perf.feature.Word2VecTest
 import mllib.perf.fpm.{FPGrowthTest, PrefixSpanTest}
 import mllib.perf.linalg.BlockMatrixMultTest
@@ -35,6 +35,8 @@ object TestRunner {
         // clustering
         case "gmm" => new GaussianMixtureTest(sc)
         case "kmeans" => new KMeansTest(sc)
+        case "emlda" => new EMLDATest(sc)
+        case "onlinelda" => new OnlineLDATest(sc)
         // trees
         case "decision-tree" => new DecisionTreeTest(sc)
         // linalg

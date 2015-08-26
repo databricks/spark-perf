@@ -443,7 +443,7 @@ class NaiveBayesTest(sc: SparkContext)
     val sf: Double = doubleOptionValue(SCALE)
     val modelType = stringOptionValue(MODEL_TYPE)
 
-    val data = if (modelType == "Bernoulli") {
+    val data = if (modelType == "bernoulli") {
       DataGenerator.generateBinaryLabeledPoints(sc,
         math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, numPartitions, seed)
     } else {
