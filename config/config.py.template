@@ -641,8 +641,8 @@ if MLLIB_SPARK_VERSION >= 1.4:
 
 # TODO: tune PIC test size to run in 20-30 seconds
 MLLIB_PIC_TEST_OPTS = MLLIB_COMMON_OPTS + [
-    OptionSet("num-points", [10000], can_scale=True),
-    OptionSet("num-columns", [100], can_scale=False),
+    OptionSet("sqrt-num-points", [100], can_scale=True),
+    OptionSet("node-degree", [10], can_scale=False),
     OptionSet("num-centers", [20], can_scale=False),
     OptionSet("num-iterations", [20])]
 
