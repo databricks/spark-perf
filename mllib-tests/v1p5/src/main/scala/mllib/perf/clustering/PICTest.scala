@@ -4,47 +4,38 @@ import org.json4s.JValue
 import org.json4s.JsonDSL._
 
 import org.apache.spark.SparkContext
-import org.apache.spark.graphx.{Edge, Graph}
 import org.apache.spark.mllib.clustering.PowerIterationClustering
+import org.apache.spark.rdd.RDD
 
 import mllib.perf.PerfTest
 
 class PICTest(sc: SparkContext) extends PerfTest {
 
-  val NUM_POINTS_SQUARED = ("num-points-squared", "number of points squared (for linear test-size scaling)")
+  val NUM_POINTS = ("num-points", "number of points")
   val NODE_DEGREE = ("node-degree", "number of neighbors each node is connected to")
   val NUM_CENTERS = ("num-centers", "number of centers for clustering tests")
   val NUM_ITERATIONS = ("num-iterations", "number of iterations for the algorithm")
 
   intOptions ++= Seq(NODE_DEGREE, NUM_CENTERS, NUM_ITERATIONS)
-  longOptions ++= Seq(NUM_POINTS_SQUARED)
+  longOptions ++= Seq(NUM_POINTS)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
 
-  var data: Graph[Double, Double] = _
+  var data: RDD[(Long, Long, Double)] = _
 
   override def createInputData(seed: Long): Unit = {
-    val numPoints = math.sqrt(longOptionValue(NUM_POINTS_SQUARED)).toInt
+    val numPoints = longOptionValue(NUM_POINTS)
     val nodeDegree = intOptionValue(NODE_DEGREE)
-    val numCenters = intOptionValue(NUM_CENTERS)
     val numPartitions = intOptionValue(NUM_PARTITIONS)
 
     // Generates a periodic banded matrix with bandwidth nodeDegree / 2
-    val similarities = sc.parallelize(0L to numPoints)
+    val data = sc.parallelize(0L to numPoints, numPartitions)
       .flatMap { id =>
-        (((id - nodeDegree / 2) % numPoints) to ((id + nodeDegree / 2) % numPoints)).map { nbr =>
+        (((id - nodeDegree / 2) % numPoints) until id).map { nbr =>
           (id, nbr, 1D)
         }
       }
-    val edges = similarities.flatMap { case (i, j, s) =>
-      if (i != j) {
-        Seq(Edge(i, j, s), Edge(j, i, s))
-      } else {
-        None
-      }
-    }
-    data = Graph.fromEdges(edges, 0.0)
-    logInfo(s"Generated ${similarities.count()} pairwise similarities.")
+    logInfo(s"Generated ${data.count()} pairwise similarities.")
   }
 
   override def run(): JValue = {
