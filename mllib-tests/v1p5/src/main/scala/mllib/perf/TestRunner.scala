@@ -2,12 +2,11 @@ package mllib.perf
 
 import scala.collection.JavaConverters._
 
-import org.json4s.JsonDSL._
 import org.json4s.JsonAST._
+import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
 
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkConf, SparkContext}
 
 import mllib.perf.clustering.{EMLDATest, GaussianMixtureTest, OnlineLDATest, PICTest}
 import mllib.perf.feature.Word2VecTest

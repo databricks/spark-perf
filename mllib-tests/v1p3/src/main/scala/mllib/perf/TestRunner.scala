@@ -2,14 +2,13 @@ package mllib.perf
 
 import scala.collection.JavaConverters._
 
-import org.json4s.JsonDSL._
 import org.json4s.JsonAST._
+import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
 
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkConf, SparkContext}
 
-import mllib.perf.clustering.GaussianMixtureTest
+import mllib.perf.clustering.{GaussianMixtureTest, PICTest}
 import mllib.perf.feature.Word2VecTest
 import mllib.perf.fpm.FPGrowthTest
 import mllib.perf.linalg.BlockMatrixMultTest
@@ -34,6 +33,7 @@ object TestRunner {
         case "als" => new ALSTest(sc)
         // clustering
         case "kmeans" => new KMeansTest(sc)
+        case "pic" => new PICTest(sc)
         // trees
         case "decision-tree" => new DecisionTreeTest(sc)
         // linalg
