@@ -495,6 +495,7 @@ class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
 }
 
 // Clustering
+// TODO: refactor into mllib.perf.clustering like the other clustering tests
 class KMeansTest(sc: SparkContext) extends ClusteringTests(sc) {
   override def runTest(rdd: RDD[Vector]): KMeansModel = {
     val numIterations: Int = intOptionValue(NUM_ITERATIONS)
@@ -516,8 +517,7 @@ case class MLGBTClassificationModel(model: GBTClassificationModel) extends TreeB
  * Parent class for DecisionTree-based tests which run on a large dataset.
  */
 abstract class DecisionTreeTests(sc: SparkContext)
-  extends RegressionAndClassificationTests[TreeBasedModel](
-    sc) {
+  extends RegressionAndClassificationTests[TreeBasedModel](sc) {
 
   val TEST_DATA_FRACTION =
     ("test-data-fraction",  "fraction of data to hold out for testing (ignored if given training and test dataset)")

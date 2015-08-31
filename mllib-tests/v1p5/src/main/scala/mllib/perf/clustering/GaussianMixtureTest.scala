@@ -15,7 +15,6 @@ import mllib.perf.PerfTest
 
 class GaussianMixtureTest(sc: SparkContext) extends PerfTest {
 
-  // TODO: refactor k-means and GMM code
   val NUM_POINTS = ("num-points", "number of points for clustering tests")
   val NUM_COLUMNS = ("num-columns", "number of columns for each point for clustering tests")
   val NUM_CENTERS = ("num-centers", "number of centers for clustering tests")
