@@ -28,11 +28,11 @@ class PICTest(sc: SparkContext) extends PerfTest {
     val nodeDegree = intOptionValue(NODE_DEGREE)
     val numPartitions = intOptionValue(NUM_PARTITIONS)
 
-    // Generates a periodic banded matrix with bandwidth nodeDegree / 2
+    // Generates a periodic banded matrix with bandwidth = nodeDegree
     val data = sc.parallelize(0L to numPoints, numPartitions)
       .flatMap { id =>
         (((id - nodeDegree / 2) % numPoints) until id).map { nbr =>
-          (id, nbr, 1D)
+          (id, (nbr + numPoints) % numPoints, 1D)
         }
       }
     logInfo(s"Generated ${data.count()} pairwise similarities.")
