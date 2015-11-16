@@ -1,5 +1,6 @@
 package mllib.perf
 
+import org.apache.spark.mllib.optimization.{Optimizer, SquaredL2Updater, L1Updater, SimpleUpdater}
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL._
 
@@ -140,7 +141,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     val regParam = doubleOptionValue(REG_PARAM)
     val elasticNetParam = doubleOptionValue(ELASTIC_NET_PARAM)
     val numIterations = intOptionValue(NUM_ITERATIONS)
-    val optimizer = stringOptionValue(OPTIMIZER)
+    // val optimizer = stringOptionValue(OPTIMIZER)  // ignore for now since it makes config hard to do
 
     // Linear Regression only supports squared loss for now.
     if (!Array("l2").contains(loss)) {
@@ -148,38 +149,26 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
         s"GLMRegressionTest run with unknown loss ($loss).  Supported values: l2.")
     }
 
-    if (Array("sgd").contains(optimizer)) {
-      if (!Array("none", "l1", "l2").contains(regType)) {
-        throw new IllegalArgumentException(
-          s"GLMRegressionTest run with unknown regType ($regType) with sgd.  Supported values: none, l1, l2.")
-      }
-    } else if (Array("lbfgs").contains(optimizer)) {
-      if (!Array("elastic-net").contains(regType)) {
-        throw new IllegalArgumentException(
-          s"GLMRegressionTest run with unknown regType ($regType) with lbfgs.  Supported values: elastic-net.")
-      }
-    } else {
-      throw new IllegalArgumentException(
-        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs.")
-    }
-
     (loss, regType) match {
       case ("l2", "none") =>
         val lr = new LinearRegressionWithSGD().setIntercept(addIntercept = true)
-        lr.optimizer.setNumIterations(numIterations).setStepSize(stepSize)
+        lr.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setConvergenceTol(0.0)
         lr.run(rdd)
       case ("l2", "l1") =>
         val lasso = new LassoWithSGD().setIntercept(addIntercept = true)
         lasso.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
+          .setConvergenceTol(0.0)
         lasso.run(rdd)
       case ("l2", "l2") =>
         val rr = new RidgeRegressionWithSGD().setIntercept(addIntercept = true)
         rr.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
+          .setConvergenceTol(0.0)
         rr.run(rdd)
       case ("l2", "elastic-net") =>
-        println("WARNING: Linear Regression with elastic-net in ML package uses LBFGS/OWLQN for optimization" +
-          " which ignores stepSize and uses numIterations for maxIter in Spark 1.5.")
-        val rr = new LinearRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam).setMaxIter(numIterations)
+        println("WARNING: Linear Regression with elastic-net in ML package uses LBFGS/OWLQN for" +
+          " optimization which ignores stepSize and uses numIterations for maxIter in Spark 1.5.")
+        val rr = new LinearRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam)
+          .setMaxIter(numIterations)
         val sqlContext = new SQLContext(rdd.context)
         import sqlContext.implicits._
         val mlModel = rr.fit(rdd.toDF())
@@ -247,46 +236,68 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
         s"GLMClassificationTest run with unknown loss ($loss).  Supported values: logistic, hinge.")
     }
 
-    if (Array("sgd").contains(optimizer)) {
-      if (!Array("none", "l1", "l2").contains(regType)) {
-        throw new IllegalArgumentException(
-          s"GLMRegressionTest run with unknown regType ($regType) with sgd.  Supported values: none, l1, l2.")
-      }
-    } else if (Array("lbfgs").contains(optimizer)) {
-      if (!Array("logistic").contains(loss)) {
-        throw new IllegalArgumentException(
-          s"GLMRegressionTest with lbfgs only supports logistic loss.")
-      }
-      if (!Array("none", "elastic-net").contains(regType)) {
-        throw new IllegalArgumentException(
-          s"GLMRegressionTest run with unknown regType ($regType) with lbfgs.  Supported values: none, elastic-net.")
+    if (regType == "elastic-net") {  // use spark.ml
+      loss match {
+        case "logistic" =>
+          println("WARNING: Logistic Regression with elastic-net in ML package uses LBFGS/OWLQN for optimization" +
+            " which ignores stepSize in Spark 1.5.")
+          val lor = new LogisticRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam)
+            .setMaxIter(numIterations)
+          val sqlContext = new SQLContext(rdd.context)
+          import sqlContext.implicits._
+          val mlModel = lor.fit(rdd.toDF())
+          new LogisticRegressionModel(mlModel.weights, mlModel.intercept)
+        case _ =>
+          throw new IllegalArgumentException(
+            s"GLMClassificationTest given unsupported loss = $loss." +
+              s" Note the set of supported combinations increases in later Spark versions.")
       }
     } else {
-      throw new IllegalArgumentException(
-        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs.")
-    }
-
-    (loss, regType, optimizer) match {
-      case ("logistic", "none", "sgd") =>
-        LogisticRegressionWithSGD.train(rdd, numIterations, stepSize)
-      case ("logistic", "none", "lbfgs") =>
-        println("WARNING: LogisticRegressionWithLBFGS ignores numIterations, stepSize" +
-          " in this Spark version.")
-        new LogisticRegressionWithLBFGS().run(rdd)
-      case ("logistic", "elastic-net", _) =>
-        println("WARNING: Logistic Regression with elastic-net in ML package uses LBFGS/OWLQN for optimization" +
-          " which ignores stepSize and uses numIterations for maxIter in Spark 1.5.")
-        val lor = new LogisticRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam).setMaxIter(numIterations)
-        val sqlContext = new SQLContext(rdd.context)
-        import sqlContext.implicits._
-        val mlModel = lor.fit(rdd.toDF())
-        new LogisticRegressionModel(mlModel.weights, mlModel.intercept)
-      case ("hinge", "l2", "sgd") =>
-        SVMWithSGD.train(rdd, numIterations, stepSize, regParam)
-      case _ =>
-        throw new IllegalArgumentException(
-          s"GLMClassificationTest given incompatible (loss, regType) = ($loss, $regType)." +
-            s" Note the set of supported combinations increases in later Spark versions.")
+      (loss, optimizer) match {
+        case ("logistic", "sgd") =>
+          val lr = new LogisticRegressionWithSGD()
+          lr.optimizer.setStepSize(stepSize).setNumIterations(numIterations).setConvergenceTol(0.0)
+          regType match {
+            case "none" =>
+              lr.optimizer.setUpdater(new SimpleUpdater)
+            case "l1" =>
+              lr.optimizer.setUpdater(new L1Updater)
+            case "l2" =>
+              lr.optimizer.setUpdater(new SquaredL2Updater)
+          }
+          lr.run(rdd)
+        case ("logistic", "lbfgs") =>
+          println("WARNING: LogisticRegressionWithLBFGS ignores stepSize in this Spark version.")
+          val lr = new LogisticRegressionWithLBFGS()
+          lr.optimizer.setNumIterations(numIterations).setConvergenceTol(0.0)
+          regType match {
+            case "none" =>
+              lr.optimizer.setUpdater(new SimpleUpdater)
+            case "l1" =>
+              lr.optimizer.setUpdater(new L1Updater)
+            case "l2" =>
+              lr.optimizer.setUpdater(new SquaredL2Updater)
+          }
+          lr.run(rdd)
+        case ("hinge", "sgd") =>
+          val svm = new SVMWithSGD()
+          svm.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
+            .setConvergenceTol(0.0)
+          regType match {
+            case "none" =>
+              svm.optimizer.setUpdater(new SimpleUpdater)
+            case "l1" =>
+              svm.optimizer.setUpdater(new L1Updater)
+            case "l2" =>
+              svm.optimizer.setUpdater(new SquaredL2Updater)
+          }
+          svm.run(rdd)
+        case _ =>
+          throw new IllegalArgumentException(
+            s"GLMClassificationTest given incompatible (loss, regType) = ($loss, $regType)." +
+              s" Supported combinations include: (elastic-net, _), (logistic, sgd), (logistic, lbfgs), (hinge, sgd)." +
+              s" Note the set of supported combinations increases in later Spark versions.")
+      }
     }
   }
 }
@@ -322,7 +333,7 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
 
     val data = DataGenerator.generateRatings(sc, numUsers, numProducts,
-      math.ceil(numRatings * 1.25).toLong, implicitRatings,numPartitions,seed)
+      math.ceil(numRatings).toLong, implicitRatings,numPartitions,seed)
 
     rdd = data._1.cache()
     testRdd = data._2
@@ -490,7 +501,7 @@ class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
     val seed = intOptionValue(RANDOM_SEED) + 12
 
     new ALS().setIterations(numIterations).setRank(rank).setSeed(seed).setLambda(regParam)
-      .setBlocks(rdd.partitions.size).run(rdd)
+      .setBlocks(rdd.partitions.length).run(rdd)
   }
 }
 
@@ -627,7 +638,6 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
       seed: Long): (Array[RDD[LabeledPoint]], Map[Int, Int], Int) = {
     // Generic test options
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
-    val testDataFraction: Double = getTestDataFraction
     // Data dimensions and type
     val numExamples: Long = longOptionValue(NUM_EXAMPLES)
     val numFeatures: Int = intOptionValue(NUM_FEATURES)
@@ -642,7 +652,7 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
         numFeatures, numPartitions, labelType,
         fracCategoricalFeatures, fracBinaryFeatures, treeDepth, seed)
 
-    val splits = rdd_.randomSplit(Array(1.0 - testDataFraction, testDataFraction), seed)
+    val splits = rdd_.randomSplit(Array(0.8, 0.2), seed)
     (splits, categoricalFeaturesInfo_, labelType)
   }
 

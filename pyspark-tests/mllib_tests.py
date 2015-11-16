@@ -134,24 +134,35 @@ class GLMClassificationTest(GLMTest):
         :return:  Trained model to be passed to test.
         """
         options = self.options
-        if options.loss == "logistic":
-            if options.optimizer == "sgd":
-                return LogisticRegressionWithSGD.train(data=rdd,
-                                                       iterations=options.num_iterations,
-                                                       step=options.step_size,
-                                                       miniBatchFraction=1.0,
-                                                       regParam=options.reg_param,
-                                                       regType=options.reg_type)
-            else:
-                raise Exception("GLMClassificationTest cannot run with loss = %s, optimizer = %s" \
-                                % (options.loss, options.optimizer))
-        elif options.loss == "hinge":
-            if options.optimizer == "sgd":
-                return SVMWithSGD.train(data=rdd, iterations=options.num_iterations,
-                                        step=options.step_size, regParam=options.reg_param,
-                                        miniBatchFraction=1.0, regType=options.reg_type)
+        if options.reg_type == "elastic-net":
+            # use spark.ml
+            raise NotImplementedError("GLMClassificationTest in PySpark does not yet support"
+                                      " elastic-net")
         else:
-            raise Exception("GLMClassificationTest does not recognize loss: %s" % options.loss)
+            if options.loss == "logistic":
+                if options.optimizer == "sgd":
+                    return LogisticRegressionWithSGD.train(data=rdd,
+                                                           iterations=options.num_iterations,
+                                                           step=options.step_size,
+                                                           miniBatchFraction=1.0,
+                                                           regParam=options.reg_param,
+                                                           regType=options.reg_type)
+                elif options.optimizer == "lbfgs":
+                    return LogisticRegressionWithLBFGS.train(data=rdd,
+                                                             iterations=options.num_iterations,
+                                                             regParam=options.reg_param,
+                                                             regType=options.reg_type,
+                                                             tolerance=0.0)
+                else:
+                    raise Exception("GLMClassificationTest cannot run with loss = %s,"
+                                    " optimizer = %s" % (options.loss, options.optimizer))
+            elif options.loss == "hinge":
+                if options.optimizer == "sgd":
+                    return SVMWithSGD.train(data=rdd, iterations=options.num_iterations,
+                                            step=options.step_size, regParam=options.reg_param,
+                                            miniBatchFraction=1.0, regType=options.reg_type)
+            else:
+                raise Exception("GLMClassificationTest does not recognize loss: %s" % options.loss)
 
     def evaluate(self, model, rdd):
         return PredictionTest._evaluateAccuracy(model, rdd)
@@ -163,20 +174,24 @@ class GLMRegressionTest(GLMTest):
 
     def train(self, rdd):
         """
+        This ignores the optimizer parameter since it makes config difficult for Linear Regression.
         :return:  Trained model to be passed to test.
         """
         options = self.options
         if options.loss == "l2":
-            if options.optimizer == "sgd":
+            if options.reg_type in ["none", "l1", "l2"]:
                 return LinearRegressionWithSGD.train(data=rdd,
                                                      iterations=options.num_iterations,
                                                      step=options.step_size,
                                                      miniBatchFraction=1.0,
                                                      regParam=options.reg_param,
                                                      regType=options.reg_type)
+            elif options.reg_type == "elastic-net":
+                raise NotImplementedError("GLMRegressionTest in PySpark does not yet support"
+                                          " elastic-net")
             else:
-                raise Exception("GLMRegressionTest cannot run with loss = %s, optimizer = %s" \
-                                % (options.loss, options.optimizer))
+                raise Exception("GLMRegressionTest cannot run with loss = %s, reg_type = %s" \
+                                % (options.loss, options.reg_type))
         else:
             raise Exception("GLMRegressionTest does not recognize loss: %s" % options.loss)
 
@@ -193,10 +208,10 @@ class NaiveBayesTest(PredictionTest):
         numTrain = options.num_points
         numTest = int(options.num_points * 0.2)
         self.trainRDD = LabeledDataGenerator.generateGLMData(
-            self.sc, numTrain, options.num_columns,
+            self.sc, numTrain, options.num_features,
             options.num_partitions, options.random_seed, labelType=2)
         self.testRDD = LabeledDataGenerator.generateGLMData(
-            self.sc, numTest, options.num_columns,
+            self.sc, numTest, options.num_features,
             options.num_partitions, options.random_seed + 1, labelType=2)
 
     def evaluate(self, model, rdd):
@@ -313,6 +328,7 @@ if __name__ == "__main__":
     parser.add_option("--reg-type", type="string", default="none")
     parser.add_option("--loss", type="string", default="L2")
     parser.add_option("--optimizer", type="string", default="sgd")
+    parser.add_option("--elastic-net-param", type="float", default=0.0)
     # MLLIB_GLM_REGRESSION_TEST_OPTS
     parser.add_option("--intercept", type="float", default=0.0)
     parser.add_option("--epsilon", type="float", default=0.1)
@@ -321,6 +337,7 @@ if __name__ == "__main__":
     # NAIVE_BAYES_TEST_OPTS
     parser.add_option("--per-negative", type="float", default=0.3)
     parser.add_option("--nb-lambda", type="float", default=1.0)
+    parser.add_option("--model-type", type="string", default="multinomial")
     # MLLIB_DECISION_TREE_TEST_OPTS
     parser.add_option("--label-type", type="int", default=2)
     parser.add_option("--frac-categorical-features", type="float", default=0.5)

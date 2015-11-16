@@ -370,7 +370,7 @@ MLLIB_PERF_TEST_RUNNER = "mllib.perf.TestRunner"
 #  * Build Spark locally by running `build/sbt assembly; build/sbt publishLocal` in the Spark root directory
 #  * Set `USE_CLUSTER_SPARK = True` and `MLLIB_SPARK_VERSION = {desired Spark version, e.g. 1.5}`
 #  * Don't use PREP_MLLIB_TESTS = True; instead manually run `cd mllib-tests; sbt/sbt -Dspark.version=1.5.0-SNAPSHOT clean assembly` to build perf tests
-MLLIB_SPARK_VERSION = 1.2
+MLLIB_SPARK_VERSION = 1.5
 
 MLLIB_JAVA_OPTS = COMMON_JAVA_OPTS
 if MLLIB_SPARK_VERSION >= 1.1:
@@ -413,7 +413,12 @@ MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
 if MLLIB_SPARK_VERSION >= 1.1:
     MLLIB_GLM_TEST_OPTS += [
         # Optimization algorithm: sgd, lbfgs
-        OptionSet("optimizer", ["sgd"])
+        OptionSet("optimizer", ["sgd", "lbfgs"])
+    ]
+if MLLIB_SPARK_VERSION >= 1.5:
+    MLLIB_GLM_TEST_OPTS += [
+        # Ignored, but required for config
+        OptionSet("elastic-net-param", [0.0])
     ]
 
 # GLM Regression Tests #
@@ -441,8 +446,8 @@ if MLLIB_SPARK_VERSION >= 1.5:
         OptionSet("reg-type", ["elastic-net"]),
         # Runs with L2 (param = 0.0), L1 (param = 1.0).
         OptionSet("elastic-net-param", [0.0, 1.0]),
-        # Runs with lambda = [0.0, 0.5]
-        OptionSet("reg-param", [0.0, 0.5]),
+        # Regularization param (lambda)
+        OptionSet("reg-param", [0.01]),
         # The scale factor for the noise
         OptionSet("epsilon", [0.1]),
         # The intercept for the data
@@ -466,7 +471,7 @@ MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
 # GLM Classification Tests #
 MLLIB_GLM_CLASSIFICATION_TEST_OPTS = MLLIB_CLASSIFICATION_TEST_OPTS + [
     # Loss to minimize: logistic, hinge (SVM)
-    OptionSet("loss", ["logistic", "hinge"])
+    OptionSet("loss", ["logistic"])
 ]
 
 MLLIB_TESTS += [("glm-classification", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
@@ -483,8 +488,8 @@ if MLLIB_SPARK_VERSION >= 1.5:
         OptionSet("reg-type", ["elastic-net"]),
         # Runs with L2 (param = 0.0), L1 (param = 1.0).
         OptionSet("elastic-net-param", [0.0, 1.0]),
-        # Runs with lambda = [0.0, 0.5]
-        OptionSet("reg-param", [0.0, 0.5]),
+        # Regularization param (lambda)
+        OptionSet("reg-param", [0.01]),
         # The scale factor for the noise
         OptionSet("epsilon", [0.1]),
         # The intercept for the data
@@ -504,29 +509,13 @@ NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     OptionSet("scale-factor", [1.0]),
     # Naive Bayes smoothing lambda.
     OptionSet("nb-lambda", [1.0]),
-    # Model type: either Multinomial or Bernoulli
+    # Model type: either multinomial or bernoulli (bernoulli only available in Spark 1.4+)
     OptionSet("model-type", ["multinomial"]),
 ]
 
 MLLIB_TESTS += [("naive-bayes", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
     NAIVE_BAYES_TEST_OPTS)]
-
-if MLLIB_SPARK_VERSION >= 1.4:
-    NAIVE_BAYES_TEST_OPTS_BERNOULLI = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
-        # Expected fraction of examples which are negative
-        OptionSet("per-negative", [0.3]),
-        # The scale factor for the noise in feature values
-        OptionSet("scale-factor", [1.0]),
-        # Naive Bayes smoothing lambda.
-        OptionSet("nb-lambda", [1.0]),
-        # MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
-        OptionSet("model-type", ["bernoulli"]),
-    ]
-
-    MLLIB_TESTS += [("naive-bayes-bernoulli", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("naive-bayes")] +
-        NAIVE_BAYES_TEST_OPTS_BERNOULLI)]
 
 # Decision Trees #
 MLLIB_DECISION_TREE_TEST_OPTS = MLLIB_COMMON_OPTS + [
@@ -564,7 +553,8 @@ if MLLIB_SPARK_VERSION >= 1.2:
         # Path to test dataset (only used if training dataset given).
         # If not given, hold out part of training data for validation.
         OptionSet("test-data", [""]),
-        # Fraction of data to hold out for testing (ignored if given training and test dataset).
+        # Fraction of data to hold out for testing
+        #  (Ignored if given training and test dataset, or if using synthetic data.)
         OptionSet("test-data-fraction", [0.2], can_scale=False),
         # Number of trees. If 1, then run DecisionTree. If >1, then run RandomForest.
         OptionSet("num-trees", [1, 10], can_scale=False),
@@ -622,22 +612,19 @@ MLLIB_GMM_TEST_OPTS = MLLIB_COMMON_OPTS + [
 
 if MLLIB_SPARK_VERSION >= 1.3:
     MLLIB_TESTS += [("gmm", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("gmm")] + MLLIB_CLUSTERING_TEST_OPTS)]
+        MLLIB_JAVA_OPTS, [ConstantOption("gmm")] + MLLIB_GMM_TEST_OPTS)]
 
 MLLIB_LDA_TEST_OPTS = MLLIB_COMMON_OPTS + [
-    OptionSet("num-documents", [10000], can_scale=True),
-    OptionSet("num-vocab", [1000], can_scale=False),
+    OptionSet("num-documents", [50000], can_scale=True),
+    OptionSet("num-vocab", [10000], can_scale=False),
     OptionSet("num-topics", [20], can_scale=False),
     OptionSet("num-iterations", [20]),
-    OptionSet("document-length", [100])]
+    OptionSet("document-length", [100]),
+    OptionSet("optimizer", ["em", "online"])]
 
 if MLLIB_SPARK_VERSION >= 1.4:
-    MLLIB_TESTS += [("emlda", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("emlda")] + MLLIB_LDA_TEST_OPTS)]
-
-if MLLIB_SPARK_VERSION >= 1.4:
-    MLLIB_TESTS += [("onlinelda", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("onlinelda")] + MLLIB_LDA_TEST_OPTS)]
+    MLLIB_TESTS += [("lda", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
+        MLLIB_JAVA_OPTS, [ConstantOption("lda")] + MLLIB_LDA_TEST_OPTS)]
 
 # TODO: tune PIC test size to run in 20-30 seconds
 MLLIB_PIC_TEST_OPTS = MLLIB_COMMON_OPTS + [

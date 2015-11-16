@@ -8,16 +8,16 @@ import org.json4s.jackson.JsonMethods._
 
 import org.apache.spark.{SparkConf, SparkContext}
 
-import mllib.perf.clustering.{EMLDATest, GaussianMixtureTest, OnlineLDATest, PICTest}
+import mllib.perf.clustering.{GaussianMixtureTest, LDATest, PICTest}
 import mllib.perf.feature.Word2VecTest
 import mllib.perf.fpm.{FPGrowthTest, PrefixSpanTest}
 import mllib.perf.linalg.BlockMatrixMultTest
 
 object TestRunner {
     def main(args: Array[String]) {
-      if (args.size < 1) {
+      if (args.length < 1) {
         println(
-          "mllib.perf.TestRunner requires 1 or more args, you gave %s, exiting".format(args.size))
+          "mllib.perf.TestRunner requires 1 or more args, you gave %s, exiting".format(args.length))
         System.exit(1)
       }
       val testName = args(0)
@@ -34,8 +34,7 @@ object TestRunner {
         // clustering
         case "gmm" => new GaussianMixtureTest(sc)
         case "kmeans" => new KMeansTest(sc)
-        case "emlda" => new EMLDATest(sc)
-        case "onlinelda" => new OnlineLDATest(sc)
+        case "lda" => new LDATest(sc)
         case "pic" => new PICTest(sc)
         // trees
         case "decision-tree" => new DecisionTreeTest(sc)
