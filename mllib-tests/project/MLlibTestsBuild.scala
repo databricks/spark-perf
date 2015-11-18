@@ -6,7 +6,7 @@ import AssemblyKeys._
 /**
  * Build settings for MLlib. To build against a specific Spark version (e.g., 1.1.0), use
  * {{{
- * sbt -Dspark.version=1.1.0 clean ...
+ * sbt -Dspark.version=1.4.1 clean ...
  * }}}
  */
 object MLlibTestsBuild extends Build {
@@ -17,7 +17,7 @@ object MLlibTestsBuild extends Build {
     organization := "org.spark-project",
     version := "0.1",
     scalaVersion := "2.10.4",
-    sparkVersion := sys.props.getOrElse("spark.version", default="1.3.1"),
+    sparkVersion := sys.props.getOrElse("spark.version", default="1.5.2"),
     libraryDependencies ++= Seq(
       "net.sf.jopt-simple" % "jopt-simple" % "4.6",
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
@@ -33,10 +33,6 @@ object MLlibTestsBuild extends Build {
     settings = assemblySettings ++ commonSettings ++ Seq(
       scalaSource in Compile := {
         val targetFolder = sparkVersion.value match {
-          case v if v.startsWith("1.0.") => "v1p0"
-          case v if v.startsWith("1.1.") => "v1p1"
-          case v if v.startsWith("1.2.") => "v1p2"
-          case v if v.startsWith("1.3.") => "v1p3"
           case v if v.startsWith("1.4.") => "v1p4"
           case v if v.startsWith("1.5.") => "v1p5"
           case _ => throw new IllegalArgumentException(s"Do not support Spark ${sparkVersion.value}.")
