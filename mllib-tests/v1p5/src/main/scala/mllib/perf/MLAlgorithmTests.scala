@@ -1,6 +1,5 @@
 package mllib.perf
 
-import org.apache.spark.mllib.optimization.{Optimizer, SquaredL2Updater, L1Updater, SimpleUpdater}
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL._
 
@@ -11,6 +10,7 @@ import org.apache.spark.ml.regression.{GBTRegressionModel, GBTRegressor, RandomF
 import org.apache.spark.mllib.classification._
 import org.apache.spark.mllib.clustering.{KMeans, KMeansModel}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.optimization.{SquaredL2Updater, L1Updater, SimpleUpdater}
 import org.apache.spark.mllib.recommendation.{ALS, MatrixFactorizationModel, Rating}
 import org.apache.spark.mllib.regression._
 import org.apache.spark.mllib.tree.{GradientBoostedTrees, RandomForest}
@@ -333,7 +333,7 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
 
     val data = DataGenerator.generateRatings(sc, numUsers, numProducts,
-      math.ceil(numRatings).toLong, implicitRatings,numPartitions,seed)
+      numRatings, implicitRatings, numPartitions, seed)
 
     rdd = data._1.cache()
     testRdd = data._2
