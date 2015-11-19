@@ -13,16 +13,18 @@ import org.apache.spark.mllib.clustering.LDA
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.rdd.RDD
 
-abstract class LDATest(sc: SparkContext) extends PerfTest {
+class LDATest(sc: SparkContext) extends PerfTest {
 
   val NUM_DOCUMENTS = ("num-documents", "number of documents in corpus")
   val NUM_VOCABULARY = ("num-vocab", "number of terms in vocabulary")
   val NUM_TOPICS = ("num-topics", "number of topics to infer")
   val NUM_ITERATIONS = ("num-iterations", "number of iterations for the algorithm")
   val DOCUMENT_LENGTH = ("document-length", "number of words per document for the algorithm")
+  val OPTIMIZER = ("optimizer", "optimization algorithm: em or online")
 
   intOptions ++= Seq(NUM_VOCABULARY, NUM_TOPICS, NUM_ITERATIONS, DOCUMENT_LENGTH)
   longOptions ++= Seq(NUM_DOCUMENTS)
+  stringOptions ++= Seq(OPTIMIZER)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
 
@@ -54,35 +56,18 @@ abstract class LDATest(sc: SparkContext) extends PerfTest {
     }.cache()
     logInfo(s"Number of documents = ${data.count()}.")
   }
-}
 
-class EMLDATest(sc: SparkContext) extends LDATest(sc: SparkContext){
   override def run(): JValue = {
     val k = intOptionValue(NUM_TOPICS)
     val numIterations = intOptionValue(NUM_ITERATIONS)
+    val optimizer = stringOptionValue(OPTIMIZER)
     val start = System.currentTimeMillis()
     val lda = new LDA()
       .setK(k)
       .setMaxIterations(numIterations)
-      .setOptimizer("em")
+      .setOptimizer(optimizer)
     val model = lda.run(data)
     val duration = (System.currentTimeMillis() - start) / 1e3
     "time" -> duration
   }
 }
-
-class OnlineLDATest(sc: SparkContext) extends LDATest(sc: SparkContext){
-  override def run(): JValue = {
-    val k = intOptionValue(NUM_TOPICS)
-    val numIterations = intOptionValue(NUM_ITERATIONS)
-    val start = System.currentTimeMillis()
-    val lda = new LDA()
-      .setK(k)
-      .setMaxIterations(numIterations)
-      .setOptimizer("online")
-    val model = lda.run(data)
-    val duration = (System.currentTimeMillis() - start) / 1e3
-    "time" -> duration
-  }
-}
-
