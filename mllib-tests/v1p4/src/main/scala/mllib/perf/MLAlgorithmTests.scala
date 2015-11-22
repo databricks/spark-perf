@@ -79,7 +79,7 @@ abstract class GLMTests(sc: SparkContext)
   val NUM_ITERATIONS = ("num-iterations",   "number of iterations for the algorithm")
   val REG_TYPE =       ("reg-type",   "type of regularization: none, l1, l2")
   val REG_PARAM =      ("reg-param",   "the regularization parameter against overfitting")
-  val OPTIMIZER =      ("optimizer", "optimization algorithm: sgd, lbfgs")
+  val OPTIMIZER =      ("optimizer", "optimization algorithm: sgd, l-bfgs")
 
   intOptions = intOptions ++ Seq(NUM_ITERATIONS)
   doubleOptions = doubleOptions ++ Seq(STEP_SIZE, REG_PARAM)
@@ -220,15 +220,15 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
       throw new IllegalArgumentException(s"GLMClassificationTest run with unknown regType" +
         s" ($regType).  Supported values: none, l1, l2.")
     }
-    if (!Array("sgd", "lbfgs").contains(optimizer)) {
+    if (!Array("sgd", "l-bfgs").contains(optimizer)) {
       throw new IllegalArgumentException(
-        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs.")
+        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, l-bfgs.")
     }
 
     (loss, regType, optimizer) match {
       case ("logistic", "none", "sgd") =>
         LogisticRegressionWithSGD.train(rdd, numIterations, stepSize)
-      case ("logistic", "none", "lbfgs") =>
+      case ("logistic", "none", "l-bfgs") =>
         println("WARNING: LogisticRegressionWithLBFGS ignores numIterations, stepSize" +
           " in this Spark version.")
         new LogisticRegressionWithLBFGS().run(rdd)

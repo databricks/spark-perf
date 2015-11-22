@@ -147,7 +147,7 @@ class GLMClassificationTest(GLMTest):
                                                            miniBatchFraction=1.0,
                                                            regParam=options.reg_param,
                                                            regType=options.reg_type)
-                elif options.optimizer == "lbfgs":
+                elif options.optimizer == "l-bfgs":
                     return LogisticRegressionWithLBFGS.train(data=rdd,
                                                              iterations=options.num_iterations,
                                                              regParam=options.reg_param,

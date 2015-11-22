@@ -87,7 +87,7 @@ abstract class GLMTests(sc: SparkContext)
   val REG_TYPE =          ("reg-type",   "type of regularization: none, l1, l2, elastic-net")
   val ELASTIC_NET_PARAM = ("elastic-net-param",   "elastic-net param, 0.0 for L2, and 1.0 for L1")
   val REG_PARAM =         ("reg-param",   "the regularization parameter against overfitting")
-  val OPTIMIZER =         ("optimizer", "optimization algorithm (elastic-net only supports lbfgs): sgd, lbfgs")
+  val OPTIMIZER =         ("optimizer", "optimization algorithm (elastic-net only supports l-bfgs): sgd, l-bfgs")
 
   intOptions = intOptions ++ Seq(NUM_ITERATIONS)
   doubleOptions = doubleOptions ++ Seq(ELASTIC_NET_PARAM, STEP_SIZE, REG_PARAM)
@@ -237,11 +237,17 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
     }
 
     if (regType == "elastic-net") {  // use spark.ml
+      val solver = optimizer match {
+        case "l-bfgs" =>
+
+      }
       loss match {
         case "logistic" =>
-          println("WARNING: Logistic Regression with elastic-net in ML package uses LBFGS/OWLQN for optimization" +
-            " which ignores stepSize in Spark 1.5.")
-          val lor = new LogisticRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam)
+          println("WARNING: Logistic Regression with elastic-net in ML package uses LBFGS/OWLQN" +
+            " for optimization which ignores stepSize in Spark 1.5.")
+          val lor = new LogisticRegression()
+            .setElasticNetParam(elasticNetParam)
+            .setRegParam(regParam)
             .setMaxIter(numIterations)
           val sqlContext = new SQLContext(rdd.context)
           import sqlContext.implicits._
@@ -253,49 +259,41 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
               s" Note the set of supported combinations increases in later Spark versions.")
       }
     } else {
+      val updater = regType match {
+        case "none" => new SimpleUpdater
+        case "l1" => new L1Updater
+        case "l2" => new SquaredL2Updater
+      }
       (loss, optimizer) match {
         case ("logistic", "sgd") =>
           val lr = new LogisticRegressionWithSGD()
-          lr.optimizer.setStepSize(stepSize).setNumIterations(numIterations).setConvergenceTol(0.0)
-          regType match {
-            case "none" =>
-              lr.optimizer.setUpdater(new SimpleUpdater)
-            case "l1" =>
-              lr.optimizer.setUpdater(new L1Updater)
-            case "l2" =>
-              lr.optimizer.setUpdater(new SquaredL2Updater)
-          }
+          lr.optimizer
+            .setStepSize(stepSize)
+            .setNumIterations(numIterations)
+            .setConvergenceTol(0.0)
+            .setUpdater(updater)
           lr.run(rdd)
-        case ("logistic", "lbfgs") =>
+        case ("logistic", "l-bfgs") =>
           println("WARNING: LogisticRegressionWithLBFGS ignores stepSize in this Spark version.")
           val lr = new LogisticRegressionWithLBFGS()
-          lr.optimizer.setNumIterations(numIterations).setConvergenceTol(0.0)
-          regType match {
-            case "none" =>
-              lr.optimizer.setUpdater(new SimpleUpdater)
-            case "l1" =>
-              lr.optimizer.setUpdater(new L1Updater)
-            case "l2" =>
-              lr.optimizer.setUpdater(new SquaredL2Updater)
-          }
+          lr.optimizer
+            .setNumIterations(numIterations)
+            .setConvergenceTol(0.0)
+            .setUpdater(updater)
           lr.run(rdd)
         case ("hinge", "sgd") =>
           val svm = new SVMWithSGD()
-          svm.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
+          svm.optimizer
+            .setNumIterations(numIterations)
+            .setStepSize(stepSize)
+            .setRegParam(regParam)
             .setConvergenceTol(0.0)
-          regType match {
-            case "none" =>
-              svm.optimizer.setUpdater(new SimpleUpdater)
-            case "l1" =>
-              svm.optimizer.setUpdater(new L1Updater)
-            case "l2" =>
-              svm.optimizer.setUpdater(new SquaredL2Updater)
-          }
+            .setUpdater(updater)
           svm.run(rdd)
         case _ =>
           throw new IllegalArgumentException(
             s"GLMClassificationTest given incompatible (loss, regType) = ($loss, $regType)." +
-              s" Supported combinations include: (elastic-net, _), (logistic, sgd), (logistic, lbfgs), (hinge, sgd)." +
+              s" Supported combinations include: (elastic-net, _), (logistic, sgd), (logistic, l-bfgs), (hinge, sgd)." +
               s" Note the set of supported combinations increases in later Spark versions.")
       }
     }
@@ -340,7 +338,6 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
 
     // Materialize rdd
     println("Num Examples: " + rdd.count())
-
   }
 
   def validate(model: MatrixFactorizationModel,
@@ -365,8 +362,19 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     val testTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
     val testMetric = validate(model, testRdd)
+
+    val numThingsToRecommend = 10
+    start = System.currentTimeMillis()
+    model.recommendProductsForUsers(numThingsToRecommend).count()
+    val recommendProductsForUsersTime = (System.currentTimeMillis() - start).toDouble / 1000.0
+    start = System.currentTimeMillis()
+    model.recommendUsersForProducts(numThingsToRecommend).count()
+    val recommendUsersForProductsTime = (System.currentTimeMillis() - start).toDouble / 1000.0
+
     Map("trainingTime" -> trainingTime, "testTime" -> testTime,
-      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric,
+      "recommendProductsForUsersTime" -> recommendProductsForUsersTime,
+      "recommendUsersForProductsTime" -> recommendUsersForProductsTime)
   }
 }
 
