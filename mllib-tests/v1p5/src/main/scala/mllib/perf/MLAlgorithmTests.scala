@@ -87,7 +87,7 @@ abstract class GLMTests(sc: SparkContext)
   val REG_TYPE =          ("reg-type",   "type of regularization: none, l1, l2, elastic-net")
   val ELASTIC_NET_PARAM = ("elastic-net-param",   "elastic-net param, 0.0 for L2, and 1.0 for L1")
   val REG_PARAM =         ("reg-param",   "the regularization parameter against overfitting")
-  val OPTIMIZER =         ("optimizer", "optimization algorithm (elastic-net only supports lbfgs): sgd, lbfgs")
+  val OPTIMIZER =         ("optimizer", "optimization algorithm (elastic-net only supports l-bfgs): sgd, l-bfgs")
 
   intOptions = intOptions ++ Seq(NUM_ITERATIONS)
   doubleOptions = doubleOptions ++ Seq(ELASTIC_NET_PARAM, STEP_SIZE, REG_PARAM)
@@ -97,10 +97,10 @@ abstract class GLMTests(sc: SparkContext)
 class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
 
   val INTERCEPT =  ("intercept",   "intercept for random data generation")
-  val EPS =  ("epsilon",   "scale factor for the noise during data generation")
+  val LABEL_NOISE =  ("label-noise",   "scale factor for the noise during label generation")
   val LOSS =  ("loss",   "loss to minimize. Supported: l2 (squared error).")
 
-  doubleOptions = doubleOptions ++ Seq(INTERCEPT, EPS)
+  doubleOptions = doubleOptions ++ Seq(INTERCEPT, LABEL_NOISE)
   stringOptions = stringOptions ++ Seq(LOSS)
 
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
@@ -112,10 +112,10 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
     val intercept: Double = doubleOptionValue(INTERCEPT)
-    val eps: Double = doubleOptionValue(EPS)
+    val labelNoise: Double = doubleOptionValue(LABEL_NOISE)
 
     val data = DataGenerator.generateLabeledPoints(sc, math.ceil(numExamples * 1.25).toLong,
-      numFeatures, intercept, eps, numPartitions, seed)
+      numFeatures, intercept, labelNoise, numPartitions, seed)
 
     val split = data.randomSplit(Array(0.8, 0.2), seed)
 
@@ -141,7 +141,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     val regParam = doubleOptionValue(REG_PARAM)
     val elasticNetParam = doubleOptionValue(ELASTIC_NET_PARAM)
     val numIterations = intOptionValue(NUM_ITERATIONS)
-    // val optimizer = stringOptionValue(OPTIMIZER)  // ignore for now since it makes config hard to do
+    val optimizer = stringOptionValue(OPTIMIZER)
 
     // Linear Regression only supports squared loss for now.
     if (!Array("l2").contains(loss)) {
@@ -149,34 +149,51 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
         s"GLMRegressionTest run with unknown loss ($loss).  Supported values: l2.")
     }
 
-    (loss, regType) match {
-      case ("l2", "none") =>
-        val lr = new LinearRegressionWithSGD().setIntercept(addIntercept = true)
-        lr.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setConvergenceTol(0.0)
-        lr.run(rdd)
-      case ("l2", "l1") =>
-        val lasso = new LassoWithSGD().setIntercept(addIntercept = true)
-        lasso.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
-          .setConvergenceTol(0.0)
-        lasso.run(rdd)
-      case ("l2", "l2") =>
-        val rr = new RidgeRegressionWithSGD().setIntercept(addIntercept = true)
-        rr.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
-          .setConvergenceTol(0.0)
-        rr.run(rdd)
-      case ("l2", "elastic-net") =>
-        println("WARNING: Linear Regression with elastic-net in ML package uses LBFGS/OWLQN for" +
-          " optimization which ignores stepSize and uses numIterations for maxIter in Spark 1.5.")
-        val rr = new LinearRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam)
-          .setMaxIter(numIterations)
-        val sqlContext = new SQLContext(rdd.context)
-        import sqlContext.implicits._
-        val mlModel = rr.fit(rdd.toDF())
-        new LinearRegressionModel(mlModel.weights, mlModel.intercept)
-      case _ =>
-        throw new IllegalArgumentException(
-          s"GLMRegressionTest given incompatible (loss, regType) = ($loss, $regType)." +
-            s" Note the set of supported combinations increases in later Spark versions.")
+    if (regType == "elastic-net") {  // use spark.ml
+      assert(optimizer == "auto" || optimizer == "l-bfgs", "GLMClassificationTest with" +
+        s" regType=elastic-net expects optimizer to be in {auto, l-bfgs}, but found: $optimizer")
+      println("WARNING: Linear Regression with elastic-net in ML package uses LBFGS/OWLQN for" +
+        " optimization which ignores stepSize in Spark 1.5.")
+      val rr = new LinearRegression()
+        .setElasticNetParam(elasticNetParam)
+        .setRegParam(regParam)
+        .setMaxIter(numIterations)
+      val sqlContext = new SQLContext(rdd.context)
+      import sqlContext.implicits._
+      val mlModel = rr.fit(rdd.toDF())
+      new LinearRegressionModel(mlModel.weights, mlModel.intercept)
+    } else {
+      assert(optimizer == "sgd", "GLMClassificationTest with" +
+        s" regType!=elastic-net expects optimizer to be sgd, but found: $optimizer")
+      (loss, regType) match {
+        case ("l2", "none") =>
+          val lr = new LinearRegressionWithSGD().setIntercept(addIntercept = true)
+          lr.optimizer
+            .setNumIterations(numIterations)
+            .setStepSize(stepSize)
+            .setConvergenceTol(0.0)
+          lr.run(rdd)
+        case ("l2", "l1") =>
+          val lasso = new LassoWithSGD().setIntercept(addIntercept = true)
+          lasso.optimizer
+            .setNumIterations(numIterations)
+            .setStepSize(stepSize)
+            .setRegParam(regParam)
+            .setConvergenceTol(0.0)
+          lasso.run(rdd)
+        case ("l2", "l2") =>
+          val rr = new RidgeRegressionWithSGD().setIntercept(addIntercept = true)
+          rr.optimizer
+            .setNumIterations(numIterations)
+            .setStepSize(stepSize)
+            .setRegParam(regParam)
+            .setConvergenceTol(0.0)
+          rr.run(rdd)
+        case _ =>
+          throw new IllegalArgumentException(
+            s"GLMRegressionTest given incompatible (loss, regType) = ($loss, $regType)." +
+              s" Note the set of supported combinations increases in later Spark versions.")
+      }
     }
   }
 }
@@ -184,10 +201,10 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
 class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
 
   val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
-  val SCALE =  ("scale-factor",   "scale factor for the noise during data generation")
+  val FEATURE_NOISE =  ("feature-noise",   "scale factor for the noise during feature generation")
   val LOSS =  ("loss",   "loss to minimize. Supported: logistic, hinge (SVM).")
 
-  doubleOptions = doubleOptions ++ Seq(THRESHOLD, SCALE)
+  doubleOptions = doubleOptions ++ Seq(THRESHOLD, FEATURE_NOISE)
   stringOptions = stringOptions ++ Seq(LOSS)
 
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
@@ -207,10 +224,11 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
     val threshold: Double = doubleOptionValue(THRESHOLD)
-    val sf: Double = doubleOptionValue(SCALE)
+    val featureNoise: Double = doubleOptionValue(FEATURE_NOISE)
 
     val data = DataGenerator.generateClassificationLabeledPoints(sc,
-      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, sf, numPartitions, seed)
+      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, featureNoise, numPartitions,
+      seed)
 
     val split = data.randomSplit(Array(0.8, 0.2), seed)
 
@@ -237,11 +255,15 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
     }
 
     if (regType == "elastic-net") {  // use spark.ml
+      assert(optimizer == "auto" || optimizer == "l-bfgs", "GLMClassificationTest with" +
+        " regType=elastic-net expects optimizer to be in {auto, l-bfgs}")
       loss match {
         case "logistic" =>
-          println("WARNING: Logistic Regression with elastic-net in ML package uses LBFGS/OWLQN for optimization" +
-            " which ignores stepSize in Spark 1.5.")
-          val lor = new LogisticRegression().setElasticNetParam(elasticNetParam).setRegParam(regParam)
+          println("WARNING: Logistic Regression with elastic-net in ML package uses LBFGS/OWLQN" +
+            " for optimization which ignores stepSize in Spark 1.5.")
+          val lor = new LogisticRegression()
+            .setElasticNetParam(elasticNetParam)
+            .setRegParam(regParam)
             .setMaxIter(numIterations)
           val sqlContext = new SQLContext(rdd.context)
           import sqlContext.implicits._
@@ -253,49 +275,41 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
               s" Note the set of supported combinations increases in later Spark versions.")
       }
     } else {
+      val updater = regType match {
+        case "none" => new SimpleUpdater
+        case "l1" => new L1Updater
+        case "l2" => new SquaredL2Updater
+      }
       (loss, optimizer) match {
         case ("logistic", "sgd") =>
           val lr = new LogisticRegressionWithSGD()
-          lr.optimizer.setStepSize(stepSize).setNumIterations(numIterations).setConvergenceTol(0.0)
-          regType match {
-            case "none" =>
-              lr.optimizer.setUpdater(new SimpleUpdater)
-            case "l1" =>
-              lr.optimizer.setUpdater(new L1Updater)
-            case "l2" =>
-              lr.optimizer.setUpdater(new SquaredL2Updater)
-          }
+          lr.optimizer
+            .setStepSize(stepSize)
+            .setNumIterations(numIterations)
+            .setConvergenceTol(0.0)
+            .setUpdater(updater)
           lr.run(rdd)
-        case ("logistic", "lbfgs") =>
+        case ("logistic", "l-bfgs") =>
           println("WARNING: LogisticRegressionWithLBFGS ignores stepSize in this Spark version.")
           val lr = new LogisticRegressionWithLBFGS()
-          lr.optimizer.setNumIterations(numIterations).setConvergenceTol(0.0)
-          regType match {
-            case "none" =>
-              lr.optimizer.setUpdater(new SimpleUpdater)
-            case "l1" =>
-              lr.optimizer.setUpdater(new L1Updater)
-            case "l2" =>
-              lr.optimizer.setUpdater(new SquaredL2Updater)
-          }
+          lr.optimizer
+            .setNumIterations(numIterations)
+            .setConvergenceTol(0.0)
+            .setUpdater(updater)
           lr.run(rdd)
         case ("hinge", "sgd") =>
           val svm = new SVMWithSGD()
-          svm.optimizer.setNumIterations(numIterations).setStepSize(stepSize).setRegParam(regParam)
+          svm.optimizer
+            .setNumIterations(numIterations)
+            .setStepSize(stepSize)
+            .setRegParam(regParam)
             .setConvergenceTol(0.0)
-          regType match {
-            case "none" =>
-              svm.optimizer.setUpdater(new SimpleUpdater)
-            case "l1" =>
-              svm.optimizer.setUpdater(new L1Updater)
-            case "l2" =>
-              svm.optimizer.setUpdater(new SquaredL2Updater)
-          }
+            .setUpdater(updater)
           svm.run(rdd)
         case _ =>
           throw new IllegalArgumentException(
             s"GLMClassificationTest given incompatible (loss, regType) = ($loss, $regType)." +
-              s" Supported combinations include: (elastic-net, _), (logistic, sgd), (logistic, lbfgs), (hinge, sgd)." +
+              s" Supported combinations include: (elastic-net, _), (logistic, sgd), (logistic, l-bfgs), (hinge, sgd)." +
               s" Note the set of supported combinations increases in later Spark versions.")
       }
     }
@@ -340,7 +354,6 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
 
     // Materialize rdd
     println("Num Examples: " + rdd.count())
-
   }
 
   def validate(model: MatrixFactorizationModel,
@@ -365,8 +378,19 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     val testTime = (System.currentTimeMillis() - start).toDouble / 1000.0
 
     val testMetric = validate(model, testRdd)
+
+    val numThingsToRecommend = 10
+    start = System.currentTimeMillis()
+    model.recommendProductsForUsers(numThingsToRecommend).count()
+    val recommendProductsForUsersTime = (System.currentTimeMillis() - start).toDouble / 1000.0
+    start = System.currentTimeMillis()
+    model.recommendUsersForProducts(numThingsToRecommend).count()
+    val recommendUsersForProductsTime = (System.currentTimeMillis() - start).toDouble / 1000.0
+
     Map("trainingTime" -> trainingTime, "testTime" -> testTime,
-      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric,
+      "recommendProductsForUsersTime" -> recommendProductsForUsersTime,
+      "recommendUsersForProductsTime" -> recommendUsersForProductsTime)
   }
 }
 
@@ -435,11 +459,11 @@ class NaiveBayesTest(sc: SparkContext)
   extends RegressionAndClassificationTests[NaiveBayesModel](sc) {
 
   val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
-  val SCALE =  ("scale-factor",   "scale factor for the noise during data generation")
+  val FEATURE_NOISE =  ("feature-noise",   "scale factor for the noise during feature generation")
   val SMOOTHING =     ("nb-lambda",   "the smoothing parameter lambda for Naive Bayes")
   val MODEL_TYPE = ("model-type", "either multinomial (default) or bernoulli")
 
-  doubleOptions = doubleOptions ++ Seq(THRESHOLD, SCALE, SMOOTHING)
+  doubleOptions = doubleOptions ++ Seq(THRESHOLD, FEATURE_NOISE, SMOOTHING)
   stringOptions = stringOptions ++ Seq(MODEL_TYPE)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
@@ -451,7 +475,7 @@ class NaiveBayesTest(sc: SparkContext)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
     val threshold: Double = doubleOptionValue(THRESHOLD)
-    val sf: Double = doubleOptionValue(SCALE)
+    val featureNoise: Double = doubleOptionValue(FEATURE_NOISE)
     val modelType = stringOptionValue(MODEL_TYPE)
 
     val data = if (modelType == "bernoulli") {
@@ -459,7 +483,8 @@ class NaiveBayesTest(sc: SparkContext)
         math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, numPartitions, seed)
     } else {
       val negdata = DataGenerator.generateClassificationLabeledPoints(sc,
-      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, sf, numPartitions, seed)
+        math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, featureNoise, numPartitions,
+        seed)
       val dataNonneg = negdata.map { lp =>
         LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.map(math.abs)))
       }

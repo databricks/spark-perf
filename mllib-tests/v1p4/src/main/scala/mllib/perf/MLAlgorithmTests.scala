@@ -79,7 +79,7 @@ abstract class GLMTests(sc: SparkContext)
   val NUM_ITERATIONS = ("num-iterations",   "number of iterations for the algorithm")
   val REG_TYPE =       ("reg-type",   "type of regularization: none, l1, l2")
   val REG_PARAM =      ("reg-param",   "the regularization parameter against overfitting")
-  val OPTIMIZER =      ("optimizer", "optimization algorithm: sgd, lbfgs")
+  val OPTIMIZER =      ("optimizer", "optimization algorithm: sgd, l-bfgs")
 
   intOptions = intOptions ++ Seq(NUM_ITERATIONS)
   doubleOptions = doubleOptions ++ Seq(STEP_SIZE, REG_PARAM)
@@ -89,10 +89,10 @@ abstract class GLMTests(sc: SparkContext)
 class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
 
   val INTERCEPT =  ("intercept",   "intercept for random data generation")
-  val EPS =  ("epsilon",   "scale factor for the noise during data generation")
+  val LABEL_NOISE =  ("label-noise",   "scale factor for the noise during label generation")
   val LOSS =  ("loss",   "loss to minimize. Supported: l2 (squared error).")
 
-  doubleOptions = doubleOptions ++ Seq(INTERCEPT, EPS)
+  doubleOptions = doubleOptions ++ Seq(INTERCEPT, LABEL_NOISE)
   stringOptions = stringOptions ++ Seq(LOSS)
 
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
@@ -104,10 +104,10 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
     val intercept: Double = doubleOptionValue(INTERCEPT)
-    val eps: Double = doubleOptionValue(EPS)
+    val labelNoise: Double = doubleOptionValue(LABEL_NOISE)
 
     val data = DataGenerator.generateLabeledPoints(sc, math.ceil(numExamples * 1.25).toLong,
-      numFeatures, intercept, eps, numPartitions, seed)
+      numFeatures, intercept, labelNoise, numPartitions, seed)
 
     val split = data.randomSplit(Array(0.8, 0.2), seed)
 
@@ -167,10 +167,10 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
 class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
 
   val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
-  val SCALE =  ("scale-factor",   "scale factor for the noise during data generation")
+  val FEATURE_NOISE =  ("feature-noise",   "scale factor for the noise during feature generation")
   val LOSS =  ("loss",   "loss to minimize. Supported: logistic, hinge (SVM).")
 
-  doubleOptions = doubleOptions ++ Seq(THRESHOLD, SCALE)
+  doubleOptions = doubleOptions ++ Seq(THRESHOLD, FEATURE_NOISE)
   stringOptions = stringOptions ++ Seq(LOSS)
 
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
@@ -190,10 +190,11 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
     val threshold: Double = doubleOptionValue(THRESHOLD)
-    val sf: Double = doubleOptionValue(SCALE)
+    val featureNoise: Double = doubleOptionValue(FEATURE_NOISE)
 
     val data = DataGenerator.generateClassificationLabeledPoints(sc,
-      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, sf, numPartitions, seed)
+      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, featureNoise, numPartitions,
+      seed)
 
     val split = data.randomSplit(Array(0.8, 0.2), seed)
 
@@ -220,15 +221,15 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
       throw new IllegalArgumentException(s"GLMClassificationTest run with unknown regType" +
         s" ($regType).  Supported values: none, l1, l2.")
     }
-    if (!Array("sgd", "lbfgs").contains(optimizer)) {
+    if (!Array("sgd", "l-bfgs").contains(optimizer)) {
       throw new IllegalArgumentException(
-        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, lbfgs.")
+        s"GLMRegressionTest run with unknown optimizer ($optimizer). Supported values: sgd, l-bfgs.")
     }
 
     (loss, regType, optimizer) match {
       case ("logistic", "none", "sgd") =>
         LogisticRegressionWithSGD.train(rdd, numIterations, stepSize)
-      case ("logistic", "none", "lbfgs") =>
+      case ("logistic", "none", "l-bfgs") =>
         println("WARNING: LogisticRegressionWithLBFGS ignores numIterations, stepSize" +
           " in this Spark version.")
         new LogisticRegressionWithLBFGS().run(rdd)
@@ -375,11 +376,11 @@ class NaiveBayesTest(sc: SparkContext)
   extends RegressionAndClassificationTests[NaiveBayesModel](sc) {
 
   val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
-  val SCALE =  ("scale-factor",   "scale factor for the noise during data generation")
+  val FEATURE_NOISE =  ("feature-noise",   "scale factor for the noise during feature generation")
   val SMOOTHING =     ("nb-lambda",   "the smoothing parameter lambda for Naive Bayes")
   val MODEL_TYPE = ("model-type", "either multinomial (default) or bernoulli")
 
-  doubleOptions = doubleOptions ++ Seq(THRESHOLD, SCALE, SMOOTHING)
+  doubleOptions = doubleOptions ++ Seq(THRESHOLD, FEATURE_NOISE, SMOOTHING)
   stringOptions = stringOptions ++ Seq(MODEL_TYPE)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
@@ -391,7 +392,7 @@ class NaiveBayesTest(sc: SparkContext)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
     val threshold: Double = doubleOptionValue(THRESHOLD)
-    val sf: Double = doubleOptionValue(SCALE)
+    val featureNoise: Double = doubleOptionValue(FEATURE_NOISE)
     val modelType = stringOptionValue(MODEL_TYPE)
 
     val data = if (modelType == "Bernoulli") {
@@ -399,7 +400,8 @@ class NaiveBayesTest(sc: SparkContext)
         math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, numPartitions, seed)
     } else {
       val negdata = DataGenerator.generateClassificationLabeledPoints(sc,
-      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, sf, numPartitions, seed)
+        math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, featureNoise, numPartitions,
+        seed)
       val dataNonneg = negdata.map { lp =>
         LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.map(math.abs)))
       }

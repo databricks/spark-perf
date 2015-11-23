@@ -19,13 +19,13 @@ object DataGenerator {
       numRows: Long,
       numCols: Int,
       intercept: Double,
-      eps: Double,
+      labelNoise: Double,
       numPartitions: Int,
       seed: Long = System.currentTimeMillis(),
       problem: String = ""): RDD[LabeledPoint] = {
 
-    RandomRDDs.randomRDD(sc,
-      new LinearDataGenerator(numCols,intercept, seed, eps, problem), numRows, numPartitions, seed)
+    RandomRDDs.randomRDD(sc, new LinearDataGenerator(numCols,intercept, seed, labelNoise, problem),
+      numRows, numPartitions, seed)
 
   }
 
@@ -46,12 +46,12 @@ object DataGenerator {
       numRows: Long,
       numCols: Int,
       threshold: Double,
-      scaleFactor: Double,
+      featureNoise: Double,
       numPartitions: Int,
       seed: Long = System.currentTimeMillis(),
       chiSq: Boolean = false): RDD[LabeledPoint] = {
 
-    RandomRDDs.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, scaleFactor, chiSq),
+    RandomRDDs.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, featureNoise, chiSq),
       numRows, numPartitions, seed)
   }
 
@@ -325,7 +325,7 @@ class RatingGenerator(
 class ClassLabelGenerator(
     private val numFeatures: Int,
     private val threshold: Double,
-    private val scaleFactor: Double,
+    private val featureNoise: Double,
     private val chiSq: Boolean) extends RandomDataGenerator[LabeledPoint] {
 
   private val rng = new java.util.Random()
@@ -333,7 +333,7 @@ class ClassLabelGenerator(
   override def nextValue(): LabeledPoint = {
     val y = if (rng.nextDouble() < threshold) 0.0 else 1.0
     val x = Array.fill[Double](numFeatures) {
-      if (!chiSq) rng.nextGaussian() + (y * scaleFactor) else rng.nextInt(6) * 1.0
+      if (!chiSq) rng.nextGaussian() + (y * featureNoise) else rng.nextInt(6) * 1.0
     }
 
     LabeledPoint(y, Vectors.dense(x))
@@ -344,7 +344,7 @@ class ClassLabelGenerator(
   }
 
   override def copy(): ClassLabelGenerator =
-    new ClassLabelGenerator(numFeatures, threshold, scaleFactor, chiSq)
+    new ClassLabelGenerator(numFeatures, threshold, featureNoise, chiSq)
 }
 
 class BinaryLabeledDataGenerator(
@@ -374,7 +374,7 @@ class LinearDataGenerator(
     val numFeatures: Int,
     val intercept: Double,
     val seed: Long,
-    val eps: Double,
+    val labelNoise: Double,
     val problem: String = "",
     val sparsity: Double = 1.0) extends RandomDataGenerator[LabeledPoint] {
 
@@ -386,7 +386,7 @@ class LinearDataGenerator(
   override def nextValue(): LabeledPoint = {
     val x = Array.fill[Double](nnz)(2*rng.nextDouble()-1)
 
-    val y = weights.zip(x).map(p => p._1 * p._2).sum + intercept + eps*rng.nextGaussian()
+    val y = weights.zip(x).map(p => p._1 * p._2).sum + intercept + labelNoise*rng.nextGaussian()
     val yD =
       if (problem == "SVM"){
         if (y < 0.0) 0.0 else 1.0
@@ -402,7 +402,7 @@ class LinearDataGenerator(
   }
 
   override def copy(): LinearDataGenerator =
-    new LinearDataGenerator(numFeatures, intercept, seed, eps, problem, sparsity)
+    new LinearDataGenerator(numFeatures, intercept, seed, labelNoise, problem, sparsity)
 }
 
 
