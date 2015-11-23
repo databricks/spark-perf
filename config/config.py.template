@@ -425,8 +425,8 @@ if MLLIB_SPARK_VERSION >= 1.5:
 MLLIB_GLM_REGRESSION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
     # The intercept for the data
     OptionSet("intercept", [0.0]),
-    # The scale factor for the noise
-    OptionSet("epsilon", [0.1]),
+    # The scale factor for label noise
+    OptionSet("label-noise", [0.1]),
     # Loss to minimize: l2 (squared error)
     OptionSet("loss", ["l2"])
 ]
@@ -463,9 +463,9 @@ if MLLIB_SPARK_VERSION >= 1.5:
         # Regularization param (lambda)
         OptionSet("reg-param", [0.01]),
         # The scale factor for the noise in feature values
-        OptionSet("scale-factor", [1.0]),
+        OptionSet("feature-noise", [1.0]),
         # The scale factor for the noise in label values
-        OptionSet("epsilon", [0.1]),
+        OptionSet("label-noise", [0.1]),
         # The intercept for the data
         OptionSet("intercept", [0.2]),
         # The step size is not used in LBFGS, but this is required in parameter checking.
@@ -510,7 +510,7 @@ NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # Expected fraction of examples which are negative
     OptionSet("per-negative", [0.3]),
     # The scale factor for the noise in feature values
-    OptionSet("scale-factor", [1.0]),
+    OptionSet("feature-noise", [1.0]),
     # Naive Bayes smoothing lambda.
     OptionSet("nb-lambda", [1.0]),
     # Model type: either multinomial or bernoulli (bernoulli only available in Spark 1.4+)

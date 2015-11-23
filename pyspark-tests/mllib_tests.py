@@ -345,9 +345,9 @@ if __name__ == "__main__":
     parser.add_option("--elastic-net-param", type="float", default=0.0)
     # MLLIB_GLM_REGRESSION_TEST_OPTS
     parser.add_option("--intercept", type="float", default=0.0)
-    parser.add_option("--epsilon", type="float", default=0.1)
+    parser.add_option("--label-noise", type="float", default=0.1)
     # MLLIB_CLASSIFICATION_TEST_OPTS
-    parser.add_option("--scale-factor", type="float", default=1.0)
+    parser.add_option("--feature-noise", type="float", default=1.0)
     # NAIVE_BAYES_TEST_OPTS
     parser.add_option("--per-negative", type="float", default=0.3)
     parser.add_option("--nb-lambda", type="float", default=1.0)
