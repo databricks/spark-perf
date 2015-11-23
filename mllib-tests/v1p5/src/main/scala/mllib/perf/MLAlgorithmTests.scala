@@ -97,10 +97,12 @@ abstract class GLMTests(sc: SparkContext)
 class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
 
   val INTERCEPT =  ("intercept",   "intercept for random data generation")
+  val FEATURE_NOISE =  ("feature-noise",
+    "scale factor for the noise during feature generation; CURRENTLY IGNORED")
   val LABEL_NOISE =  ("label-noise",   "scale factor for the noise during label generation")
   val LOSS =  ("loss",   "loss to minimize. Supported: l2 (squared error).")
 
-  doubleOptions = doubleOptions ++ Seq(INTERCEPT, LABEL_NOISE)
+  doubleOptions = doubleOptions ++ Seq(INTERCEPT, FEATURE_NOISE, LABEL_NOISE)
   stringOptions = stringOptions ++ Seq(LOSS)
 
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
