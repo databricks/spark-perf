@@ -3,6 +3,8 @@ import numpy
 import time
 
 import pyspark
+from pyspark.ml.classification import LogisticRegression as MLLogisticRegression
+from pyspark.ml.regression import LinearRegression as MLLinearRegression
 from pyspark.mllib.classification import *
 from pyspark.mllib.clustering import *
 from pyspark.mllib.regression import *
@@ -134,10 +136,17 @@ class GLMClassificationTest(GLMTest):
         :return:  Trained model to be passed to test.
         """
         options = self.options
-        if options.reg_type == "elastic-net":
-            # use spark.ml
-            raise NotImplementedError("GLMClassificationTest in PySpark does not yet support"
-                                      " elastic-net")
+        if options.reg_type == "elastic-net":  # use spark.ml
+            lr = MLLogisticRegression(maxIter=options.num_iterations, regParam=options.reg_param,
+                                      elasticNetParam=options.elastic_net_param)
+            # TODO: Do not include time for conversion to DataFrame (but this currently matches
+            #       the Scala tests)
+            df = rdd.toDF()
+            lrModel = lr.fit(df)
+            numFeatures = len(lrModel.weights)
+            numClasses = 2
+            return LogisticRegressionModel(lrModel.weights, lrModel.intercept,
+                                           numFeatures, numClasses)
         else:
             if options.loss == "logistic":
                 if options.optimizer == "sgd":
@@ -186,9 +195,14 @@ class GLMRegressionTest(GLMTest):
                                                      miniBatchFraction=1.0,
                                                      regParam=options.reg_param,
                                                      regType=options.reg_type)
-            elif options.reg_type == "elastic-net":
-                raise NotImplementedError("GLMRegressionTest in PySpark does not yet support"
-                                          " elastic-net")
+            elif options.reg_type == "elastic-net":  # use spark.ml
+                lr = MLLinearRegression(maxIter=options.num_iterations, regParam=options.reg_param,
+                                        elasticNetParam=options.elastic_net_param)
+                # TODO: Do not include time for conversion to DataFrame (but this currently matches
+                #       the Scala tests)
+                df = rdd.toDF()
+                lrModel = lr.fit(df)
+                return LinearRegressionModel(lrModel.weights, lrModel.intercept)
             else:
                 raise Exception("GLMRegressionTest cannot run with loss = %s, reg_type = %s" \
                                 % (options.loss, options.reg_type))
