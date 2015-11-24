@@ -29,7 +29,7 @@ class PICTest(sc: SparkContext) extends PerfTest {
     val numPartitions = intOptionValue(NUM_PARTITIONS)
 
     // Generates a periodic banded matrix with bandwidth = nodeDegree
-    val data = sc.parallelize(0L to numPoints, numPartitions)
+    data = sc.parallelize(0L to numPoints, numPartitions)
       .flatMap { id =>
         (((id - nodeDegree / 2) % numPoints) until id).map { nbr =>
           (id, (nbr + numPoints) % numPoints, 1D)
