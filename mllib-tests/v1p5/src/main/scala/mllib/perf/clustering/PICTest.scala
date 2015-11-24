@@ -46,6 +46,7 @@ class PICTest(sc: SparkContext) extends PerfTest {
       .setK(k)
       .setMaxIterations(numIterations)
     val model = pic.run(data)
+    model.assignments.count()
     val duration = (System.currentTimeMillis() - start) / 1e3
     "time" -> duration
   }
