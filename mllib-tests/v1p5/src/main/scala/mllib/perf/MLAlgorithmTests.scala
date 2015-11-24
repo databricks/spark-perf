@@ -381,6 +381,8 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
 
     val testMetric = validate(model, testRdd)
 
+    /*
+    // Removed temporarily because these methods are really slow.
     val numThingsToRecommend = 10
     start = System.currentTimeMillis()
     model.recommendProductsForUsers(numThingsToRecommend).count()
@@ -388,11 +390,11 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     start = System.currentTimeMillis()
     model.recommendUsersForProducts(numThingsToRecommend).count()
     val recommendUsersForProductsTime = (System.currentTimeMillis() - start).toDouble / 1000.0
-
+    */
     Map("trainingTime" -> trainingTime, "testTime" -> testTime,
-      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric,
-      "recommendProductsForUsersTime" -> recommendProductsForUsersTime,
-      "recommendUsersForProductsTime" -> recommendUsersForProductsTime)
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
+    // "recommendProductsForUsersTime" -> recommendProductsForUsersTime,
+    // "recommendUsersForProductsTime" -> recommendUsersForProductsTime)
   }
 }
 
