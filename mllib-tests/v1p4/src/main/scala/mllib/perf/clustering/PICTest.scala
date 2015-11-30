@@ -11,28 +11,28 @@ import mllib.perf.PerfTest
 
 class PICTest(sc: SparkContext) extends PerfTest {
 
-  val NUM_POINTS = ("num-points", "number of points")
+  val NUM_EXAMPLES = ("num-examples", "number of examples")
   val NODE_DEGREE = ("node-degree", "number of neighbors each node is connected to")
   val NUM_CENTERS = ("num-centers", "number of centers for clustering tests")
   val NUM_ITERATIONS = ("num-iterations", "number of iterations for the algorithm")
 
   intOptions ++= Seq(NODE_DEGREE, NUM_CENTERS, NUM_ITERATIONS)
-  longOptions ++= Seq(NUM_POINTS)
+  longOptions ++= Seq(NUM_EXAMPLES)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
 
   var data: RDD[(Long, Long, Double)] = _
 
   override def createInputData(seed: Long): Unit = {
-    val numPoints = longOptionValue(NUM_POINTS)
+    val numExamples = longOptionValue(NUM_EXAMPLES)
     val nodeDegree = intOptionValue(NODE_DEGREE)
     val numPartitions = intOptionValue(NUM_PARTITIONS)
 
     // Generates a periodic banded matrix with bandwidth = nodeDegree
-    data = sc.parallelize(0L to numPoints, numPartitions)
+    data = sc.parallelize(0L to numExamples, numPartitions)
       .flatMap { id =>
-        (((id - nodeDegree / 2) % numPoints) until id).map { nbr =>
-          (id, (nbr + numPoints) % numPoints, 1D)
+        (((id - nodeDegree / 2) % numExamples) until id).map { nbr =>
+          (id, (nbr + numExamples) % numExamples, 1D)
         }
       }
     logInfo(s"Generated ${data.count()} pairwise similarities.")
