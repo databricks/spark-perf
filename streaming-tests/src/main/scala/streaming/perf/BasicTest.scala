@@ -1,11 +1,18 @@
 package streaming.perf
 
-class BasicTest extends PerfTest {
+import org.apache.spark.SparkContext
 
-  def run(): String =  {
-    println("Running BasicTest.run()")
-    println(ssc.sparkContext.makeRDD(1 to 100, 10).collect().mkString(", "))
-    println("Successfully run spark job")
+class BasicTest(sc: SparkContext) extends PerfTest(sc) {
+
+  override def run(): String = {
+    doRunPerf()
     "PASSED"
+  }
+
+  override def doRunPerf(): Seq[(String, Double)] = {
+    println("Running BasicTest.run()")
+    println(sc.makeRDD(1 to 100, 10).collect().mkString(", "))
+    println("Successfully run spark job")
+    Nil
   }
 }

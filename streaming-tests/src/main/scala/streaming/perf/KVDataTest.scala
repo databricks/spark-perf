@@ -1,8 +1,10 @@
 package streaming.perf
 
+import java.util.concurrent.RejectedExecutionException
+
+import org.apache.spark.SparkContext
 import streaming.perf.util.Distribution
-import org.apache.spark.rdd.RDD
-import org.apache.spark.streaming.{Milliseconds, StreamingContext, Time}
+import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.scheduler.StatsReportListener
 import StreamingContext._
@@ -10,7 +12,7 @@ import StreamingContext._
 import streaming.perf.util._
 import org.apache.spark.storage.StorageLevel
 
-abstract class KVDataTest extends PerfTest {
+abstract class KVDataTest(sc: SparkContext) extends PerfTest(sc) {
 
   import KVDataTest._
 
@@ -39,7 +41,7 @@ abstract class KVDataTest extends PerfTest {
 
   override def booleanOptions = super.booleanOptions ++ Seq(MEMORY_SERIALIZATION, USE_RECEIVER)
 
-  def run(): String = {
+  override def doRunPerf(): Seq[(String, Double)] = {
     numStreams = longOptionValue(NUM_STREAMS).toInt
     recordsPerSec = longOptionValue(RECORDS_PER_SEC)
     reduceTasks = longOptionValue(REDUCE_TASKS).toInt
@@ -69,10 +71,13 @@ abstract class KVDataTest extends PerfTest {
 
     // run test
     ssc.start()
-    val startTime = System.currentTimeMillis
     ssc.awaitTermination(totalDurationSec * 1000)
-    ssc.stop()
-    processResults(statsReportListener)
+    ssc.stop(stopSparkContext = false, stopGracefully = true)
+    getResults(statsReportListener)
+  }
+
+  override def run(): String = {
+    processResults(runPerf())
   }
 
   // Setup multiple input streams and union them
@@ -89,27 +94,41 @@ abstract class KVDataTest extends PerfTest {
 
 object KVDataTest {
   val IGNORED_BATCHES = 10
- 
+
+  private val resultsKeys = Seq("count", "avg", "stdev", "min", "25%%", "50%%", "75%%", "90%%", "95%%", "99%%", "max")
+
   // Generate statistics from the processing data
-  def processResults(statsReportListener: StatsReportListener): String = {
+  def getResults(statsReportListener: StatsReportListener): Seq[(String, Double)] = {
     val processingDelays = statsReportListener.batchInfos.flatMap(_.processingDelay).map(_.toDouble / 1000.0)
-    val distrib = new Distribution(processingDelays.takeRight(processingDelays.size - IGNORED_BATCHES).toArray)
+    val schedulingDelay = statsReportListener.batchInfos.flatMap(_.schedulingDelay).map(_.toDouble / 1000.0)
+    val totalDelay = statsReportListener.batchInfos.flatMap(_.totalDelay).map(_.toDouble / 1000.0)
+    getStatResults("processingDelay", processingDelays) ++
+      getStatResults("schedulingDelay", schedulingDelay) ++
+      getStatResults("totalDelay", totalDelay)
+  }
+
+  private def getStatResults(prefix: String, results: Seq[Double]): Seq[(String, Double)] = {
+    val distrib = new Distribution(results.takeRight(results.size - IGNORED_BATCHES).toArray)
     val statCounter = distrib.statCounter
-    val quantiles = Array(0,0.25,0.5,0.75,0.9, 0.95, 0.99, 1.0)
+    val quantiles = Array(0, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 1.0)
     val quantileValues = quantiles.zip(distrib.getQuantiles(quantiles)).toMap
-    val formatString = "count: %d, avg: %.3f s, stdev: %.3f s, min: %.3f s, 25%%: %.3f s, 50%%: %.3f s, " +
-      "75%%: %.3f s, 90%%: %.3f s, 95%%: %.3f s, 99%%: %.3f s, max: %.3f s"
-    val resultString = formatString.format(
-      processingDelays.size, statCounter.mean, statCounter.stdev,
+    val resultValues = Seq[Double](
+      results.size, statCounter.mean, statCounter.stdev,
       quantileValues(0), quantileValues(0.25), quantileValues(0.50),
       quantileValues(0.75), quantileValues(0.90), quantileValues(0.95),
       quantileValues(0.99), quantileValues(1.0)
     )
-    resultString
+    resultsKeys.map(prefix + "-" + _).zip(results)
+  }
+
+  def processResults(results: Seq[(String, Double)]): String = {
+    results.map { case (key, value) =>
+      s"$key: %.3f".format(value)
+    }.mkString(", ")
   }
 }
 
-abstract class WindowKVDataTest extends KVDataTest {
+abstract class WindowKVDataTest(sc: SparkContext) extends KVDataTest(sc) {
   val WINDOW_DURATION = ("window-duration", "Duration of the window")
 
   var windowDurationMs: Long = _
@@ -122,7 +141,7 @@ abstract class WindowKVDataTest extends KVDataTest {
   }
 }
 
-class StateByKeyTest extends KVDataTest {
+class StateByKeyTest(sc: SparkContext) extends KVDataTest(sc) {
   // Setup the streaming computations
   def setupOutputStream(inputStream: DStream[(String, String)]): DStream[_] = {
     val updateFunc = (values: Seq[Long], state: Option[Long]) => {
@@ -132,7 +151,7 @@ class StateByKeyTest extends KVDataTest {
   }
 }
 
-class ReduceByKeyAndWindowTest extends WindowKVDataTest {
+class ReduceByKeyAndWindowTest(sc: SparkContext) extends WindowKVDataTest(sc) {
   // Setup the streaming computations
   def setupOutputStream(inputStream: DStream[(String, String)]): DStream[_] = {
     inputStream.reduceByKeyAndWindow((x: String, y: String) => x + y,
@@ -140,7 +159,7 @@ class ReduceByKeyAndWindowTest extends WindowKVDataTest {
   }
 }
 
-class GroupByKeyAndWindowTest extends WindowKVDataTest {
+class GroupByKeyAndWindowTest(sc: SparkContext) extends WindowKVDataTest(sc) {
   // Setup the streaming computations
   def setupOutputStream(inputStream: DStream[(String, String)]): DStream[_] = {
     inputStream.groupByKeyAndWindow(Milliseconds(windowDurationMs), Milliseconds(batchDurationMs), reduceTasks)

@@ -1,5 +1,6 @@
 package streaming.perf
 
+import org.apache.spark.SparkContext
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.{Milliseconds, Time}
@@ -7,7 +8,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import streaming.perf.util.FileGenerator
 
-class HdfsRecoveryTest extends PerfTest {
+class HdfsRecoveryTest(sc: SparkContext) extends PerfTest(sc) {
   val RECORDS_PER_FILE = ("records-per-file", "Number records per file")
   val FILE_CLEANER_DELAY = ("file-cleaner-delay", "Delay (secs) in cleaning up generated files")
 
@@ -16,7 +17,7 @@ class HdfsRecoveryTest extends PerfTest {
   override def stringOptions = super.stringOptions ++ Seq(HDFS_URL)
 
   /** Runs the test and returns a series of results, along with values of any parameters */
-  def run(): String = {
+  override def doRunPerf(): Seq[(String, Double)] = {
     // Define variables
     val maxRecordsPerFile = longOptionValue(RECORDS_PER_FILE)
     val cleanerDelay = longOptionValue(FILE_CLEANER_DELAY)
@@ -65,6 +66,11 @@ class HdfsRecoveryTest extends PerfTest {
     ssc.stop()
     Thread.sleep(100)
     fileGenerator.cleanup()
+    Nil
+  }
+
+  override def run(): String = {
+    run()
     "PASSED"
   }
 }

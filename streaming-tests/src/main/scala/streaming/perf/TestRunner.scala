@@ -1,5 +1,7 @@
 package streaming.perf
 
+import org.apache.spark.{SparkContext, SparkConf}
+
 object TestRunner {
 
   def main(args: Array[String]) {
@@ -13,7 +15,9 @@ object TestRunner {
     val testClassName = getTestClassName(testName)
     println("Running " + testName + " (class = " + testClassName + ")" +
       " with arguments " + perfTestArgs.mkString("[", ",", "]"))
-    val test = Class.forName(testClassName).newInstance().asInstanceOf[PerfTest]
+    val conf = new SparkConf().setAppName(testName)
+    val sc = new SparkContext(conf)
+    val test = Class.forName(testClassName).getConstructor(classOf[SparkContext]).newInstance(sc).asInstanceOf[PerfTest]
     test.initialize(testName, perfTestArgs)
     val result = test.run()
     println("\n" + ("=" * 100) + "\n\nResult: " + result)
