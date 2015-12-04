@@ -160,6 +160,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
         .setElasticNetParam(elasticNetParam)
         .setRegParam(regParam)
         .setMaxIter(numIterations)
+        .setTol(0.0)
       val sqlContext = new SQLContext(rdd.context)
       import sqlContext.implicits._
       val mlModel = rr.fit(rdd.toDF())
@@ -267,6 +268,7 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
             .setElasticNetParam(elasticNetParam)
             .setRegParam(regParam)
             .setMaxIter(numIterations)
+            .setTol(0.0)
           val sqlContext = new SQLContext(rdd.context)
           import sqlContext.implicits._
           val mlModel = lor.fit(rdd.toDF())
