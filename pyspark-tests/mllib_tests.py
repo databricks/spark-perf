@@ -219,8 +219,8 @@ class NaiveBayesTest(PredictionTest):
 
     def createInputData(self):
         options = self.options
-        numTrain = options.num_points
-        numTest = int(options.num_points * 0.2)
+        numTrain = options.num_examples
+        numTest = int(options.num_examples * 0.2)
         self.trainRDD = LabeledDataGenerator.generateGLMData(
             self.sc, numTrain, options.num_features,
             options.num_partitions, options.random_seed, labelType=2)
@@ -242,7 +242,7 @@ class KMeansTest(NonPredictionTest):
     def createInputData(self):
         options = self.options
         self.data = FeaturesGenerator.generateContinuousData(
-            self.sc, options.num_points, options.num_columns,
+            self.sc, options.num_examples, options.num_features,
             options.num_partitions, options.random_seed)
 
     def runTest(self):
@@ -368,8 +368,6 @@ if __name__ == "__main__":
     parser.add_option("--num-ratings", type="int", default=500)
     parser.add_option("--implicit-prefs", type="int", default=0)
     # MLLIB_CLUSTERING_TEST_OPTS
-    parser.add_option("--num-points", type="int", default=1000)
-    parser.add_option("--num-columns", type="int", default=10)
     parser.add_option("--num-centers", type="int", default=5)
     # MLLIB_LINALG_TEST_OPTS + MLLIB_STATS_TEST_OPTS
     parser.add_option("--num-rows", type="int", default=1000)

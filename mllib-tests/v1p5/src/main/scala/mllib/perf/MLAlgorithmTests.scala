@@ -97,10 +97,12 @@ abstract class GLMTests(sc: SparkContext)
 class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
 
   val INTERCEPT =  ("intercept",   "intercept for random data generation")
+  val FEATURE_NOISE =  ("feature-noise",
+    "scale factor for the noise during feature generation; CURRENTLY IGNORED")
   val LABEL_NOISE =  ("label-noise",   "scale factor for the noise during label generation")
   val LOSS =  ("loss",   "loss to minimize. Supported: l2 (squared error).")
 
-  doubleOptions = doubleOptions ++ Seq(INTERCEPT, LABEL_NOISE)
+  doubleOptions = doubleOptions ++ Seq(INTERCEPT, FEATURE_NOISE, LABEL_NOISE)
   stringOptions = stringOptions ++ Seq(LOSS)
 
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
@@ -158,6 +160,7 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
         .setElasticNetParam(elasticNetParam)
         .setRegParam(regParam)
         .setMaxIter(numIterations)
+        .setTol(0.0)
       val sqlContext = new SQLContext(rdd.context)
       import sqlContext.implicits._
       val mlModel = rr.fit(rdd.toDF())
@@ -265,6 +268,7 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
             .setElasticNetParam(elasticNetParam)
             .setRegParam(regParam)
             .setMaxIter(numIterations)
+            .setTol(0.0)
           val sqlContext = new SQLContext(rdd.context)
           import sqlContext.implicits._
           val mlModel = lor.fit(rdd.toDF())
@@ -379,6 +383,8 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
 
     val testMetric = validate(model, testRdd)
 
+    /*
+    // Removed temporarily because these methods are really slow.
     val numThingsToRecommend = 10
     start = System.currentTimeMillis()
     model.recommendProductsForUsers(numThingsToRecommend).count()
@@ -386,11 +392,11 @@ abstract class RecommendationTests(sc: SparkContext) extends PerfTest {
     start = System.currentTimeMillis()
     model.recommendUsersForProducts(numThingsToRecommend).count()
     val recommendUsersForProductsTime = (System.currentTimeMillis() - start).toDouble / 1000.0
-
+    */
     Map("trainingTime" -> trainingTime, "testTime" -> testTime,
-      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric,
-      "recommendProductsForUsersTime" -> recommendProductsForUsersTime,
-      "recommendUsersForProductsTime" -> recommendUsersForProductsTime)
+      "trainingMetric" -> trainingMetric, "testMetric" -> testMetric)
+    // "recommendProductsForUsersTime" -> recommendProductsForUsersTime,
+    // "recommendUsersForProductsTime" -> recommendUsersForProductsTime)
   }
 }
 
@@ -398,13 +404,13 @@ abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
 
   def runTest(rdd: RDD[Vector]): KMeansModel
 
-  val NUM_POINTS =    ("num-points",   "number of points for clustering tests")
-  val NUM_COLUMNS =   ("num-columns",   "number of columns for each point for clustering tests")
+  val NUM_EXAMPLES =    ("num-examples",   "number of examples for clustering tests")
+  val NUM_FEATURES =   ("num-features",  "number of features for each example for clustering tests")
   val NUM_CENTERS =   ("num-centers",   "number of centers for clustering tests")
   val NUM_ITERATIONS =      ("num-iterations",   "number of iterations for the algorithm")
 
-  intOptions = intOptions ++ Seq(NUM_CENTERS, NUM_COLUMNS, NUM_ITERATIONS)
-  longOptions = longOptions ++ Seq(NUM_POINTS)
+  intOptions = intOptions ++ Seq(NUM_CENTERS, NUM_FEATURES, NUM_ITERATIONS)
+  longOptions = longOptions ++ Seq(NUM_EXAMPLES)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
 
@@ -412,21 +418,21 @@ abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
   var testRdd: RDD[Vector] = _
 
   def validate(model: KMeansModel, rdd: RDD[Vector]): Double = {
-    val numPoints = rdd.cache().count()
+    val numExamples = rdd.cache().count()
 
     val error = model.computeCost(rdd)
 
-    math.sqrt(error/numPoints)
+    math.sqrt(error/numExamples)
   }
 
   override def createInputData(seed: Long) = {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
-    val numPoints: Long = longOptionValue(NUM_POINTS)
-    val numColumns: Int = intOptionValue(NUM_COLUMNS)
+    val numExamples: Long = longOptionValue(NUM_EXAMPLES)
+    val numFeatures: Int = intOptionValue(NUM_FEATURES)
     val numCenters: Int = intOptionValue(NUM_CENTERS)
 
-    val data = DataGenerator.generateKMeansVectors(sc, math.ceil(numPoints*1.25).toLong, numColumns,
+    val data = DataGenerator.generateKMeansVectors(sc, math.ceil(numExamples*1.25).toLong, numFeatures,
       numCenters, numPartitions, seed)
 
     val split = data.randomSplit(Array(0.8, 0.2), seed)
@@ -524,9 +530,10 @@ class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
     val rank: Int = intOptionValue(RANK)
     val regParam = doubleOptionValue(REG_PARAM)
     val seed = intOptionValue(RANDOM_SEED) + 12
+    val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
 
     new ALS().setIterations(numIterations).setRank(rank).setSeed(seed).setLambda(regParam)
-      .setBlocks(rdd.partitions.length).run(rdd)
+      .setBlocks(rdd.partitions.length).setImplicitPrefs(implicitRatings).run(rdd)
   }
 }
 

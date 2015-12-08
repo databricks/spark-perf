@@ -399,6 +399,9 @@ MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
 
 # Generalized Linear Model (GLM) Tests #
 MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    # The scale factor for the noise in feature values.
+    # Currently ignored for regression.
+    OptionSet("feature-noise", [1.0]),
     # The number of features per example
     OptionSet("num-features", [10000], can_scale=False),
     # The number of iterations for SGD
@@ -410,11 +413,6 @@ MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # Regularization parameter
     OptionSet("reg-param", [0.1])
 ]
-if MLLIB_SPARK_VERSION >= 1.1:
-    MLLIB_GLM_TEST_OPTS += [
-        # Optimization algorithm: sgd, l-bfgs
-        OptionSet("optimizer", ["sgd", "l-bfgs"])
-    ]
 if MLLIB_SPARK_VERSION >= 1.5:
     MLLIB_GLM_TEST_OPTS += [
         # Ignored, but required for config
@@ -423,6 +421,8 @@ if MLLIB_SPARK_VERSION >= 1.5:
 
 # GLM Regression Tests #
 MLLIB_GLM_REGRESSION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
+    # Optimization algorithm: sgd
+    OptionSet("optimizer", ["sgd"]),
     # The intercept for the data
     OptionSet("intercept", [0.0]),
     # The scale factor for label noise
@@ -438,6 +438,8 @@ MLLIB_TESTS += [("glm-regression", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
 MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
     # Expected fraction of examples which are negative
     OptionSet("per-negative", [0.3]),
+    # Optimization algorithm: sgd, l-bfgs
+    OptionSet("optimizer", ["sgd", "l-bfgs"])
 ]
 
 # GLM Classification Tests #
@@ -464,15 +466,15 @@ if MLLIB_SPARK_VERSION >= 1.5:
         OptionSet("reg-param", [0.01]),
         # The scale factor for the noise in feature values
         OptionSet("feature-noise", [1.0]),
-        # The scale factor for the noise in label values
-        OptionSet("label-noise", [0.1]),
-        # The intercept for the data
-        OptionSet("intercept", [0.2]),
         # The step size is not used in LBFGS, but this is required in parameter checking.
         OptionSet("step-size", [0.0])
     ]
 
     MLLIB_GLM_ELASTIC_NET_REGRESSION_TEST_OPTS = MLLIB_GLM_ELASTIC_NET_TEST_OPTS + [
+        # The scale factor for the noise in label values
+        OptionSet("label-noise", [0.1]),
+        # The intercept for the data
+        OptionSet("intercept", [0.2]),
         # Loss to minimize: l2 (squared error)
         OptionSet("loss", ["l2"])
     ]
@@ -486,9 +488,11 @@ if MLLIB_SPARK_VERSION >= 1.5:
     MLLIB_TESTS += [("glm-regression", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
                      MLLIB_JAVA_OPTS, [ConstantOption("glm-regression")] +
                      MLLIB_GLM_ELASTIC_NET_REGRESSION_TEST_OPTS +
-                     [OptionSet("num-features", [100], can_scale=False)])]
+                     [OptionSet("num-features", [200], can_scale=False)])]
 
     MLLIB_GLM_ELASTIC_NET_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_ELASTIC_NET_TEST_OPTS + [
+        # Expected fraction of examples which are negative
+        OptionSet("per-negative", [0.3]),
         # In GLM classification with elastic-net regularization, only logistic loss is supported.
         OptionSet("loss", ["logistic"])
     ]
@@ -502,7 +506,7 @@ if MLLIB_SPARK_VERSION >= 1.5:
     MLLIB_TESTS += [("glm-classification", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
                      MLLIB_JAVA_OPTS, [ConstantOption("glm-classification")] +
                      MLLIB_GLM_ELASTIC_NET_CLASSIFICATION_TEST_OPTS +
-                     [OptionSet("num-features", [100], can_scale=False)])]
+                     [OptionSet("num-features", [200], can_scale=False)])]
 
 NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # The number of features per example
@@ -595,10 +599,10 @@ MLLIB_TESTS += [("als", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
 
 # Clustering Tests #
 MLLIB_CLUSTERING_TEST_OPTS = MLLIB_COMMON_OPTS + [
-     # The number of points
-     OptionSet("num-points", [1000000], can_scale=True),
+     # The number of examples
+     OptionSet("num-examples", [1000000], can_scale=True),
      # The number of features per point
-     OptionSet("num-columns", [10000], can_scale=False),
+     OptionSet("num-features", [10000], can_scale=False),
      # The number of centers
      OptionSet("num-centers", [20]),
      # The number of iterations for KMeans
@@ -609,8 +613,8 @@ MLLIB_TESTS += [("kmeans", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("kmeans")] + MLLIB_CLUSTERING_TEST_OPTS)]
 
 MLLIB_GMM_TEST_OPTS = MLLIB_COMMON_OPTS + [
-    OptionSet("num-points", [1000000], can_scale=True),
-    OptionSet("num-columns", [100], can_scale=False),
+    OptionSet("num-examples", [1000000], can_scale=True),
+    OptionSet("num-features", [100], can_scale=False),
     OptionSet("num-centers", [20], can_scale=False),
     OptionSet("num-iterations", [20])]
 
@@ -630,16 +634,15 @@ if MLLIB_SPARK_VERSION >= 1.4:
     MLLIB_TESTS += [("lda", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
         MLLIB_JAVA_OPTS, [ConstantOption("lda")] + MLLIB_LDA_TEST_OPTS)]
 
-# TODO: tune PIC test size to run in 20-30 seconds
 MLLIB_PIC_TEST_OPTS = MLLIB_COMMON_OPTS + [
-    OptionSet("num-points", [10000], can_scale=True),
-    OptionSet("node-degree", [10], can_scale=False),
-    OptionSet("num-centers", [20], can_scale=False),
+    OptionSet("num-examples", [10000000], can_scale=True),
+    OptionSet("node-degree", [20], can_scale=False),
+    OptionSet("num-centers", [40], can_scale=False),
     OptionSet("num-iterations", [20])]
 
 if MLLIB_SPARK_VERSION >= 1.3:
     MLLIB_TESTS += [("pic", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("pic")] + MLLIB_CLUSTERING_TEST_OPTS)]
+        MLLIB_JAVA_OPTS, [ConstantOption("pic")] + MLLIB_PIC_TEST_OPTS)]
 
 # Linear Algebra Tests #
 MLLIB_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
@@ -668,7 +671,7 @@ MLLIB_TESTS += [("pca", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
 
 MLLIB_TESTS += [("summary-statistics", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("summary-statistics")] +
-    MLLIB_LINALG_TEST_OPTS)]
+    MLLIB_BIG_LINALG_TEST_OPTS)]
 
 MLLIB_BLOCK_MATRIX_MULT_TEST_OPTS = MLLIB_COMMON_OPTS + [
     OptionSet("m", [20000], can_scale=True),
@@ -752,8 +755,8 @@ if MLLIB_SPARK_VERSION >= 1.3:
 MLLIB_PREFIX_SPAN_TEST_OPTS = MLLIB_FPM_TEST_OPTS + \
                             [OptionSet("num-sequences", [5000000], can_scale=True),
                              OptionSet("avg-sequence-size", [5], can_scale=False),
-                             OptionSet("avg-itemset-size", [1], can_scale=False),
-                             OptionSet("num-items", [100], can_scale=False),
+                             OptionSet("avg-itemset-size", [2], can_scale=False),
+                             OptionSet("num-items", [500], can_scale=False),
                              OptionSet("min-support", [0.5], can_scale=False),
                              OptionSet("max-pattern-len", [10], can_scale=False),
                              OptionSet("max-local-proj-db-size", [32000000], can_scale=False)]
