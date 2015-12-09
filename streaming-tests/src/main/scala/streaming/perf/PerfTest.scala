@@ -1,10 +1,10 @@
 package streaming.perf
 
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
-import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.SparkContext
 import joptsimple.{OptionSet, OptionParser}
 
-abstract class PerfTest {
+abstract class PerfTest(val sc: SparkContext) {
 
   val BATCH_DURATION = ("batch-duration", "duration of the batch size in milliseconds")
   val TOTAL_DURATION = ("total-duration", "Total duration of the test in seconds")
@@ -21,7 +21,6 @@ abstract class PerfTest {
   var hdfsUrl: String = _
   var checkpointDirectory: String = _
   var ssc: StreamingContext = _
-  var sc: SparkContext = _
 
   /** Long-type command line options expected for this test */
   def longOptions: Seq[(String, String)] = Seq(BATCH_DURATION, TOTAL_DURATION)
@@ -54,18 +53,26 @@ abstract class PerfTest {
     totalDurationSec = longOptionValue(TOTAL_DURATION)
     hdfsUrl = stringOptionValue(HDFS_URL)
     checkpointDirectory = hdfsUrl + "/checkpoint/"
-    ssc = createContext()
-    ssc.checkpoint(checkpointDirectory)
-    sc = ssc.sparkContext
   }
 
   /** Runs the test and returns a series of results, along with values of any parameters */
   def run(): String
 
+  def runPerf(): Seq[(String, Double)] = {
+    ssc = createContext()
+    ssc.checkpoint(checkpointDirectory)
+    try {
+      doRunPerf()
+    } finally {
+      ssc.stop(stopSparkContext = false)
+    }
+  }
+
+  /** Run the test and return a sequence of results **/
+  protected def doRunPerf(): Seq[(String, Double)]
+
   protected def createContext() = {
-    val conf = new SparkConf().setAppName(testName)
-    val sparkContext = new SparkContext(conf)    
-    new StreamingContext(sparkContext, Milliseconds(batchDurationMs))
+    new StreamingContext(sc, Milliseconds(batchDurationMs))
   }
 
   /** Get value of long-type command line option */
