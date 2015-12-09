@@ -66,10 +66,14 @@ class ReceiverTest(sc: SparkContext) extends PerfTest(sc) {
     stream.print()
     val start = System.currentTimeMillis()
     ssc.start()
-    if (allReceiversStartLatch.await(120, TimeUnit.SECONDS)) {
-      Seq("receivers-start-time" -> (System.currentTimeMillis() - start / 1000.0))
-    } else {
-      throw new TimeoutException("Receivers cannot start in 2 minutes")
+    try {
+      if (allReceiversStartLatch.await(120, TimeUnit.SECONDS)) {
+        Seq("receivers-start-time" -> (System.currentTimeMillis() - start / 1000.0))
+      } else {
+        throw new TimeoutException("Receivers cannot start in 2 minutes")
+      }
+    } finally {
+      ssc.stop(stopSparkContext = false, stopGracefully = true)
     }
   }
 }
