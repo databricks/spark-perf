@@ -335,14 +335,22 @@ STREAMING_KEY_VAL_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_o
     OptionSet("use-receiver", ["true"]),
 ]
 
-STREAMING_HDFS_RECOVERY_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(5000) + [
+STREAMING_FILE_STREAM_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(5000) + [
     OptionSet("records-per-file", [10000]),
+    OptionSet("file-generation-interval", [100]),
     OptionSet("file-cleaner-delay", [300])
+]
+
+STREAMING_DRIVER_RECOVERY_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(500) + [
+    OptionSet("use-receiver", ["false"])
 ]
 
 # This test is just to see if everything is setup properly
 STREAMING_TESTS += [("basic", "streaming.perf.TestRunner", SCALE_FACTOR,
     STREAMING_COMMON_JAVA_OPTS, [ConstantOption("basic")] + STREAMING_COMMON_OPTS + streaming_batch_duration_opts(1000))]
+
+STREAMING_TESTS += [("count", "streaming.perf.TestRunner", SCALE_FACTOR,
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("count")] + STREAMING_KEY_VAL_TEST_OPTS)]
 
 STREAMING_TESTS += [("state-by-key", "streaming.perf.TestRunner", SCALE_FACTOR,
     STREAMING_COMMON_JAVA_OPTS, [ConstantOption("state-by-key")] + STREAMING_KEY_VAL_TEST_OPTS)]
@@ -355,6 +363,9 @@ STREAMING_TESTS += [("reduce-by-key-and-window", "streaming.perf.TestRunner", SC
 
 STREAMING_TESTS += [("hdfs-recovery", "streaming.perf.TestRunner", SCALE_FACTOR,
     STREAMING_COMMON_JAVA_OPTS, [ConstantOption("hdfs-recovery")] + STREAMING_HDFS_RECOVERY_TEST_OPTS)]
+
+STREAMING_TESTS += [("driver-recovery", "streaming.perf.TestRunner", SCALE_FACTOR,
+    STREAMING_COMMON_JAVA_OPTS, [ConstantOption("driver-recovery")] + STREAMING_DRIVER_RECOVERY_TEST_OPTS)]
 
 
 # ================== #

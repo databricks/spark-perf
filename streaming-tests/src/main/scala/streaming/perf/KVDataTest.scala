@@ -20,7 +20,7 @@ abstract class KVDataTest extends PerfTest {
   val UNIQUE_KEYS =      ("unique-keys",   "(approx) number of unique keys")
   val UNIQUE_VALUES =    ("unique-values", "(approx) number of unique values per key")
   val MEMORY_SERIALIZATION = ("memory-serialization", "whether memory-persisted data is serialized")
-  val USE_RECEIVER =     ("use-receiver", "false")
+  val USE_RECEIVER =     ("use-receiver", "whether to use receiver to generate data")
   //val KEY_LENGTH =       ("key-length",    "length of keys in characters")
   //val VALUE_LENGTH =     ("value-length",  "length of values in characters")
 
@@ -70,7 +70,10 @@ abstract class KVDataTest extends PerfTest {
     // run test
     ssc.start()
     val startTime = System.currentTimeMillis
-    ssc.awaitTermination(totalDurationSec * 1000)
+    while (System.currentTimeMillis - startTime < totalDurationSec * 1000) {
+      ssc.awaitTermination(60 * 1000)
+      println(s"Time left: ${(System.currentTimeMillis - startTime) / 1000.0} seconds")
+    }
     ssc.stop()
     processResults(statsReportListener)
   }
@@ -89,7 +92,7 @@ abstract class KVDataTest extends PerfTest {
 
 object KVDataTest {
   val IGNORED_BATCHES = 10
- 
+
   // Generate statistics from the processing data
   def processResults(statsReportListener: StatsReportListener): String = {
     val processingDelays = statsReportListener.batchInfos.flatMap(_.processingDelay).map(_.toDouble / 1000.0)
@@ -119,6 +122,13 @@ abstract class WindowKVDataTest extends KVDataTest {
   override def run(): String = {
     windowDurationMs = longOptionValue(WINDOW_DURATION)
     super.run()
+  }
+}
+
+class CountTest extends KVDataTest {
+  // Setup the streamign computation
+  def setupOutputStream(inputStream: DStream[(String, String)]): DStream[_] = {
+    inputStream  // this stream will get automatically counted, see KVDataTest.run
   }
 }
 
