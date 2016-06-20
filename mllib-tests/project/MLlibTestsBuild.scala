@@ -24,7 +24,7 @@ object MLlibTestsBuild extends Build {
       "org.slf4j" % "slf4j-log4j12" % "1.7.2",
       "org.json4s" %% "json4s-native" % "3.2.10",
       "org.apache.spark" %% "spark-core" % "2.0.0-preview" % "provided",
-      "org.apache.spark" %% "spark-streaming" % "2.0.0-preview" % "provided"
+      "org.apache.spark" %% "spark-mllib" % "2.0.0-preview" % "provided"
     )
   )
 
