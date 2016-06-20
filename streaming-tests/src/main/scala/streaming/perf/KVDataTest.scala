@@ -70,7 +70,7 @@ abstract class KVDataTest extends PerfTest {
     // run test
     ssc.start()
     val startTime = System.currentTimeMillis
-    ssc.awaitTermination(totalDurationSec * 1000)
+    ssc.awaitTerminationOrTimeout(totalDurationSec * 1000)
     ssc.stop()
     processResults(statsReportListener)
   }

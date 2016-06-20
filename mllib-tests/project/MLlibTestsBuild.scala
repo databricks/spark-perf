@@ -16,14 +16,15 @@ object MLlibTestsBuild extends Build {
   lazy val commonSettings = Seq(
     organization := "org.spark-project",
     version := "0.1",
-    scalaVersion := "2.10.4",
-    sparkVersion := sys.props.getOrElse("spark.version", default="1.5.2"),
+    scalaVersion := "2.11.8",
+    sparkVersion := sys.props.getOrElse("spark.version", default="2.0.0-preview"),
     libraryDependencies ++= Seq(
       "net.sf.jopt-simple" % "jopt-simple" % "4.6",
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
       "org.slf4j" % "slf4j-log4j12" % "1.7.2",
-      "org.json4s" %% "json4s-native" % "3.2.9",
-      "org.apache.spark" %% "spark-mllib" % sparkVersion.value % "provided"
+      "org.json4s" %% "json4s-native" % "3.2.10",
+      "org.apache.spark" %% "spark-core" % "2.0.0-preview" % "provided",
+      "org.apache.spark" %% "spark-streaming" % "2.0.0-preview" % "provided"
     )
   )
 
@@ -35,9 +36,8 @@ object MLlibTestsBuild extends Build {
         val targetFolder = sparkVersion.value match {
           case v if v.startsWith("1.4.") => "v1p4"
           case v if v.startsWith("1.5.") => "v1p5"
-          case v if v.startsWith("1.6.") =>
-            "v1p5" // acceptable for now, but change later when new algs are added
-          case _ => throw new IllegalArgumentException(s"Do not support Spark ${sparkVersion.value}.")
+          case v if v.startsWith("2.0") => "v2p0"
+          case _ => throw new IllegalArgumentException(s"This Spark version isn't suppored: ${sparkVersion.value}.")
         }
         baseDirectory.value / targetFolder / "src" / "main" / "scala"
       },

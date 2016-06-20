@@ -44,7 +44,7 @@ object TestRunner {
       ("sparkVersion" -> sc.version) ~
       ("systemProperties" -> System.getProperties.asScala.toMap) ~
       ("results" -> results)
-    println("results: " + compact(render(json)))
+    println("results: " + compact(json))
 
     // Gracefully stop the SparkContext so that the application web UI can be preserved
     // and viewed using the HistoryServer.
