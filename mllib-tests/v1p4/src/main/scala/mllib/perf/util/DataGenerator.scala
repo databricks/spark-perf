@@ -509,7 +509,7 @@ class FeaturesGenerator(val categoricalArities: Array[Int], val numContinuous: I
 
 class KMeansDataGenerator(
     val numCenters: Int,
-    val numFeatures: Int,
+    val numColumns: Int,
     val seed: Long) extends RandomDataGenerator[Vector] {
 
   private val rng = new java.util.Random(seed)
@@ -528,7 +528,7 @@ class KMeansDataGenerator(
   }
 
   private val centers = (0 until numCenters).map{i =>
-    Array.fill(numFeatures)((2 * rng.nextDouble() - 1)*scale_factors(i))
+    Array.fill(numColumns)((2 * rng.nextDouble() - 1)*scale_factors(i))
   }
 
   override def nextValue(): Vector = {
@@ -536,12 +536,12 @@ class KMeansDataGenerator(
 
     val centerToAddTo = centers(concentrations.indexWhere(p => pick_center_rand <= p))
 
-    Vectors.dense(Array.tabulate(numFeatures)(i => centerToAddTo(i) + rng2.nextGaussian()))
+    Vectors.dense(Array.tabulate(numColumns)(i => centerToAddTo(i) + rng2.nextGaussian()))
   }
 
   override def setSeed(seed: Long) {
     rng.setSeed(seed)
   }
 
-  override def copy(): KMeansDataGenerator = new KMeansDataGenerator(numCenters, numFeatures, seed)
+  override def copy(): KMeansDataGenerator = new KMeansDataGenerator(numCenters, numColumns, seed)
 }

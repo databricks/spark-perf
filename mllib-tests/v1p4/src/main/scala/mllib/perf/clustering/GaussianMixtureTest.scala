@@ -16,21 +16,21 @@ import mllib.perf.PerfTest
 class GaussianMixtureTest(sc: SparkContext) extends PerfTest {
 
   // TODO: refactor k-means and GMM code
-  val NUM_EXAMPLES = ("num-examples", "number of examples for clustering tests")
-  val NUM_FEATURES = ("num-features", "number of features for each example for clustering tests")
+  val NUM_POINTS = ("num-points", "number of points for clustering tests")
+  val NUM_COLUMNS = ("num-columns", "number of columns for each point for clustering tests")
   val NUM_CENTERS = ("num-centers", "number of centers for clustering tests")
   val NUM_ITERATIONS = ("num-iterations", "number of iterations for the algorithm")
 
-  intOptions ++= Seq(NUM_CENTERS, NUM_FEATURES, NUM_ITERATIONS)
-  longOptions ++= Seq(NUM_EXAMPLES)
+  intOptions ++= Seq(NUM_CENTERS, NUM_COLUMNS, NUM_ITERATIONS)
+  longOptions ++= Seq(NUM_POINTS)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
 
   var data: RDD[Vector] = _
 
   override def createInputData(seed: Long): Unit = {
-    val m = longOptionValue(NUM_EXAMPLES)
-    val n = intOptionValue(NUM_FEATURES)
+    val m = longOptionValue(NUM_POINTS)
+    val n = intOptionValue(NUM_COLUMNS)
     val k = intOptionValue(NUM_CENTERS)
     val p = intOptionValue(NUM_PARTITIONS)
 
@@ -47,7 +47,7 @@ class GaussianMixtureTest(sc: SparkContext) extends PerfTest {
           Vectors.dense(y.data)
         }
       }.cache()
-    logInfo(s"Generated ${data.count()} examples.")
+    logInfo(s"Generated ${data.count()} points.")
   }
 
   override def run(): JValue = {

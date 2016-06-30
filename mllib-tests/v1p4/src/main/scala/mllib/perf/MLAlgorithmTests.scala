@@ -315,13 +315,13 @@ abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
 
   def runTest(rdd: RDD[Vector]): KMeansModel
 
-  val NUM_EXAMPLES =    ("num-examples",   "number of examples for clustering tests")
-  val NUM_FEATURES =   ("num-features",   "number of features for each example for clustering tests")
+  val NUM_POINTS =    ("num-points",   "number of points for clustering tests")
+  val NUM_COLUMNS =   ("num-columns",   "number of columns for each point for clustering tests")
   val NUM_CENTERS =   ("num-centers",   "number of centers for clustering tests")
   val NUM_ITERATIONS =      ("num-iterations",   "number of iterations for the algorithm")
 
-  intOptions = intOptions ++ Seq(NUM_CENTERS, NUM_FEATURES, NUM_ITERATIONS)
-  longOptions = longOptions ++ Seq(NUM_EXAMPLES)
+  intOptions = intOptions ++ Seq(NUM_CENTERS, NUM_COLUMNS, NUM_ITERATIONS)
+  longOptions = longOptions ++ Seq(NUM_POINTS)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ longOptions ++ doubleOptions
   addOptionsToParser()
 
@@ -329,21 +329,21 @@ abstract class ClusteringTests(sc: SparkContext) extends PerfTest {
   var testRdd: RDD[Vector] = _
 
   def validate(model: KMeansModel, rdd: RDD[Vector]): Double = {
-    val numExamples = rdd.cache().count()
+    val numPoints = rdd.cache().count()
 
     val error = model.computeCost(rdd)
 
-    math.sqrt(error/numExamples)
+    math.sqrt(error/numPoints)
   }
 
   override def createInputData(seed: Long) = {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
-    val numExamples: Long = longOptionValue(NUM_EXAMPLES)
-    val numFeatures: Int = intOptionValue(NUM_FEATURES)
+    val numPoints: Long = longOptionValue(NUM_POINTS)
+    val numColumns: Int = intOptionValue(NUM_COLUMNS)
     val numCenters: Int = intOptionValue(NUM_CENTERS)
 
-    val data = DataGenerator.generateKMeansVectors(sc, math.ceil(numExamples*1.25).toLong, numFeatures,
+    val data = DataGenerator.generateKMeansVectors(sc, math.ceil(numPoints*1.25).toLong, numColumns,
       numCenters, numPartitions, seed)
 
     val split = data.randomSplit(Array(0.8, 0.2), seed)
@@ -441,10 +441,9 @@ class ALSTest(sc: SparkContext) extends RecommendationTests(sc) {
     val rank: Int = intOptionValue(RANK)
     val regParam = doubleOptionValue(REG_PARAM)
     val seed = intOptionValue(RANDOM_SEED) + 12
-    val implicitRatings: Boolean = booleanOptionValue(IMPLICIT)
 
     new ALS().setIterations(numIterations).setRank(rank).setSeed(seed).setLambda(regParam)
-      .setBlocks(rdd.partitions.length).setImplicitPrefs(implicitRatings).run(rdd)
+      .setBlocks(rdd.partitions.size).run(rdd)
   }
 }
 

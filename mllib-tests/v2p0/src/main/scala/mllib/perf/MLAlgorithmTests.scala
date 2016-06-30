@@ -161,7 +161,10 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
       val sqlContext = new SQLContext(rdd.context)
       import sqlContext.implicits._
       val mlModel = rr.fit(rdd.toDF())
-      new LinearRegressionModel(mlModel.weights, mlModel.intercept)
+
+      new LinearRegressionModel(Vectors.fromML(mlModel.coefficients), 
+        mlModel.intercept)
+
     } else {
       assert(optimizer == "sgd", "GLMClassificationTest with" +
         s" regType!=elastic-net expects optimizer to be sgd, but found: $optimizer")
@@ -268,7 +271,7 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
           val sqlContext = new SQLContext(rdd.context)
           import sqlContext.implicits._
           val mlModel = lor.fit(rdd.toDF())
-          new LogisticRegressionModel(mlModel.weights, mlModel.intercept)
+          new LogisticRegressionModel(Vectors.fromML(mlModel.coefficients), mlModel.intercept)
         case _ =>
           throw new IllegalArgumentException(
             s"GLMClassificationTest given unsupported loss = $loss." +
@@ -603,12 +606,13 @@ abstract class DecisionTreeTests(sc: SparkContext)
 
   // TODO: generate DataFrame outside of `runTest` so it is not included in timing results
   private def makePredictions(
-      model: PredictionModel[Vector, _], rdd: RDD[LabeledPoint]): RDD[(Double, Double)] = {
+      model: PredictionModel[org.apache.spark.ml.linalg.Vector, _], rdd: RDD[LabeledPoint]): RDD[(Double, Double)] = {
     val labelType: Int = intOptionValue(LABEL_TYPE)
     val dataFrame = DataGenerator.setMetadata(rdd, categoricalFeaturesInfo, labelType)
     val results = model.transform(dataFrame)
     results
       .select(model.getPredictionCol, model.getLabelCol)
+      .rdd
       .map { case Row(prediction: Double, label: Double) => (prediction, label) }
   }
 }
