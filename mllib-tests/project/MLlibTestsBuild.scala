@@ -16,8 +16,8 @@ object MLlibTestsBuild extends Build {
   lazy val commonSettings = Seq(
     organization := "org.spark-project",
     version := "0.1",
-    scalaVersion := "2.11.8",
-    sparkVersion := sys.props.getOrElse("spark.version", default="2.0.0-SNAPSHOT"),
+    scalaVersion := sys.props.getOrElse("scala.version", default="2.11.8"),
+    sparkVersion := sys.props.getOrElse("spark.version", default="2.0.0"),
     libraryDependencies ++= Seq(
       "net.sf.jopt-simple" % "jopt-simple" % "4.6",
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
@@ -42,9 +42,9 @@ object MLlibTestsBuild extends Build {
         println("sparkVersion.value is: " + sparkVersion.value)
         val targetFolder = sparkVersion.value match {
           case v if v.startsWith("1.4.") => "v1p4"
-          case v if v.startsWith("1.5.") => "v1p5"
+          case v if v.startsWith("1.5.") => "v1p5" // acceptable for now, but change later when new algs are added
           case v if v.startsWith("1.6.") => "v1p5"
-          case v if v.startsWith("2.0") => "v2p0" 
+          case v if v.startsWith("2.0") => "v2p0"
           case _ => throw new IllegalArgumentException(s"This Spark version isn't suppored: ${sparkVersion.value}.")
         }
         baseDirectory.value / targetFolder / "src" / "main" / "scala"
