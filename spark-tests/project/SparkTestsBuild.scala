@@ -15,8 +15,14 @@ object SparkTestsBuild extends Build {
         "net.sf.jopt-simple" % "jopt-simple" % "4.6",
         "org.scalatest" %% "scalatest" % "2.2.1" % "test",
         "com.google.guava" % "guava" % "14.0.1",
-        "org.apache.spark" %% "spark-core" % "2.0.0-preview" % "provided",
         "org.json4s" %% "json4s-native" % "3.2.10"
+
+        // IMPORTANT!
+        // We need to uncomment the below once Spark 2.0.0 becomes available
+        // This relies on using spark built under the lib folder 
+        // of this project      
+        //"org.apache.spark" %% "spark-core" % "2.0.0-SNAPSHOT" % "provided",
+
       ),
       test in assembly := {},
       outputPath in assembly := file("target/spark-perf-tests-assembly.jar"),
