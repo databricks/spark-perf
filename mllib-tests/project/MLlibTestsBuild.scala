@@ -45,7 +45,7 @@ object MLlibTestsBuild extends Build {
           case v if v.startsWith("1.5.") => "v1p5" // acceptable for now, but change later when new algs are added
           case v if v.startsWith("1.6.") => "v1p5"
           case v if v.startsWith("2.0") => "v2p0"
-          case _ => throw new IllegalArgumentException(s"This Spark version isn't suppored: ${sparkVersion.value}.")
+          case _ => throw new IllegalArgumentException(s"This Spark version isn't supported: ${sparkVersion.value}.")
         }
         baseDirectory.value / targetFolder / "src" / "main" / "scala"
       },

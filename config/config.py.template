@@ -19,17 +19,19 @@ from sparkperf.config_utils import FlagSet, JavaOptionSet, OptionSet, ConstantOp
 
 DEFAULT_HOME=os.environ['HOME']
 
+# Point to an installation of Spark on the cluster.
 SPARK_HOME_DIR = os.getenv('SPARK_HOME', DEFAULT_HOME)
 
 # Use a custom configuration directory
 SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
 
 # Master used when submitting Spark jobs.
-# For local clusters: "spark://%s:7077" % socket.gethostname()
+# for ec2 clusters: open("/root/spark-ec2/cluster-url", 'r').readline().strip()
+# For local clusters (default): "spark://%s:7077" % socket.gethostname()
 # For Yarn clusters: "yarn"
-# Otherwise, the default uses the specified EC2 cluster
 
-SPARK_CLUSTER_URL = "spark://%s:7077" % socket.gethostname()
+SPARK_CLUSTER_URL="spark://%s:7077" % socket.gethostname()
+
 IS_YARN_MODE = "yarn" in SPARK_CLUSTER_URL
 IS_MESOS_MODE = "mesos" in SPARK_CLUSTER_URL
 
@@ -78,18 +80,18 @@ RESTART_SPARK_CLUSTER = RESTART_SPARK_CLUSTER and not IS_YARN_MODE
 RSYNC_SPARK_HOME = True
 
 # Which tests to run
-RUN_SPARK_TESTS = False
+RUN_SPARK_TESTS = True
 RUN_PYSPARK_TESTS = False
 RUN_STREAMING_TESTS = False
-RUN_MLLIB_TESTS = True
-RUN_PYTHON_MLLIB_TESTS = True
+RUN_MLLIB_TESTS = False
+RUN_PYTHON_MLLIB_TESTS = False
 
 # Which tests to prepare. Set this to true for the first
 # installation or whenever you make a change to the tests.
 PREP_SPARK_TESTS = True
-PREP_PYSPARK_TESTS = True
-PREP_STREAMING_TESTS = True
-PREP_MLLIB_TESTS = True
+PREP_PYSPARK_TESTS = False
+PREP_STREAMING_TESTS = False
+PREP_MLLIB_TESTS = False
 
 # Whether to warm up local disks (warm-up is only necesary on EC2).
 DISK_WARMUP = False
@@ -102,7 +104,7 @@ DISK_WARMUP_BYTES = 200 * 1024 * 1024
 DISK_WARMUP_FILES = 200
 
 # Prompt for confirmation when deleting temporary files.
-PROMPT_FOR_DELETES = False
+PROMPT_FOR_DELETES = True
 
 # Files to write results to
 SPARK_OUTPUT_FILENAME = "results/spark_perf_output_%s_%s" % (
@@ -126,7 +128,7 @@ PYTHON_MLLIB_OUTPUT_FILENAME = "results/python_mllib_perf_output_%s_%s" % (
 # number of records in a generated dataset) if you are running the tests with more
 # or fewer nodes. When developing new test suites, you might want to set this to a small
 # value suitable for a single machine, such as 0.001.
-SCALE_FACTOR = 0.01
+SCALE_FACTOR = 1.0
 
 assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
 
@@ -145,7 +147,7 @@ COMMON_JAVA_OPTS = [
     # Fraction of JVM memory used for caching RDDs.
     JavaOptionSet("spark.storage.memoryFraction", [0.66]),
     JavaOptionSet("spark.serializer", ["org.apache.spark.serializer.JavaSerializer"]),
-    JavaOptionSet("spark.executor.memory", ["2g"]),
+    # JavaOptionSet("spark.executor.memory", ["9g"]),
     # Turn event logging on in order better diagnose failed tests. Off by default as it crashes
     # releases prior to 1.0.2
     # JavaOptionSet("spark.eventLog.enabled", [True]),
@@ -153,7 +155,7 @@ COMMON_JAVA_OPTS = [
     JavaOptionSet("spark.locality.wait", [str(60 * 1000 * 1000)])
 ]
 # Set driver memory here
-SPARK_DRIVER_MEMORY = "2g"
+SPARK_DRIVER_MEMORY = "20g"
 # The following options value sets are shared among all tests.
 COMMON_OPTS = [
     # How many times to run each experiment - used to warm up system caches.
@@ -316,7 +318,8 @@ STREAMING_COMMON_JAVA_OPTS = [
     # Fraction of JVM memory used for caching RDDs.
     JavaOptionSet("spark.storage.memoryFraction", [0.66]),
     JavaOptionSet("spark.serializer", ["org.apache.spark.serializer.JavaSerializer"]),
-    # JavaOptionSet("spark.executor.memory", ["2g"])
+    # JavaOptionSet("spark.executor.memory", ["9g"]),
+    JavaOptionSet("spark.executor.extraJavaOptions", [" -XX:+UseConcMarkSweepGC "])
 ]
 
 STREAMING_KEY_VAL_TEST_OPTS = STREAMING_COMMON_OPTS + streaming_batch_duration_opts(2000) + [
@@ -371,8 +374,7 @@ MLLIB_PERF_TEST_RUNNER = "mllib.perf.TestRunner"
 #  * Build Spark locally by running `build/sbt assembly; build/sbt publishLocal` in the Spark root directory
 #  * Set `USE_CLUSTER_SPARK = True` and `MLLIB_SPARK_VERSION = {desired Spark version, e.g. 1.5}`
 #  * Don't use PREP_MLLIB_TESTS = True; instead manually run `cd mllib-tests; sbt/sbt -Dspark.version=1.5.0-SNAPSHOT clean assembly` to build perf tests
-
-MLLIB_SPARK_VERSION = "2.0"
+MLLIB_SPARK_VERSION = 1.5
 
 MLLIB_JAVA_OPTS = COMMON_JAVA_OPTS
 if MLLIB_SPARK_VERSION >= 1.1:
@@ -401,6 +403,9 @@ MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
 
 # Generalized Linear Model (GLM) Tests #
 MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
+    # The scale factor for the noise in feature values.
+    # Currently ignored for regression.
+    OptionSet("feature-noise", [1.0]),
     # The number of features per example
     OptionSet("num-features", [10000], can_scale=False),
     # The number of iterations for SGD
@@ -412,11 +417,6 @@ MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # Regularization parameter
     OptionSet("reg-param", [0.1])
 ]
-if MLLIB_SPARK_VERSION >= 1.1:
-    MLLIB_GLM_TEST_OPTS += [
-        # Optimization algorithm: sgd, l-bfgs
-        OptionSet("optimizer", ["sgd", "l-bfgs"])
-    ]
 if MLLIB_SPARK_VERSION >= 1.5:
     MLLIB_GLM_TEST_OPTS += [
         # Ignored, but required for config
@@ -425,6 +425,8 @@ if MLLIB_SPARK_VERSION >= 1.5:
 
 # GLM Regression Tests #
 MLLIB_GLM_REGRESSION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
+    # Optimization algorithm: sgd
+    OptionSet("optimizer", ["sgd"]),
     # The intercept for the data
     OptionSet("intercept", [0.0]),
     # The scale factor for label noise
@@ -440,6 +442,8 @@ MLLIB_TESTS += [("glm-regression", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
 MLLIB_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [
     # Expected fraction of examples which are negative
     OptionSet("per-negative", [0.3]),
+    # Optimization algorithm: sgd, l-bfgs
+    OptionSet("optimizer", ["sgd", "l-bfgs"])
 ]
 
 # GLM Classification Tests #
@@ -466,15 +470,15 @@ if MLLIB_SPARK_VERSION >= 1.5:
         OptionSet("reg-param", [0.01]),
         # The scale factor for the noise in feature values
         OptionSet("feature-noise", [1.0]),
-        # The scale factor for the noise in label values
-        OptionSet("label-noise", [0.1]),
-        # The intercept for the data
-        OptionSet("intercept", [0.2]),
         # The step size is not used in LBFGS, but this is required in parameter checking.
         OptionSet("step-size", [0.0])
     ]
 
     MLLIB_GLM_ELASTIC_NET_REGRESSION_TEST_OPTS = MLLIB_GLM_ELASTIC_NET_TEST_OPTS + [
+        # The scale factor for the noise in label values
+        OptionSet("label-noise", [0.1]),
+        # The intercept for the data
+        OptionSet("intercept", [0.2]),
         # Loss to minimize: l2 (squared error)
         OptionSet("loss", ["l2"])
     ]
@@ -488,9 +492,11 @@ if MLLIB_SPARK_VERSION >= 1.5:
     MLLIB_TESTS += [("glm-regression", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
                      MLLIB_JAVA_OPTS, [ConstantOption("glm-regression")] +
                      MLLIB_GLM_ELASTIC_NET_REGRESSION_TEST_OPTS +
-                     [OptionSet("num-features", [100], can_scale=False)])]
+                     [OptionSet("num-features", [200], can_scale=False)])]
 
     MLLIB_GLM_ELASTIC_NET_CLASSIFICATION_TEST_OPTS = MLLIB_GLM_ELASTIC_NET_TEST_OPTS + [
+        # Expected fraction of examples which are negative
+        OptionSet("per-negative", [0.3]),
         # In GLM classification with elastic-net regularization, only logistic loss is supported.
         OptionSet("loss", ["logistic"])
     ]
@@ -504,7 +510,7 @@ if MLLIB_SPARK_VERSION >= 1.5:
     MLLIB_TESTS += [("glm-classification", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
                      MLLIB_JAVA_OPTS, [ConstantOption("glm-classification")] +
                      MLLIB_GLM_ELASTIC_NET_CLASSIFICATION_TEST_OPTS +
-                     [OptionSet("num-features", [100], can_scale=False)])]
+                     [OptionSet("num-features", [200], can_scale=False)])]
 
 NAIVE_BAYES_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # The number of features per example
@@ -597,10 +603,10 @@ MLLIB_TESTS += [("als", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
 
 # Clustering Tests #
 MLLIB_CLUSTERING_TEST_OPTS = MLLIB_COMMON_OPTS + [
-     # The number of points
-     OptionSet("num-points", [1000000], can_scale=True),
+     # The number of examples
+     OptionSet("num-examples", [1000000], can_scale=True),
      # The number of features per point
-     OptionSet("num-columns", [10000], can_scale=False),
+     OptionSet("num-features", [10000], can_scale=False),
      # The number of centers
      OptionSet("num-centers", [20]),
      # The number of iterations for KMeans
@@ -611,8 +617,8 @@ MLLIB_TESTS += [("kmeans", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("kmeans")] + MLLIB_CLUSTERING_TEST_OPTS)]
 
 MLLIB_GMM_TEST_OPTS = MLLIB_COMMON_OPTS + [
-    OptionSet("num-points", [1000000], can_scale=True),
-    OptionSet("num-columns", [100], can_scale=False),
+    OptionSet("num-examples", [1000000], can_scale=True),
+    OptionSet("num-features", [100], can_scale=False),
     OptionSet("num-centers", [20], can_scale=False),
     OptionSet("num-iterations", [20])]
 
@@ -632,16 +638,15 @@ if MLLIB_SPARK_VERSION >= 1.4:
     MLLIB_TESTS += [("lda", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
         MLLIB_JAVA_OPTS, [ConstantOption("lda")] + MLLIB_LDA_TEST_OPTS)]
 
-# TODO: tune PIC test size to run in 20-30 seconds
 MLLIB_PIC_TEST_OPTS = MLLIB_COMMON_OPTS + [
-    OptionSet("num-points", [10000], can_scale=True),
-    OptionSet("node-degree", [10], can_scale=False),
-    OptionSet("num-centers", [20], can_scale=False),
+    OptionSet("num-examples", [10000000], can_scale=True),
+    OptionSet("node-degree", [20], can_scale=False),
+    OptionSet("num-centers", [40], can_scale=False),
     OptionSet("num-iterations", [20])]
 
 if MLLIB_SPARK_VERSION >= 1.3:
     MLLIB_TESTS += [("pic", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
-        MLLIB_JAVA_OPTS, [ConstantOption("pic")] + MLLIB_CLUSTERING_TEST_OPTS)]
+        MLLIB_JAVA_OPTS, [ConstantOption("pic")] + MLLIB_PIC_TEST_OPTS)]
 
 # Linear Algebra Tests #
 MLLIB_LINALG_TEST_OPTS = MLLIB_COMMON_OPTS + [
@@ -670,7 +675,7 @@ MLLIB_TESTS += [("pca", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
 
 MLLIB_TESTS += [("summary-statistics", MLLIB_PERF_TEST_RUNNER, SCALE_FACTOR,
     MLLIB_JAVA_OPTS, [ConstantOption("summary-statistics")] +
-    MLLIB_LINALG_TEST_OPTS)]
+    MLLIB_BIG_LINALG_TEST_OPTS)]
 
 MLLIB_BLOCK_MATRIX_MULT_TEST_OPTS = MLLIB_COMMON_OPTS + [
     OptionSet("m", [20000], can_scale=True),
@@ -754,8 +759,8 @@ if MLLIB_SPARK_VERSION >= 1.3:
 MLLIB_PREFIX_SPAN_TEST_OPTS = MLLIB_FPM_TEST_OPTS + \
                             [OptionSet("num-sequences", [5000000], can_scale=True),
                              OptionSet("avg-sequence-size", [5], can_scale=False),
-                             OptionSet("avg-itemset-size", [1], can_scale=False),
-                             OptionSet("num-items", [100], can_scale=False),
+                             OptionSet("avg-itemset-size", [2], can_scale=False),
+                             OptionSet("num-items", [500], can_scale=False),
                              OptionSet("min-support", [0.5], can_scale=False),
                              OptionSet("max-pattern-len", [10], can_scale=False),
                              OptionSet("max-local-proj-db-size", [32000000], can_scale=False)]
