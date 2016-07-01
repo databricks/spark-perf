@@ -603,4 +603,3 @@ class DecisionTreeTest(sc: SparkContext) extends DecisionTreeTests(sc) {
     }
   }
 }
-
