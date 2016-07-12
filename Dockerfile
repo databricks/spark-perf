@@ -26,12 +26,16 @@ RUN mkdir -p /root/spark-ec2/
 RUN cd /opt/ && git clone https://github.com/paulp/sbt-extras.git  && chmod 777 sbt-extras/* 
 RUN ls -altrh /opt/sbt-extras/
 
-RUN wget https://dl.bintray.com/sbt/native-packages/sbt/0.13.11/sbt-0.13.11.zip -O /opt/sbt.zip
-RUN cd /opt/ && unzip sbt.zip
-RUN ls -alrth /opt/sbt/bin/sbt-launch.jar
 RUN dnf install -y which
 
 ADD . /opt/spark-perf/
 WORKDIR /opt/spark-perf/
 
-CMD if [ -n "$SPARK_MASTER_URL" ]; then echo "FAILED! Missing spark master url" && exit 1 ; fi ; export PATH=$PATH:/opt/sbt-extras/ && echo $SPARK_MASTER_URL > /root/spark-ec2/cluster-url && ./bin/run
+# A quick run: This will bootstrap things as necessary so the images doesnt need to download SBT.
+RUN export PATH=$PATH:/opt/spark-perf/spark-tests/sbt/ && ./bin/run || echo "this is just for bootstrapping"
+
+ADD driver-script.sh /opt/driver-script.sh
+
+# Example CMD, most likely folks will override.
+CMD /opt/driver-script.sh
+
