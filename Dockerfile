@@ -25,8 +25,15 @@ RUN dnf install -y unzip git wget
 RUN mkdir -p /root/spark-ec2/
 RUN cd /opt/ && git clone https://github.com/paulp/sbt-extras.git  && chmod 777 sbt-extras/* 
 RUN ls -altrh /opt/sbt-extras/
-
 RUN dnf install -y which
+
+### wget spark client so we can have spark-submit 
+WORKDIR /opt/
+RUN wget http://www-eu.apache.org/dist/spark/spark-2.0.0-preview/spark-2.0.0-preview-bin-hadoop2.7.tgz
+RUN gunzip -c spark-2.0.0-preview-bin-hadoop2.7.tgz |  tar xvf -
+RUN mv spark-2.0.0-preview-bin-hadoop2.7 /root/spark 
+RUN echo "done getting spark-submit"
+RUN ls /root/spark/bin
 
 ADD . /opt/spark-perf/
 WORKDIR /opt/spark-perf/
