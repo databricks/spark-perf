@@ -5,7 +5,7 @@ import sys
 import threading
 from contextlib import contextmanager
 
-SBT_CMD = "sbt/sbt"
+SBT_CMD = "sbt/sbt -sbt-launch-dir /opt -ivy /opt/.ivy2"
 
 @contextmanager
 def cd(target_dir):

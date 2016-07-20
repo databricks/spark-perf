@@ -21,4 +21,4 @@ echo "dir = `pwd`"
 
 echo " ******* START !!!!!!!"
 
-./bin/run
+HOME=/opt/ ./bin/run

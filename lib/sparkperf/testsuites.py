@@ -150,10 +150,15 @@ class SparkTests(JVMPerfTestSuite):
     def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
         with open(stdout_filename, "r") as stdout_file:
             output = stdout_file.read()
-        results_token = "results: "
+        with open(stdout_filename, "r") as stderr_file:
+            err = stderr_file.read()
+       
+	results_token = "results: "
         if results_token not in output:
             print("Test did not produce expected results. Output was:")
             print(output)
+	    print("error:")
+            print(err)
             sys.exit(1)
         result_line = filter(lambda x: results_token in x, output.split("\n"))[-1]
         result_json = result_line.replace(results_token, "")
@@ -293,10 +298,15 @@ class PythonTests(PerfTestSuite):
     def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
         with open(stdout_filename, "r") as stdout_file:
             output = stdout_file.read()
-        results_token = "results: "
+        with open(stderr_filename, "r") as stderr_file:
+            err = stderr_file.read()
+ 	
+	results_token = "results: "
         if results_token not in output:
             print("Test did not produce expected results. Output was:")
             print(output)
+            print("std err =")
+            print(err)
             sys.exit(1)
         result_line = filter(lambda x: results_token in x, output.split("\n"))[-1]
         result_list = result_line.replace(results_token, "").split(",")

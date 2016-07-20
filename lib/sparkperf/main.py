@@ -5,6 +5,8 @@ import imp
 import os
 import logging
 
+print("python sparkperf driver")
+
 logger = logging.getLogger("sparkperf")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())

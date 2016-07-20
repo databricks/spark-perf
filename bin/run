@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 export PYTHONPATH="$(dirname "$0")/../lib/:$HOME/lib/site-python:$PYTHONPATH"
+set -x
 /usr/bin/env python "$(dirname "$0")/../lib/sparkperf/main.py" "$@"
