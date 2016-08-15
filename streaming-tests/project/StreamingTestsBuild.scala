@@ -20,8 +20,8 @@ object StreamingTestsBuild extends Build {
         "com.typesafe.akka" %% "akka-remote"  % "2.3.11",
         "com.typesafe.akka" %% "akka-agent"   % "2.3.11",
         "org.slf4j" % "slf4j-log4j12" % "1.7.2",
-        "org.apache.spark" %% "spark-core" % "2.0.0-preview" % "provided",
-        "org.apache.spark" %% "spark-streaming" % "2.0.0-preview" % "provided"
+        "org.apache.spark" %% "spark-core" % "2.0.0",
+        "org.apache.spark" %% "spark-streaming" % "2.0.0"
       ),
       test in assembly := {},
       outputPath in assembly := file("target/streaming-perf-tests-assembly.jar"),

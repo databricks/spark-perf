@@ -23,14 +23,8 @@ object MLlibTestsBuild extends Build {
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
       "org.slf4j" % "slf4j-log4j12" % "1.7.2",
       "org.json4s" %% "json4s-native" % "3.2.9"
-
-      // IMPORTANT!
-      // We need to uncomment the below once Spark 2.0.0 becomes available
-      // This relies on using spark built under the lib folder 
-      // of this project
-      
-      //"org.apache.spark" %% "spark-core" % "2.0.0-SNAPSHOT" % "provided",
-      //"org.apache.spark" %% "spark-mllib" % "2.0.0-SNAPSHOT" % "provided"
+      "org.apache.spark" %% "spark-core" % "2.0.0",
+      "org.apache.spark" %% "spark-mllib" % "2.0.0"
     )
   )
 
