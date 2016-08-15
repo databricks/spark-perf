@@ -23,8 +23,8 @@ object MLlibTestsBuild extends Build {
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
       "org.slf4j" % "slf4j-log4j12" % "1.7.2",
       "org.json4s" %% "json4s-native" % "3.2.9"
-      "org.apache.spark" %% "spark-core" % "2.0.0",
-      "org.apache.spark" %% "spark-mllib" % "2.0.0"
+      "org.apache.spark" %% "spark-core" % sparkVersion.value,
+      "org.apache.spark" %% "spark-mllib" % sparkVersion.value
     )
   )
 
@@ -33,7 +33,6 @@ object MLlibTestsBuild extends Build {
     file("."),
     settings = assemblySettings ++ commonSettings ++ Seq(
       scalaSource in Compile := {
-        println("sparkVersion.value is: " + sparkVersion.value)
         val targetFolder = sparkVersion.value match {
           case v if v.startsWith("1.4.") => "v1p4"
           case v if v.startsWith("1.5.") => "v1p5" // acceptable for now, but change later when new algs are added
