@@ -22,7 +22,7 @@ object MLlibTestsBuild extends Build {
       "net.sf.jopt-simple" % "jopt-simple" % "4.6",
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
       "org.slf4j" % "slf4j-log4j12" % "1.7.2",
-      "org.json4s" %% "json4s-native" % "3.2.9"
+      "org.json4s" %% "json4s-native" % "3.2.9",
       "org.apache.spark" %% "spark-core" % sparkVersion.value,
       "org.apache.spark" %% "spark-mllib" % sparkVersion.value
     )
