@@ -204,10 +204,9 @@ class GLMRegressionTest(sc: SparkContext) extends GLMTests(sc) {
 class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
 
   val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
-  val FEATURE_NOISE =  ("feature-noise",   "scale factor for the noise during feature generation")
   val LOSS =  ("loss",   "loss to minimize. Supported: logistic, hinge (SVM).")
 
-  doubleOptions = doubleOptions ++ Seq(THRESHOLD, FEATURE_NOISE)
+  doubleOptions = doubleOptions ++ Seq(THRESHOLD)
   stringOptions = stringOptions ++ Seq(LOSS)
 
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
@@ -227,10 +226,9 @@ class GLMClassificationTest(sc: SparkContext) extends GLMTests(sc) {
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
     val threshold: Double = doubleOptionValue(THRESHOLD)
-    val featureNoise: Double = doubleOptionValue(FEATURE_NOISE)
 
     val data = DataGenerator.generateClassificationLabeledPoints(sc,
-      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, featureNoise, numPartitions,
+      math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, numPartitions,
       seed)
 
     val split = data.randomSplit(Array(0.8, 0.2), seed)
@@ -462,11 +460,10 @@ class NaiveBayesTest(sc: SparkContext)
   extends RegressionAndClassificationTests[NaiveBayesModel](sc) {
 
   val THRESHOLD =  ("per-negative",   "probability for a negative label during data generation")
-  val FEATURE_NOISE =  ("feature-noise",   "scale factor for the noise during feature generation")
   val SMOOTHING =     ("nb-lambda",   "the smoothing parameter lambda for Naive Bayes")
   val MODEL_TYPE = ("model-type", "either multinomial (default) or bernoulli")
 
-  doubleOptions = doubleOptions ++ Seq(THRESHOLD, FEATURE_NOISE, SMOOTHING)
+  doubleOptions = doubleOptions ++ Seq(THRESHOLD, SMOOTHING)
   stringOptions = stringOptions ++ Seq(MODEL_TYPE)
   val options = intOptions ++ stringOptions  ++ booleanOptions ++ doubleOptions ++ longOptions
   addOptionsToParser()
@@ -478,7 +475,6 @@ class NaiveBayesTest(sc: SparkContext)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
     val threshold: Double = doubleOptionValue(THRESHOLD)
-    val featureNoise: Double = doubleOptionValue(FEATURE_NOISE)
     val modelType = stringOptionValue(MODEL_TYPE)
 
     val data = if (modelType == "bernoulli") {
@@ -486,7 +482,7 @@ class NaiveBayesTest(sc: SparkContext)
         math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, numPartitions, seed)
     } else {
       val negdata = DataGenerator.generateClassificationLabeledPoints(sc,
-        math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, featureNoise, numPartitions,
+        math.ceil(numExamples * 1.25).toLong, numFeatures, threshold, numPartitions,
         seed)
       val dataNonneg = negdata.map { lp =>
         LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.map(math.abs)))

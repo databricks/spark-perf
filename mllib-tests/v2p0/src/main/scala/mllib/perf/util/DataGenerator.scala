@@ -49,12 +49,11 @@ object DataGenerator {
       numRows: Long,
       numCols: Int,
       threshold: Double,
-      featureNoise: Double,
       numPartitions: Int,
       seed: Long = System.currentTimeMillis(),
       chiSq: Boolean = false): RDD[LabeledPoint] = {
 
-    RandomRDDs.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, featureNoise, chiSq),
+    RandomRDDs.randomRDD(sc, new ClassLabelGenerator(numCols,threshold, chiSq),
       numRows, numPartitions, seed)
   }
 
@@ -364,7 +363,6 @@ class RatingGenerator(
 class ClassLabelGenerator(
     private val numFeatures: Int,
     private val threshold: Double,
-    private val featureNoise: Double,
     private val chiSq: Boolean) extends RandomDataGenerator[LabeledPoint] {
 
   private val rng = new java.util.Random()
@@ -372,7 +370,7 @@ class ClassLabelGenerator(
   override def nextValue(): LabeledPoint = {
     val y = if (rng.nextDouble() < threshold) 0.0 else 1.0
     val x = Array.fill[Double](numFeatures) {
-      if (!chiSq) rng.nextGaussian() + (y * featureNoise) else rng.nextInt(6) * 1.0
+      if (!chiSq) rng.nextGaussian() + y else rng.nextInt(6) * 1.0
     }
 
     LabeledPoint(y, Vectors.dense(x))
@@ -383,7 +381,7 @@ class ClassLabelGenerator(
   }
 
   override def copy(): ClassLabelGenerator =
-    new ClassLabelGenerator(numFeatures, threshold, featureNoise, chiSq)
+    new ClassLabelGenerator(numFeatures, threshold, chiSq)
 }
 
 class BinaryLabeledDataGenerator(

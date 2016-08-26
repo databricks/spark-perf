@@ -73,7 +73,7 @@ class ChiSquaredFeatureTest(sc: SparkContext) extends StatTests[RDD[LabeledPoint
     val n: Int = intOptionValue(NUM_COLS)
     val numPartitions: Int = intOptionValue(NUM_PARTITIONS)
 
-    rdd = DataGenerator.generateClassificationLabeledPoints(sc, m, n, 0.5, 1.0, numPartitions,
+    rdd = DataGenerator.generateClassificationLabeledPoints(sc, m, n, 0.5, numPartitions,
       seed, chiSq = true).cache()
 
     // Materialize rdd
