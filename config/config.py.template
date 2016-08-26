@@ -375,7 +375,7 @@ MLLIB_PERF_TEST_RUNNER = "mllib.perf.TestRunner"
 #  * Set `USE_CLUSTER_SPARK = True` and `MLLIB_SPARK_VERSION = {desired Spark version, e.g. 1.5}`
 #  * Don't use PREP_MLLIB_TESTS = True; instead manually run `cd mllib-tests; sbt/sbt -Dspark.version=1.5.0-SNAPSHOT clean assembly` to build perf tests
 
-MLLIB_SPARK_VERSION = 2.0
+MLLIB_SPARK_VERSION = 2.0.0
 
 MLLIB_JAVA_OPTS = COMMON_JAVA_OPTS
 if MLLIB_SPARK_VERSION >= 1.1:
