@@ -11,7 +11,6 @@ object StreamingTestsBuild extends Build {
       organization := "org.spark-project",
       version := "0.1",
       scalaVersion := sys.props.getOrElse("scala.version", default="2.11.8"),
-      sparkVersion := sys.props.getOrElse("spark.version", default="2.0.0"),
       libraryDependencies ++= Seq(
         "net.sf.jopt-simple" % "jopt-simple" % "4.5",
         "org.scalatest" %% "scalatest" % "2.2.1" % "test",
@@ -21,8 +20,8 @@ object StreamingTestsBuild extends Build {
         "com.typesafe.akka" %% "akka-remote"  % "2.3.11",
         "com.typesafe.akka" %% "akka-agent"   % "2.3.11",
         "org.slf4j" % "slf4j-log4j12" % "1.7.2",
-        "org.apache.spark" %% "spark-core" % sparkVersion,
-        "org.apache.spark" %% "spark-streaming" % sparkVersion
+        "org.apache.spark" %% "spark-core" % "2.0.0" % "provided",
+        "org.apache.spark" %% "spark-streaming" % "2.0.0" % "provided"
       ),
       test in assembly := {},
       outputPath in assembly := file("target/streaming-perf-tests-assembly.jar"),
