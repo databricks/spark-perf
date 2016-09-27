@@ -23,7 +23,10 @@ object MLlibTestsBuild extends Build {
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
       "org.slf4j" % "slf4j-log4j12" % "1.7.2",
       "org.json4s" %% "json4s-native" % "3.2.9",
-      "org.apache.spark" %% "spark-mllib" % sparkVersion.value % "provided"
+      // Allow the user to set the Spark version but default to look
+      // for the Spark 2.0.0 artifact. Uncomment below to use spark.version
+      // "org.apache.spark" %% "spark-mllib" % sparkVersion.value % "provided"
+      "org.apache.spark" %% "spark-mllib" % "2.0.0" % "provided"
     )
   )
 
