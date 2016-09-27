@@ -17,17 +17,21 @@ from sparkperf.config_utils import FlagSet, JavaOptionSet, OptionSet, ConstantOp
 #  Standard Configuration Options  #
 # ================================ #
 
+DEFAULT_HOME=os.environ['HOME']
+
 # Point to an installation of Spark on the cluster.
-SPARK_HOME_DIR = "/root/spark"
+SPARK_HOME_DIR = os.getenv('SPARK_HOME', DEFAULT_HOME)
 
 # Use a custom configuration directory
 SPARK_CONF_DIR = SPARK_HOME_DIR + "/conf"
 
 # Master used when submitting Spark jobs.
-# For local clusters: "spark://%s:7077" % socket.gethostname()
+# for ec2 clusters: open("/root/spark-ec2/cluster-url", 'r').readline().strip()
+# For local clusters (default): "spark://%s:7077" % socket.gethostname()
 # For Yarn clusters: "yarn"
-# Otherwise, the default uses the specified EC2 cluster
-SPARK_CLUSTER_URL = open("/root/spark-ec2/cluster-url", 'r').readline().strip()
+
+SPARK_CLUSTER_URL="spark://%s:7077" % socket.gethostname()
+
 IS_YARN_MODE = "yarn" in SPARK_CLUSTER_URL
 IS_MESOS_MODE = "mesos" in SPARK_CLUSTER_URL
 
@@ -124,7 +128,7 @@ PYTHON_MLLIB_OUTPUT_FILENAME = "results/python_mllib_perf_output_%s_%s" % (
 # number of records in a generated dataset) if you are running the tests with more
 # or fewer nodes. When developing new test suites, you might want to set this to a small
 # value suitable for a single machine, such as 0.001.
-SCALE_FACTOR = 1.0
+SCALE_FACTOR = 0.01
 
 assert SCALE_FACTOR > 0, "SCALE_FACTOR must be > 0."
 
@@ -151,7 +155,8 @@ COMMON_JAVA_OPTS = [
     JavaOptionSet("spark.locality.wait", [str(60 * 1000 * 1000)])
 ]
 # Set driver memory here
-SPARK_DRIVER_MEMORY = "20g"
+SPARK_DRIVER_MEMORY = "1g"
+
 # The following options value sets are shared among all tests.
 COMMON_OPTS = [
     # How many times to run each experiment - used to warm up system caches.
@@ -370,7 +375,8 @@ MLLIB_PERF_TEST_RUNNER = "mllib.perf.TestRunner"
 #  * Build Spark locally by running `build/sbt assembly; build/sbt publishLocal` in the Spark root directory
 #  * Set `USE_CLUSTER_SPARK = True` and `MLLIB_SPARK_VERSION = {desired Spark version, e.g. 1.5}`
 #  * Don't use PREP_MLLIB_TESTS = True; instead manually run `cd mllib-tests; sbt/sbt -Dspark.version=1.5.0-SNAPSHOT clean assembly` to build perf tests
-MLLIB_SPARK_VERSION = 1.5
+
+MLLIB_SPARK_VERSION = 2.0
 
 MLLIB_JAVA_OPTS = COMMON_JAVA_OPTS
 if MLLIB_SPARK_VERSION >= 1.1:
@@ -398,10 +404,8 @@ MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS = MLLIB_COMMON_OPTS + [
 ]
 
 # Generalized Linear Model (GLM) Tests #
+
 MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
-    # The scale factor for the noise in feature values.
-    # Currently ignored for regression.
-    OptionSet("feature-noise", [1.0]),
     # The number of features per example
     OptionSet("num-features", [10000], can_scale=False),
     # The number of iterations for SGD
@@ -413,11 +417,21 @@ MLLIB_GLM_TEST_OPTS = MLLIB_REGRESSION_CLASSIFICATION_TEST_OPTS + [
     # Regularization parameter
     OptionSet("reg-param", [0.1])
 ]
+
 if MLLIB_SPARK_VERSION >= 1.5:
     MLLIB_GLM_TEST_OPTS += [
         # Ignored, but required for config
         OptionSet("elastic-net-param", [0.0])
     ]
+
+if MLLIB_SPARK_VERSION < 2.0:
+    MLLIB_GLM_TEST_OPTS += [
+        # The scale factor for the noise in feature values.
+        # Currently ignored for regression.
+        # Only available in Spark 1.x
+        OptionSet("feature-noise", [1.0])
+    ]
+
 
 # GLM Regression Tests #
 MLLIB_GLM_REGRESSION_TEST_OPTS = MLLIB_GLM_TEST_OPTS + [

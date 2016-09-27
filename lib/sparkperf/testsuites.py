@@ -252,7 +252,7 @@ class MLlibTests(JVMPerfTestSuite, MLlibTestHelper):
 
     @classmethod
     def build(cls, spark_version):
-        run_cmd("cd %s/mllib-tests; %s -Dspark.version=%s.0 clean assembly" % (PROJ_DIR, SBT_CMD, spark_version))
+        run_cmd("cd %s/mllib-tests; %s -Dspark.version=%s clean assembly" % (PROJ_DIR, SBT_CMD, spark_version))
 
     @classmethod
     def process_output(cls, config, short_name, opt_list, stdout_filename, stderr_filename):
