@@ -11,7 +11,6 @@ This is a performance testing framework for [Apache Spark](http://spark.apache.o
    - Sweeps sets of parameters to test against multiple Spark and test configurations.
 - Automatically downloads and builds Spark:
    - Maintains a cache of successful builds to enable rapid testing against multiple Spark versions.
-- [...]
 
 For questions, bug reports, or feature requests, please [open an issue on GitHub](https://github.com/databricks/spark-perf/issues).
 
