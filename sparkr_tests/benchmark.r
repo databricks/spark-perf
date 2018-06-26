@@ -6,7 +6,7 @@ library("magrittr")
 library("ggplot2")
 library("pryr")
 
-dir_path <- "/Users/liang/benchmark/results/"
+dir_path <- "results/"
 
 # For benchmarking spark.lapply, I generate
 
