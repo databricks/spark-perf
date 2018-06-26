@@ -2,7 +2,7 @@
 # source("run_mbm.r")
 # ========== generating results =================
 
-
+FAST = T
 # lapply, type
 mbm.spark.lapply.type <- run.mbm.spark.lapply.type()
 p <- mbm.spark.lapply.type %>% plot.box.mbm

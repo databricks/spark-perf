@@ -57,13 +57,20 @@ data.list.len.10k <- 1:10000
 #            character100, 
 #            character1k.
 
-data.df.type.double <- data.frame(data.list.type.double) %>% createDataFrame
-data.df.type.int <- data.frame(data.list.type.int) %>% createDataFrame
-data.df.type.logical <- data.frame(data.list.type.logical) %>% createDataFrame
-data.df.type.char1 <- data.frame(data.list.type.char1) %>% createDataFrame
-data.df.type.char10 <- data.frame(data.list.type.char10) %>% createDataFrame
-data.df.type.char100 <- data.frame(data.list.type.char100) %>% createDataFrame
-data.df.type.char1k <- data.frame(data.list.type.char1k) %>% createDataFrame
+data.df.type.double <- data.frame(data.list.type.double) %>% createDataFrame %>% cache
+data.df.type.int <- data.frame(data.list.type.int) %>% createDataFrame %>% cache
+data.df.type.logical <- data.frame(data.list.type.logical) %>% createDataFrame %>% cache
+data.df.type.char1 <- data.frame(data.list.type.char1) %>% createDataFrame %>% cache
+data.df.type.char10 <- data.frame(data.list.type.char10) %>% createDataFrame %>% cache
+data.df.type.char100 <- data.frame(data.list.type.char100) %>% createDataFrame %>% cache
+data.df.type.char1k <- data.frame(data.list.type.char1k) %>% createDataFrame %>% cache
+data.df.type.double %>% nrow
+data.df.type.int %>% nrow
+data.df.type.logical %>% nrow
+data.df.type.char1 %>% nrow
+data.df.type.char10 %>% nrow
+data.df.type.char100 %>% nrow
+data.df.type.char1k %>% nrow
 
 # 2. with different lengths (4):
 #     ncol = 1,
@@ -73,11 +80,15 @@ data.df.type.char1k <- data.frame(data.list.type.char1k) %>% createDataFrame
 #            1k,
 #            10k
 
-data.df.len.10 <- data.frame(data.list.len.10) %>% createDataFrame
+data.df.len.10 <- data.frame(data.list.len.10) %>% createDataFrame %>% cache
 data.rdf.len.100 <- data.frame(data.list.len.100)
-data.df.len.100 <- data.rdf.len.100 %>% createDataFrame
-data.df.len.1k <- data.frame(data.list.len.1k) %>% createDataFrame
-data.df.len.10k <- data.frame(data.list.len.10k) %>% createDataFrame
+data.df.len.100 <- data.rdf.len.100 %>% createDataFrame %>% cache
+data.df.len.1k <- data.frame(data.list.len.1k) %>% createDataFrame %>% cache
+data.df.len.10k <- data.frame(data.list.len.10k) %>% createDataFrame %>% cache
+data.df.len.10 %>% nrow
+data.df.len.100 %>% nrow
+data.df.len.1k %>% nrow
+data.df.len.10k %>% nrow
 
 # 3. with different ncols (3):
 #     nrow = 100,
@@ -87,8 +98,11 @@ data.df.len.10k <- data.frame(data.list.len.10k) %>% createDataFrame
 #            100
 
 data.df.ncol.1 <- data.df.len.100
-data.df.ncol.10 <- data.frame(rep(data.rdf.len.100, each = 10)) %>% createDataFrame
-data.df.ncol.100 <- data.frame(rep(data.rdf.len.100, each = 100)) %>% createDataFrame
+data.df.ncol.10 <- data.frame(rep(data.rdf.len.100, each = 10)) %>% createDataFrame %>% cache
+data.df.ncol.100 <- data.frame(rep(data.rdf.len.100, each = 100)) %>% createDataFrame %>% cache
+data.df.ncol.1 %>% nrow
+data.df.ncol.10 %>% nrow
+data.df.ncol.100 %>% nrow
 
 # For benchmarking gapply+rnow/gapplyCollect, I generate
 
@@ -104,9 +118,12 @@ data.df.ncol.100 <- data.frame(rep(data.rdf.len.100, each = 100)) %>% createData
 
 data.rand.1k <- runif(1000)
 
-data.df.nkey.10 <- data.frame(key = rep(1:10, 100), val = data.rand.1k) %>% createDataFrame
-data.df.nkey.100 <- data.frame(key = rep(1:100, 10), val = data.rand.1k) %>% createDataFrame
-data.df.nkey.1k <- data.frame(key = 1:1000, val = data.rand.1k) %>% createDataFrame
+data.df.nkey.10 <- data.frame(key = rep(1:10, 100), val = data.rand.1k) %>% createDataFrame %>% cache
+data.df.nkey.100 <- data.frame(key = rep(1:100, 10), val = data.rand.1k) %>% createDataFrame %>% cache
+data.df.nkey.1k <- data.frame(key = 1:1000, val = data.rand.1k) %>% createDataFrame %>% cache
+data.df.nkey.10 %>% cache
+data.df.nkey.100 %>% cache
+data.df.nkey.1k %>% cache
 
 # data.df.nkey.10 <- repartition(data.df.nkey.10, numPartitions = 10, col = data.df.nkey.10$"key")
 # data.df.nkey.100 <- repartition(data.df.nkey.100, numPartitions = 100, col = data.df.nkey.100$"key")
@@ -122,10 +139,14 @@ data.df.nkey.1k <- data.frame(key = 1:1000, val = data.rand.1k) %>% createDataFr
 #            1k,
 #            10k
 
-data.df.nrow.10 <- data.frame(key = 1:10, val = runif(10)) %>% createDataFrame
-data.df.nrow.100 <- data.frame(key = rep(1:10, 10), val = runif(100)) %>% createDataFrame
-data.df.nrow.1k <- data.frame(key = rep(1:10, 100), val = data.rand.1k) %>% createDataFrame
-data.df.nrow.10k <- data.frame(key = rep(1:10, 1000), val = runif(10000)) %>% createDataFrame
+data.df.nrow.10 <- data.frame(key = 1:10, val = runif(10)) %>% createDataFrame %>% cache
+data.df.nrow.100 <- data.frame(key = rep(1:10, 10), val = runif(100)) %>% createDataFrame %>% cache
+data.df.nrow.1k <- data.frame(key = rep(1:10, 100), val = data.rand.1k) %>% createDataFrame %>% cache
+data.df.nrow.10k <- data.frame(key = rep(1:10, 1000), val = runif(10000)) %>% createDataFrame %>% cache
+data.df.nrow.10 %>% cache
+data.df.nrow.100 %>% cache
+data.df.nrow.1k %>% cache
+data.df.nrow.10k %>% cache
 
 # 3. with different key types (3):
 #     ncol = 2,
@@ -139,8 +160,11 @@ key.char10 <- sapply(1:10, function(x) { sprintf("%010d", x) })
 key.char100 <- sapply(1:10, function(x) { sprintf("%0100d", x) })
 
 data.df.keytype.int <- data.df.nrow.1k
-data.df.keytype.char10 <- data.frame(key = rep(key.char10, 100), val = data.rand.1k) %>% createDataFrame
-data.df.keytype.char100 <- data.frame(key = rep(key.char100, 10), val = data.rand.1k) %>% createDataFrame
+data.df.keytype.char10 <- data.frame(key = rep(key.char10, 100), val = data.rand.1k) %>% createDataFrame %>% cache
+data.df.keytype.char100 <- data.frame(key = rep(key.char100, 10), val = data.rand.1k) %>% createDataFrame %>% cache
+data.df.keytype.int %>% cache
+data.df.keytype.char10 %>% cache
+data.df.keytype.char100 %>% cache
 
 # ========== benchmark functions ==============
 
