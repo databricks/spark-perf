@@ -2,9 +2,9 @@
 
 This is a performance task for SparkR \*apply API, including spark.lapply, dapply/dapplyCollect, gapply/gapplyCollect.
 
-`benchmark.r` generates data in different types and sizes.
+`define_benchmark.r` generates data in different types and sizes.
 
-`run_mbm.r` runs tests and save results in results/results.csv and plots in .png files.
+`run_benchmark.r` runs tests and save results in results/results.csv and plots in .png files.
 
 ## How to run
 
