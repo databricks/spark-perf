@@ -1,8 +1,15 @@
-
-# source("run_mbm.r")
 # ========== generating results =================
 
-FAST = T
+source("define_benchmark.r")
+
+args = commandArgs(trailingOnly=TRUE)
+
+if (length(args) == 1 && args[1] == "fast") {
+	FAST = T
+} else {
+	FAST = F
+}
+
 # lapply, type
 mbm.spark.lapply.type <- run.mbm.spark.lapply.type()
 p <- mbm.spark.lapply.type %>% plot.box.mbm
@@ -119,16 +126,3 @@ tmp <- rbind(
 
 towrite <- tmp[order(tmp$expr, tmp$time),]
 write.csv(towrite, file="results/results.csv", row.names = F)
-
-
-
-
-
-
-
-
-
-
-
-
-

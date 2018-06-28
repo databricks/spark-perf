@@ -8,19 +8,17 @@ This is a performance task for SparkR \*apply API, including spark.lapply, dappl
 
 ## How to run
 
-Open SparkR shell, use
+In shell:
 
 ```
-source("benchmark.r")
-FAST = T   # if you want to run small test
-# FAST = F  # if you want to run full test
-source("run_mbm.r")
+sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME> fast  # run small test 
+sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME>       # run full test 
 ```
 
 ## Synthetic Data
 
 
-For benchmarking spark.lapply, I generate
+For benchmarking spark.lapply, we generate
 ```
     lists 
 ```
@@ -43,7 +41,7 @@ For benchmarking spark.lapply, I generate
              1k,
              10k
 ```
-For benchmarking dapply+rnow/dapplyCollect, I generate
+For benchmarking dapply+rnow/dapplyCollect, we generate
 ```
     data.frame
 ```
@@ -76,7 +74,7 @@ For benchmarking dapply+rnow/dapplyCollect, I generate
            10,
            100
 ```
-For benchmarking gapply+rnow/gapplyCollect, I generate
+For benchmarking gapply+rnow/gapplyCollect, we generate
 ```
     data.frame
 ```

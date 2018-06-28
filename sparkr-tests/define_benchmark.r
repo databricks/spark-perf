@@ -1,14 +1,14 @@
-# usage: source("benchmark.r")
-
 library("SparkR")
 library("microbenchmark")
 library("magrittr")
 library("ggplot2")
 library("pryr")
 
+sparkR.session(master = "local[*]", sparkConfig = list(spark.driver.memory = "2g"))
+
 dir_path <- "results/"
 
-# For benchmarking spark.lapply, I generate
+# For benchmarking spark.lapply, we generate
 
 #     lists 
 
@@ -42,7 +42,7 @@ data.list.len.100 <- 1:100
 data.list.len.1k <- 1:1000
 data.list.len.10k <- 1:10000
 
-# For benchmarking dapply+rnow/dapplyCollect, I generate
+# For benchmarking dapply+rnow/dapplyCollect, we generate
 
 #     data.frame
 
@@ -64,6 +64,8 @@ data.df.type.char1 <- data.frame(data.list.type.char1) %>% createDataFrame %>% c
 data.df.type.char10 <- data.frame(data.list.type.char10) %>% createDataFrame %>% cache
 data.df.type.char100 <- data.frame(data.list.type.char100) %>% createDataFrame %>% cache
 data.df.type.char1k <- data.frame(data.list.type.char1k) %>% createDataFrame %>% cache
+
+# counting to materialize the cache
 data.df.type.double %>% nrow
 data.df.type.int %>% nrow
 data.df.type.logical %>% nrow
@@ -85,6 +87,8 @@ data.rdf.len.100 <- data.frame(data.list.len.100)
 data.df.len.100 <- data.rdf.len.100 %>% createDataFrame %>% cache
 data.df.len.1k <- data.frame(data.list.len.1k) %>% createDataFrame %>% cache
 data.df.len.10k <- data.frame(data.list.len.10k) %>% createDataFrame %>% cache
+
+# counting to materialize the cache
 data.df.len.10 %>% nrow
 data.df.len.100 %>% nrow
 data.df.len.1k %>% nrow
@@ -100,11 +104,13 @@ data.df.len.10k %>% nrow
 data.df.ncol.1 <- data.df.len.100
 data.df.ncol.10 <- data.frame(rep(data.rdf.len.100, each = 10)) %>% createDataFrame %>% cache
 data.df.ncol.100 <- data.frame(rep(data.rdf.len.100, each = 100)) %>% createDataFrame %>% cache
+
+# counting to materialize the cache
 data.df.ncol.1 %>% nrow
 data.df.ncol.10 %>% nrow
 data.df.ncol.100 %>% nrow
 
-# For benchmarking gapply+rnow/gapplyCollect, I generate
+# For benchmarking gapply+rnow/gapplyCollect, we generate
 
 #     data.frame
 
@@ -121,14 +127,11 @@ data.rand.1k <- runif(1000)
 data.df.nkey.10 <- data.frame(key = rep(1:10, 100), val = data.rand.1k) %>% createDataFrame %>% cache
 data.df.nkey.100 <- data.frame(key = rep(1:100, 10), val = data.rand.1k) %>% createDataFrame %>% cache
 data.df.nkey.1k <- data.frame(key = 1:1000, val = data.rand.1k) %>% createDataFrame %>% cache
-data.df.nkey.10 %>% cache
-data.df.nkey.100 %>% cache
-data.df.nkey.1k %>% cache
 
-# data.df.nkey.10 <- repartition(data.df.nkey.10, numPartitions = 10, col = data.df.nkey.10$"key")
-# data.df.nkey.100 <- repartition(data.df.nkey.100, numPartitions = 100, col = data.df.nkey.100$"key")
-# data.df.nkey.1k <- repartition(data.df.nkey.1k, numPartitions = 100, col = data.df.nkey.1k$"key")
-
+# counting to materialize the cache
+data.df.nkey.10 %>% nrow
+data.df.nkey.100 %>% nrow
+data.df.nkey.1k %>% nrow
 
 # 2. with different lengths (4):
 #     ncol = 2,
@@ -143,10 +146,12 @@ data.df.nrow.10 <- data.frame(key = 1:10, val = runif(10)) %>% createDataFrame %
 data.df.nrow.100 <- data.frame(key = rep(1:10, 10), val = runif(100)) %>% createDataFrame %>% cache
 data.df.nrow.1k <- data.frame(key = rep(1:10, 100), val = data.rand.1k) %>% createDataFrame %>% cache
 data.df.nrow.10k <- data.frame(key = rep(1:10, 1000), val = runif(10000)) %>% createDataFrame %>% cache
-data.df.nrow.10 %>% cache
-data.df.nrow.100 %>% cache
-data.df.nrow.1k %>% cache
-data.df.nrow.10k %>% cache
+
+# counting to materialize the cache
+data.df.nrow.10 %>% nrow
+data.df.nrow.100 %>% nrow
+data.df.nrow.1k %>% nrow
+data.df.nrow.10k %>% nrow
 
 # 3. with different key types (3):
 #     ncol = 2,
@@ -162,9 +167,11 @@ key.char100 <- sapply(1:10, function(x) { sprintf("%0100d", x) })
 data.df.keytype.int <- data.df.nrow.1k
 data.df.keytype.char10 <- data.frame(key = rep(key.char10, 100), val = data.rand.1k) %>% createDataFrame %>% cache
 data.df.keytype.char100 <- data.frame(key = rep(key.char100, 10), val = data.rand.1k) %>% createDataFrame %>% cache
-data.df.keytype.int %>% cache
-data.df.keytype.char10 %>% cache
-data.df.keytype.char100 %>% cache
+
+# counting to materialize the cache
+data.df.keytype.int %>% nrow
+data.df.keytype.char10 %>% nrow
+data.df.keytype.char100 %>% nrow
 
 # ========== benchmark functions ==============
 
@@ -218,7 +225,6 @@ run.mbm.spark.lapply.len <- function(fast) {
 			times = 20
 		)
 	}
-	
 }
 
 # dapply, type
@@ -309,7 +315,6 @@ run.mbm.dapplyCollect.ncol <- function() {
 	)
 }
 
-
 # gapply, nkey
 run.mbm.gapply.nkey <- function() {
 	microbenchmark(
@@ -319,7 +324,6 @@ run.mbm.gapply.nkey <- function() {
 		times = 20
 	)
 }
-
 
 # gapply, nrow
 run.mbm.gapply.nrow <- function(fast) {
@@ -352,8 +356,6 @@ run.mbm.gapply.keytype <- function() {
 	)
 }
 
-
-
 # gapplyCollect, nkey
 run.mbm.gapplyCollect.nkey <- function() {
 	microbenchmark(
@@ -363,7 +365,6 @@ run.mbm.gapplyCollect.nkey <- function() {
 		times = 20
 	)
 }
-
 
 # gapplyCollect, nrow
 run.mbm.gapplyCollect.nrow <- function(fast) {
@@ -383,7 +384,6 @@ run.mbm.gapplyCollect.nrow <- function(fast) {
 			times = 20
 		)
 	}
-	
 }
 
 # gapplyCollect, keytype
@@ -395,33 +395,3 @@ run.mbm.gapplyCollect.keytype <- function() {
 		times = 20
 	)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
