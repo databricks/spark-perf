@@ -194,7 +194,7 @@ gfunc.mean <- function(key, sdf) {
 }
 
 # lapply, type
-run.mbm.spark.lapply.type <- function() {
+run.mbm.spark.lapply.type <- function(n) {
 	microbenchmark(
 		"lapply.int.100" = { spark.lapply(data.list.type.int, func.dummy) },
 		"lapply.double.100" = { spark.lapply(data.list.type.double, func.dummy) },
@@ -203,18 +203,24 @@ run.mbm.spark.lapply.type <- function() {
 		"lapply.char10.100" = { spark.lapply(data.list.type.char10, func.dummy) },
 		"lapply.char100.100" = { spark.lapply(data.list.type.char100, func.dummy) },
 		"lapply.char1k.100" = { spark.lapply(data.list.type.char1k, func.dummy) },
-		times = 20
+		times = n
 	)
 }
 
 # lapply, len
-run.mbm.spark.lapply.len <- function(fast) {
-	if (fast) {
+run.mbm.spark.lapply.len <- function(mode, n) {
+	if (mode == "small") {
+		microbenchmark(
+			"lapply.len.10" = { spark.lapply(data.list.len.10, func.dummy) },
+			"lapply.len.100" = { spark.lapply(data.list.len.100, func.dummy) },
+			times = n
+		)
+	} else if (mode == "medium") {
 		microbenchmark(
 			"lapply.len.10" = { spark.lapply(data.list.len.10, func.dummy) },
 			"lapply.len.100" = { spark.lapply(data.list.len.100, func.dummy) },
 			"lapply.len.1k" = { spark.lapply(data.list.len.1k, func.dummy) },
-			times = 20
+			times = n
 		)
 	} else {
 		microbenchmark(
@@ -222,13 +228,13 @@ run.mbm.spark.lapply.len <- function(fast) {
 			"lapply.len.100" = { spark.lapply(data.list.len.100, func.dummy) },
 			"lapply.len.1k" = { spark.lapply(data.list.len.1k, func.dummy) },
 			"lapply.len.10k" = { spark.lapply(data.list.len.10k, func.dummy) },
-			times = 20
+			times = n
 		)
 	}
 }
 
 # dapply, type
-run.mbm.dapply.type <- function() {
+run.mbm.dapply.type <- function(n) {
 	microbenchmark(
 		"dapply.int.100" = { dapply(data.df.type.int, func.dummy, schema(data.df.type.int)) %>% nrow },
 		"dapply.double.100" = { dapply(data.df.type.double, func.dummy, schema(data.df.type.double)) %>% nrow },
@@ -237,18 +243,24 @@ run.mbm.dapply.type <- function() {
 		"dapply.char10.100" = { dapply(data.df.type.char10, func.dummy, schema(data.df.type.char10)) %>% nrow },
 		"dapply.char100.100" = { dapply(data.df.type.char100, func.dummy, schema(data.df.type.char100)) %>% nrow },
 		"dapply.char1k.100" = { dapply(data.df.type.char1k, func.dummy, schema(data.df.type.char1k)) %>% nrow },
-		times = 20
+		times = n
 	)
 }
 
 # dapply, len
-run.mbm.dapply.len <- function(fast) {
-	if (fast) {
+run.mbm.dapply.len <- function(mode, n) {
+	if (mode == "small") {
+		microbenchmark(
+			"dapply.len.10" = { dapply(data.df.len.10, func.dummy, schema(data.df.len.10)) %>% nrow },
+			"dapply.len.100" = { dapply(data.df.len.100, func.dummy, schema(data.df.len.100)) %>% nrow },
+			times = n
+		)
+	} else if (mode == "medium") {
 		microbenchmark(
 			"dapply.len.10" = { dapply(data.df.len.10, func.dummy, schema(data.df.len.10)) %>% nrow },
 			"dapply.len.100" = { dapply(data.df.len.100, func.dummy, schema(data.df.len.100)) %>% nrow },
 			"dapply.len.1k" = { dapply(data.df.len.1k, func.dummy, schema(data.df.len.1k)) %>% nrow },
-			times = 20
+			times = n
 		)
 	} else {
 		microbenchmark(
@@ -256,23 +268,32 @@ run.mbm.dapply.len <- function(fast) {
 			"dapply.len.100" = { dapply(data.df.len.100, func.dummy, schema(data.df.len.100)) %>% nrow },
 			"dapply.len.1k" = { dapply(data.df.len.1k, func.dummy, schema(data.df.len.1k)) %>% nrow },
 			"dapply.len.10k" = { dapply(data.df.len.10k, func.dummy, schema(data.df.len.10k)) %>% nrow },
-			times = 20
+			times = n
 		)
 	}
 }
 
 # dapply, ncol
-run.mbm.dapply.ncol <- function() {
-	microbenchmark(
-		"dapply.ncol.1" = { dapply(data.df.ncol.1, func.dummy, schema(data.df.ncol.1)) %>% nrow },
-		"dapply.ncol.10" = { dapply(data.df.ncol.10, func.dummy, schema(data.df.ncol.10)) %>% nrow },
-		"dapply.ncol.100" = { dapply(data.df.ncol.100, func.dummy, schema(data.df.ncol.100)) %>% nrow },
-		times = 20
-	)
+run.mbm.dapply.ncol <- function(mode, n) {
+	if (mode == "small") {
+		microbenchmark(
+			"dapply.ncol.1" = { dapply(data.df.ncol.1, func.dummy, schema(data.df.ncol.1)) %>% nrow },
+			"dapply.ncol.10" = { dapply(data.df.ncol.10, func.dummy, schema(data.df.ncol.10)) %>% nrow },
+			times = n
+		)
+	} else {
+		microbenchmark(
+			"dapply.ncol.1" = { dapply(data.df.ncol.1, func.dummy, schema(data.df.ncol.1)) %>% nrow },
+			"dapply.ncol.10" = { dapply(data.df.ncol.10, func.dummy, schema(data.df.ncol.10)) %>% nrow },
+			"dapply.ncol.100" = { dapply(data.df.ncol.100, func.dummy, schema(data.df.ncol.100)) %>% nrow },
+			times = n
+		)
+	}
+
 }
 
 # dapplyCollect, type
-run.mbm.dapplyCollect.type <- function() {
+run.mbm.dapplyCollect.type <- function(n) {
 	microbenchmark(
 		"dapplyCollect.int.100" = { dapplyCollect(data.df.type.int, func.dummy) },
 		"dapplyCollect.double.100" = { dapplyCollect(data.df.type.double, func.dummy) },
@@ -281,18 +302,18 @@ run.mbm.dapplyCollect.type <- function() {
 		"dapplyCollect.char10.100" = { dapplyCollect(data.df.type.char10, func.dummy) },
 		"dapplyCollect.char100.100" = { dapplyCollect(data.df.type.char100, func.dummy) },
 		"dapplyCollect.char1k.100" = { dapplyCollect(data.df.type.char1k, func.dummy) },
-		times = 20
+		times = n
 	)
 }
 
 # dapplyCollect, len
-run.mbm.dapplyCollect.len <- function(fast) {
-	if (fast) {
+run.mbm.dapplyCollect.len <- function(mode, n) {
+	if (mode != "large") {
 		microbenchmark(
 			"dapplyCollect.len.10" = { dapplyCollect(data.df.len.10, func.dummy) },
 			"dapplyCollect.len.100" = { dapplyCollect(data.df.len.100, func.dummy) },
 			"dapplyCollect.len.1k" = { dapplyCollect(data.df.len.1k, func.dummy) },
-			times = 20
+			times = n
 		)
 	} else {
 		microbenchmark(
@@ -300,39 +321,68 @@ run.mbm.dapplyCollect.len <- function(fast) {
 			"dapplyCollect.len.100" = { dapplyCollect(data.df.len.100, func.dummy) },
 			"dapplyCollect.len.1k" = { dapplyCollect(data.df.len.1k, func.dummy) },
 			"dapplyCollect.len.10k" = { dapplyCollect(data.df.len.10k, func.dummy) },
-			times = 20
+			times = n
 		)
 	}
 }
 
 # dapplyCollect, ncol
-run.mbm.dapplyCollect.ncol <- function() {
-	microbenchmark(
-		"dapplyCollect.ncol.1" = { dapplyCollect(data.df.ncol.1, func.dummy) },
-		"dapplyCollect.ncol.10" = { dapplyCollect(data.df.ncol.10, func.dummy) },
-		"dapplyCollect.ncol.100" = { dapplyCollect(data.df.ncol.100, func.dummy) },
-		times = 20
-	)
+run.mbm.dapplyCollect.ncol <- function(mode, n) {
+	if (mode == "small") {
+		microbenchmark(
+			"dapplyCollect.ncol.1" = { dapplyCollect(data.df.ncol.1, func.dummy) },
+			"dapplyCollect.ncol.10" = { dapplyCollect(data.df.ncol.10, func.dummy) },
+			times = n
+		)
+	} else {
+		microbenchmark(
+			"dapplyCollect.ncol.1" = { dapplyCollect(data.df.ncol.1, func.dummy) },
+			"dapplyCollect.ncol.10" = { dapplyCollect(data.df.ncol.10, func.dummy) },
+			"dapplyCollect.ncol.100" = { dapplyCollect(data.df.ncol.100, func.dummy) },
+			times = n
+		)
+	}
 }
 
 # gapply, nkey
-run.mbm.gapply.nkey <- function() {
-	microbenchmark(
-		"gapply.nkey.10" = { gapply(data.df.nkey.10, data.df.nkey.10$key, gfunc.mean, schema(data.df.nkey.10)) %>% nrow },
-		"gapply.nkey.100" = { gapply(data.df.nkey.100, data.df.nkey.100$key, gfunc.mean, schema(data.df.nkey.100)) %>% nrow },
-		"gapply.nkey.1k" = { gapply(data.df.nkey.1k, data.df.nkey.1k$key, gfunc.mean, schema(data.df.nkey.1k)) %>% nrow },
-		times = 20
-	)
+run.mbm.gapply.nkey <- function(mode, n) {
+	if (mode == "small") {
+		microbenchmark(
+			"gapply.nkey.10" = { gapply(data.df.nkey.10, data.df.nkey.10$key, gfunc.mean, schema(data.df.nkey.10)) %>% nrow },
+			"gapply.nkey.100" = { gapply(data.df.nkey.100, data.df.nkey.100$key, gfunc.mean, schema(data.df.nkey.100)) %>% nrow },
+			times = n
+		)
+	} else if (mode == "medium") {
+		microbenchmark(
+			"gapply.nkey.10" = { gapply(data.df.nkey.10, data.df.nkey.10$key, gfunc.mean, schema(data.df.nkey.10)) %>% nrow },
+			"gapply.nkey.100" = { gapply(data.df.nkey.100, data.df.nkey.100$key, gfunc.mean, schema(data.df.nkey.100)) %>% nrow },
+			"gapply.nkey.1k" = { gapply(data.df.nkey.1k, data.df.nkey.1k$key, gfunc.mean, schema(data.df.nkey.1k)) %>% nrow },
+			times = n
+		)
+	} else {
+		microbenchmark(
+			"gapply.nkey.10" = { gapply(data.df.nkey.10, data.df.nkey.10$key, gfunc.mean, schema(data.df.nkey.10)) %>% nrow },
+			"gapply.nkey.100" = { gapply(data.df.nkey.100, data.df.nkey.100$key, gfunc.mean, schema(data.df.nkey.100)) %>% nrow },
+			"gapply.nkey.1k" = { gapply(data.df.nkey.1k, data.df.nkey.1k$key, gfunc.mean, schema(data.df.nkey.1k)) %>% nrow },
+			times = n
+		)
+	}
 }
 
 # gapply, nrow
-run.mbm.gapply.nrow <- function(fast) {
-	if (fast) {
+run.mbm.gapply.nrow <- function(mode, n) {
+	if (mode == "small") {
+		microbenchmark(
+			"gapply.nrow.10" = { gapply(data.df.nrow.10, data.df.nrow.10$key, gfunc.mean, schema(data.df.nrow.10)) %>% nrow },
+			"gapply.nrow.100" = { gapply(data.df.nrow.100, data.df.nrow.100$key, gfunc.mean, schema(data.df.nrow.100)) %>% nrow },
+			times = n
+		)
+	} else if (mode == "medium") {
 		microbenchmark(
 			"gapply.nrow.10" = { gapply(data.df.nrow.10, data.df.nrow.10$key, gfunc.mean, schema(data.df.nrow.10)) %>% nrow },
 			"gapply.nrow.100" = { gapply(data.df.nrow.100, data.df.nrow.100$key, gfunc.mean, schema(data.df.nrow.100)) %>% nrow },
 			"gapply.nrow.1k" = { gapply(data.df.nrow.1k, data.df.nrow.1k$key, gfunc.mean, schema(data.df.nrow.1k)) %>% nrow },
-			times = 20
+			times = n
 		)
 	} else {
 		microbenchmark(
@@ -340,40 +390,61 @@ run.mbm.gapply.nrow <- function(fast) {
 			"gapply.nrow.100" = { gapply(data.df.nrow.100, data.df.nrow.100$key, gfunc.mean, schema(data.df.nrow.100)) %>% nrow },
 			"gapply.nrow.1k" = { gapply(data.df.nrow.1k, data.df.nrow.1k$key, gfunc.mean, schema(data.df.nrow.1k)) %>% nrow },
 			"gapply.nrow.10k" = { gapply(data.df.nrow.10k, data.df.nrow.10k$key, gfunc.mean, schema(data.df.nrow.10k)) %>% nrow },
-			times = 20
+			times = n
 		)
 	}
 	
 }
 
 # gapply, keytype
-run.mbm.gapply.keytype <- function() {
+run.mbm.gapply.keytype <- function(n) {
 	microbenchmark(
 		"gapply.keytype.int" = { gapply(data.df.keytype.int, data.df.keytype.int$key, gfunc.mean, schema(data.df.keytype.int)) %>% nrow },
 		"gapply.keytype.char10" = { gapply(data.df.keytype.char10, data.df.keytype.char10$key, gfunc.mean, schema(data.df.keytype.char10)) %>% nrow },
 		"gapply.keytype.char100" = { gapply(data.df.keytype.char100, data.df.keytype.char100$key, gfunc.mean, schema(data.df.keytype.char100)) %>% nrow },
-		times = 20
+		times = n
 	)
 }
 
 # gapplyCollect, nkey
-run.mbm.gapplyCollect.nkey <- function() {
-	microbenchmark(
-		"gapplyCollect.nkey.10" = { gapplyCollect(data.df.nkey.10, data.df.nkey.10$key, gfunc.mean) },
-		"gapplyCollect.nkey.100" = { gapplyCollect(data.df.nkey.100, data.df.nkey.100$key, gfunc.mean) },
-		"gapplyCollect.nkey.1k" = { gapplyCollect(data.df.nkey.1k, data.df.nkey.1k$key, gfunc.mean) },
-		times = 20
-	)
+run.mbm.gapplyCollect.nkey <- function(mode, n) {
+	if (mode == "small") {
+		microbenchmark(
+			"gapplyCollect.nkey.10" = { gapplyCollect(data.df.nkey.10, data.df.nkey.10$key, gfunc.mean) },
+			"gapplyCollect.nkey.100" = { gapplyCollect(data.df.nkey.100, data.df.nkey.100$key, gfunc.mean) },
+			times = n
+		)
+	} else if (mode == "medium") {
+		microbenchmark(
+			"gapplyCollect.nkey.10" = { gapplyCollect(data.df.nkey.10, data.df.nkey.10$key, gfunc.mean) },
+			"gapplyCollect.nkey.100" = { gapplyCollect(data.df.nkey.100, data.df.nkey.100$key, gfunc.mean) },
+			"gapplyCollect.nkey.1k" = { gapplyCollect(data.df.nkey.1k, data.df.nkey.1k$key, gfunc.mean) },
+			times = n
+		)
+	} else {
+		microbenchmark(
+			"gapplyCollect.nkey.10" = { gapplyCollect(data.df.nkey.10, data.df.nkey.10$key, gfunc.mean) },
+			"gapplyCollect.nkey.100" = { gapplyCollect(data.df.nkey.100, data.df.nkey.100$key, gfunc.mean) },
+			"gapplyCollect.nkey.1k" = { gapplyCollect(data.df.nkey.1k, data.df.nkey.1k$key, gfunc.mean) },
+			times = n
+		)
+	}
 }
 
 # gapplyCollect, nrow
-run.mbm.gapplyCollect.nrow <- function(fast) {
-	if (fast) {
+run.mbm.gapplyCollect.nrow <- function(mode, n) {
+	if (mode == "small") {
+		microbenchmark(
+			"gapplyCollect.nrow.10" = { gapplyCollect(data.df.nrow.10, data.df.nrow.10$key, gfunc.mean) },
+			"gapplyCollect.nrow.100" = { gapplyCollect(data.df.nrow.100, data.df.nrow.100$key, gfunc.mean) },
+			times = n
+		)
+	} else if (mode == "medium") {
 		microbenchmark(
 			"gapplyCollect.nrow.10" = { gapplyCollect(data.df.nrow.10, data.df.nrow.10$key, gfunc.mean) },
 			"gapplyCollect.nrow.100" = { gapplyCollect(data.df.nrow.100, data.df.nrow.100$key, gfunc.mean) },
 			"gapplyCollect.nrow.1k" = { gapplyCollect(data.df.nrow.1k, data.df.nrow.1k$key, gfunc.mean) },
-			times = 20
+			times = n
 		)
 	} else {
 		microbenchmark(
@@ -381,17 +452,17 @@ run.mbm.gapplyCollect.nrow <- function(fast) {
 			"gapplyCollect.nrow.100" = { gapplyCollect(data.df.nrow.100, data.df.nrow.100$key, gfunc.mean) },
 			"gapplyCollect.nrow.1k" = { gapplyCollect(data.df.nrow.1k, data.df.nrow.1k$key, gfunc.mean) },
 			"gapplyCollect.nrow.10k" = { gapplyCollect(data.df.nrow.10k, data.df.nrow.10k$key, gfunc.mean) },
-			times = 20
+			times = n
 		)
 	}
 }
 
 # gapplyCollect, keytype
-run.mbm.gapplyCollect.keytype <- function() {
+run.mbm.gapplyCollect.keytype <- function(n) {
 	microbenchmark(
 		"gapplyCollect.keytype.int" = { gapplyCollect(data.df.keytype.int, data.df.keytype.int$key, gfunc.mean) },
 		"gapplyCollect.keytype.char10" = { gapplyCollect(data.df.keytype.char10, data.df.keytype.char10$key, gfunc.mean) },
 		"gapplyCollect.keytype.char100" = { gapplyCollect(data.df.keytype.char100, data.df.keytype.char100$key, gfunc.mean) },
-		times = 20
+		times = n
 	)
 }

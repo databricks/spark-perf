@@ -6,13 +6,28 @@ This is a performance task for SparkR \*apply API, including spark.lapply, dappl
 
 `run_benchmark.r` runs tests and save results in results/results.csv and plots in .png files.
 
+## Requirements
+
+- R library: microbenchmark
+- databricks/spark
+
+To install microbenchmark, run R script in R shell:
+```
+install.packages("microbenchmark")
+```
+
+Build [Databricks Spark](https://github.com/databricks/spark) locally ([instructions](https://databricks.atlassian.net/wiki/spaces/UN/pages/194805843/0.+Building+and+Running+Spark+Locally)).
+
+Use the path to the root of the above repository as SPARK_HOME, and use it in the shell command below.
+
 ## How to run
 
 In shell:
 
 ```
-sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME> fast  # run small test 
-sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME>       # run full test 
+sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME> small      # run small test (~10 min)
+sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME> medium     # run medium test (~30 min)
+sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME> large      # run large test 
 ```
 
 ## Synthetic Data

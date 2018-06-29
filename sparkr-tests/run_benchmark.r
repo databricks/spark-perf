@@ -4,107 +4,116 @@ source("define_benchmark.r")
 
 args = commandArgs(trailingOnly=TRUE)
 
-if (length(args) == 1 && args[1] == "fast") {
-	FAST = T
+if (args[1] == "small") {
+	mode = "small"
+	n1 = 10
+	n2 = 10
+} else if (args[1] == "medium") {
+	mode = "medium"
+	n1 = 10
+	n2 = 20
 } else {
-	FAST = F
+	mode = "large"
+	n1 = 20
+	n2 = 20
 }
+N = 20
 
 # lapply, type
-mbm.spark.lapply.type <- run.mbm.spark.lapply.type()
+mbm.spark.lapply.type <- run.mbm.spark.lapply.type(n2)
 p <- mbm.spark.lapply.type %>% plot.box.mbm
-filename <- sprintf("%slapply.type.png", dir_path)
+filename <- sprintf("%slapply.type.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # lapply, len
-mbm.spark.lapply.len <- run.mbm.spark.lapply.len(FAST)
+mbm.spark.lapply.len <- run.mbm.spark.lapply.len(mode, n1)
 p <- mbm.spark.lapply.len %>% plot.box.mbm
-filename <- sprintf("%slapply.len.%s.png", dir_path, if (FAST) "small" else "full")
+filename <- sprintf("%slapply.len.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # dapply, type
-mbm.dapply.type <- run.mbm.dapply.type()
+mbm.dapply.type <- run.mbm.dapply.type(n2)
 p <- mbm.dapply.type %>% plot.box.mbm
-filename <- sprintf("%sdapply.type.png", dir_path)
+filename <- sprintf("%sdapply.type.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # dapply, len
-mbm.dapply.len <- run.mbm.dapply.len(FAST)
+mbm.dapply.len <- run.mbm.dapply.len(mode, n1)
 p <- mbm.dapply.len %>% plot.box.mbm
-filename <- sprintf("%sdapply.len.%s.png", dir_path, if (FAST) "small" else "full")
+filename <- sprintf("%sdapply.len.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # dapply, ncol
-mbm.dapply.ncol <- run.mbm.dapply.ncol()
+mbm.dapply.ncol <- run.mbm.dapply.ncol(mode, n1)
 p <- mbm.dapply.ncol %>% plot.box.mbm
-filename <- sprintf("%sdapply.ncol.png", dir_path)
+filename <- sprintf("%sdapply.ncol.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # dapplyCollect, type
-mbm.dapplyCollect.type <- run.mbm.dapplyCollect.type()
+mbm.dapplyCollect.type <- run.mbm.dapplyCollect.type(N)
 p <- mbm.dapplyCollect.type %>% plot.box.mbm
-filename <- sprintf("%sdapplyCollect.type.png", dir_path)
+filename <- sprintf("%sdapplyCollect.type.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # dapplyCollect, len
-mbm.dapplyCollect.len <- run.mbm.dapplyCollect.len(FAST)
+mbm.dapplyCollect.len <- run.mbm.dapplyCollect.len(mode, N)
 p <- mbm.dapplyCollect.len %>% plot.box.mbm
-filename <- sprintf("%sdapplyCollect.len.%s.png", dir_path, if (FAST) "small" else "full")
+filename <- sprintf("%sdapplyCollect.len.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # dapplyCollect, ncol
-mbm.dapplyCollect.ncol <- run.mbm.dapplyCollect.ncol()
+mbm.dapplyCollect.ncol <- run.mbm.dapplyCollect.ncol(mode, n1)
 p <- mbm.dapplyCollect.ncol %>% plot.box.mbm
-filename <- sprintf("%sdapplyCollect.ncol.png", dir_path)
+filename <- sprintf("%sdapplyCollect.ncol.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # gapply, nkey
-mbm.gapply.nkey <- run.mbm.gapply.nkey()
+mbm.gapply.nkey <- run.mbm.gapply.nkey(mode, n1)
 p <- mbm.gapply.nkey %>% plot.box.mbm
-filename <- sprintf("%sgapply.nkey.png", dir_path)
+filename <- sprintf("%sgapply.nkey.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # gapply, nrow
-mbm.gapply.nrow <- run.mbm.gapply.nrow(FAST)
+mbm.gapply.nrow <- run.mbm.gapply.nrow(mode, n1)
 p <- mbm.gapply.nrow %>% plot.box.mbm
-filename <- sprintf("%sgapply.nrow.%s.png", dir_path, if (FAST) "small" else "full")
+filename <- sprintf("%sgapply.nrow.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # gapply, keytype
-mbm.gapply.keytype <- run.mbm.gapply.keytype()
+mbm.gapply.keytype <- run.mbm.gapply.keytype(n1)
 p <- mbm.gapply.keytype %>% plot.box.mbm
-filename <- sprintf("%sgapply.keytype.png", dir_path)
+filename <- sprintf("%sgapply.keytype.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # gapplyCollect, nkey
-mbm.gapplyCollect.nkey <- run.mbm.gapplyCollect.nkey()
+mbm.gapplyCollect.nkey <- run.mbm.gapplyCollect.nkey(mode, n1)
 p <- mbm.gapplyCollect.nkey %>% plot.box.mbm
-filename <- sprintf("%sgapplyCollect.nkey.png", dir_path)
+filename <- sprintf("%sgapplyCollect.nkey.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # gapplyCollect, nrow
-mbm.gapplyCollect.nrow <- run.mbm.gapplyCollect.nrow(FAST)
+mbm.gapplyCollect.nrow <- run.mbm.gapplyCollect.nrow(mode, n1)
 p <- mbm.gapplyCollect.nrow %>% plot.box.mbm
-filename <- sprintf("%sgapplyCollect.nrow.%s.png", dir_path, if (FAST) "small" else "full")
+filename <- sprintf("%sgapplyCollect.nrow.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
 # gapplyCollect, keytype
-mbm.gapplyCollect.keytype <- run.mbm.gapplyCollect.keytype()
+mbm.gapplyCollect.keytype <- run.mbm.gapplyCollect.keytype(n1)
 p <- mbm.gapplyCollect.keytype %>% plot.box.mbm
-filename <- sprintf("%sgapplyCollect.keytype.png", dir_path)
+filename <- sprintf("%sgapplyCollect.keytype.%s.png", dir_path, mode)
 ggsave(filename, width=7, height=4)
 
 
