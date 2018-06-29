@@ -27,7 +27,7 @@ In shell:
 ```
 sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME> small      # run small test (~10 min)
 sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME> medium     # run medium test (~30 min)
-sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME> large      # run large test 
+sparkr-tests $ ./run_benchmark.sh <your SPARK_HOME> large      # run large test (~90 min)
 ```
 
 ## Synthetic Data
