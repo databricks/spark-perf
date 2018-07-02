@@ -182,6 +182,12 @@ plot.box.mbm <- function(mbm_result) {
 	geom_jitter(position=position_jitter(0.2), alpha = 0.2) + 
 	coord_flip()
 }
+plot.box.throughput <- function(throughput_result) {
+	ggplot(throughput_result, aes(x = expr, y = throughput)) + 
+	geom_boxplot(outlier.colour = "red", outlier.shape = 1) + labs(x = "", y = "Throughput (B/s)") +
+	geom_jitter(position=position_jitter(0.2), alpha = 0.2) + 
+	coord_flip()
+}
 
 # dummy function
 func.dummy <- function(x) { x }
@@ -466,3 +472,198 @@ run.mbm.gapplyCollect.keytype <- function(n) {
 		times = n
 	)
 }
+
+# ============== compute object sizes ==================
+
+get.sizes <- function(obj_names, objs) {
+	obj_sizes <- lapply(objs, object.size)
+	data.frame(cbind(obj_names, obj_sizes))
+}
+
+# lapply
+sizes.lapply.type <- get.sizes(
+	list(
+		"lapply.double.100",
+		"lapply.int.100",
+		"lapply.logical.100",
+		"lapply.char1.100",
+		"lapply.char10.100", 
+		"lapply.char100.100",
+		"lapply.char1k.100"),
+	list(
+		data.list.type.double,
+		data.list.type.int,
+		data.list.type.logical,
+		data.list.type.char1,
+		data.list.type.char10,
+		data.list.type.char100,
+		data.list.type.char1k)
+)
+sizes.lapply.len <- get.sizes(
+	list(
+		"lapply.len.10",
+		"lapply.len.100",
+		"lapply.len.1k",
+		"lapply.len.10k"),
+	list(
+		data.list.len.10,
+		data.list.len.100,
+		data.list.len.1k,
+		data.list.len.10k)
+)
+
+# data for dapply
+df.dapply.type <- lapply(list(
+	data.list.type.double,
+	data.list.type.int,
+	data.list.type.logical,
+	data.list.type.char1,
+	data.list.type.char10,
+	data.list.type.char100,
+	data.list.type.char1k), data.frame)
+df.dapply.len <- lapply(list(
+		data.list.len.10,
+		data.list.len.100,
+		data.list.len.1k,
+		data.list.len.10k), data.frame)
+df.dapply.ncol <- lapply(list(
+		data.list.len.100,
+		rep(data.rdf.len.100, each = 10),
+		rep(data.rdf.len.100, each = 100)), data.frame)
+ 
+# dapply
+sizes.dapply.type <- get.sizes(
+	list(
+		"dapply.double.100",
+		"dapply.int.100",
+		"dapply.logical.100",
+		"dapply.char1.100",
+		"dapply.char10.100", 
+		"dapply.char100.100",
+		"dapply.char1k.100"),
+	df.dapply.type
+)
+sizes.dapply.len <- get.sizes(
+	list(
+		"dapply.len.10",
+		"dapply.len.100",
+		"dapply.len.1k",
+		"dapply.len.10k"),
+	df.dapply.len
+)
+sizes.dapply.ncol <- get.sizes(
+	list(
+		"dapply.ncol.1",
+		"dapply.ncol.10",
+		"dapply.ncol.100"),
+	df.dapply.ncol
+)
+
+# dapplyCollect
+sizes.dapplyCollect.type <- get.sizes(
+	list(
+		"dapplyCollect.double.100",
+		"dapplyCollect.int.100",
+		"dapplyCollect.logical.100",
+		"dapplyCollect.char1.100",
+		"dapplyCollect.char10.100", 
+		"dapplyCollect.char100.100",
+		"dapplyCollect.char1k.100"),
+	df.dapply.type
+)
+sizes.dapplyCollect.len <- get.sizes(
+	list(
+		"dapplyCollect.len.10",
+		"dapplyCollect.len.100",
+		"dapplyCollect.len.1k",
+		"dapplyCollect.len.10k"),
+	df.dapply.len
+)
+sizes.dapplyCollect.ncol <- get.sizes(
+	list(
+		"dapplyCollect.ncol.1",
+		"dapplyCollect.ncol.10",
+		"dapplyCollect.ncol.100"),
+	df.dapply.ncol
+)
+
+# data for gapply
+df.gapply.nkey <- list(
+	data.frame(key = rep(1:10, 100), val = data.rand.1k),
+	data.frame(key = rep(1:100, 10), val = data.rand.1k),
+	data.frame(key = 1:1000, val = data.rand.1k))
+df.gapply.nrow <- list(
+	data.frame(key = 1:10, val = runif(10)), 
+	data.frame(key = rep(1:10, 10), val = runif(100)),
+	data.frame(key = rep(1:10, 100), val = data.rand.1k),
+	data.frame(key = rep(1:10, 1000), val = runif(10000)))
+df.gapply.keytype <- list(
+	data.frame(key = rep(1:10, 100), val = data.rand.1k),
+	data.frame(key = rep(key.char10, 100), val = data.rand.1k),
+	data.frame(key = rep(key.char100, 10), val = data.rand.1k))
+
+# gapply
+sizes.gapply.nkey <- get.sizes(
+	list(
+		"gapply.nkey.10",
+		"gapply.nkey.100",
+		"gapply.nkey.1k"),
+	df.gapply.nkey
+)
+sizes.gapply.nrow <- get.sizes(
+	list(
+		"gapply.nrow.10",
+		"gapply.nrow.100",
+		"gapply.nrow.1k",
+		"gapply.nrow.10k"),
+	df.gapply.nrow
+)
+sizes.gapply.keytype <- get.sizes(
+	list(
+		"gapply.keytype.int",
+		"gapply.keytype.char10",
+		"gapply.keytype.char100"),
+	df.gapply.keytype
+)
+
+# gapplyCollect
+sizes.gapplyCollect.nkey <- get.sizes(
+	list(
+		"gapplyCollect.nkey.10",
+		"gapplyCollect.nkey.100",
+		"gapplyCollect.nkey.1k"),
+	df.gapply.nkey
+)
+sizes.gapplyCollect.nrow <- get.sizes(
+	list(
+		"gapplyCollect.nrow.10",
+		"gapplyCollect.nrow.100",
+		"gapplyCollect.nrow.1k",
+		"gapplyCollect.nrow.10k"),
+	df.gapply.nrow
+)
+sizes.gapplyCollect.keytype <- get.sizes(
+	list(
+		"gapplyCollect.keytype.int",
+		"gapplyCollect.keytype.char10",
+		"gapplyCollect.keytype.char100"),
+	df.gapply.keytype
+)
+
+df.sizes <- rbind(
+	sizes.lapply.type,
+	sizes.lapply.len,
+	sizes.dapply.type,
+	sizes.dapply.len,
+	sizes.dapply.ncol,
+	sizes.dapplyCollect.type,
+	sizes.dapplyCollect.len,
+	sizes.dapplyCollect.ncol,
+	sizes.gapply.nkey,
+	sizes.gapply.nrow,
+	sizes.gapply.keytype,
+	sizes.gapplyCollect.nkey, 
+	sizes.gapplyCollect.nrow,
+	sizes.gapplyCollect.keytype)
+df.sizes$obj_names <- unlist(df.sizes$obj_names)
+df.sizes$obj_sizes <- unlist(df.sizes$obj_sizes)

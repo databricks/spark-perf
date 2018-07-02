@@ -133,5 +133,15 @@ tmp <- rbind(
 	mbm.gapplyCollect.nrow,
 	mbm.gapplyCollect.keytype)
 
-towrite <- tmp[order(tmp$expr, tmp$time),]
+# compute throughput
+tmp_size <- merge(tmp, df.sizes, by.x = "expr", by.y = "obj_names", all.x=TRUE)
+tmp_size$throughput <- round(tmp_size$obj_sizes*1000000/tmp_size$time, digits=2)  # bytes per second
+
+# plot throughput
+p <- tmp_size %>% plot.box.throughput
+filename <- sprintf("%sall.throughput.%s.png", dir_path, mode)
+ggsave(filename, width=7, height=5)
+
+# save raw data to csv file
+towrite <- tmp_size[order(tmp_size$expr, tmp_size$time),]
 write.csv(towrite, file="results/results.csv", row.names = F)

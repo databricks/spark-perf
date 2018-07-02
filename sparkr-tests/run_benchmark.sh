@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: ./run_benchmark.sh /Users/liang/spark fast
+# Usage: ./run_benchmark.sh /Users/liang/spark small
 if [[ ($# -ne 1 && $# -ne 2) ]]; then
   echo "Usage: $0 <your SPARK_HOME> [small/medium/large] (default: small)" >&2
   exit 1
