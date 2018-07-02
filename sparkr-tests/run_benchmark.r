@@ -140,7 +140,7 @@ tmp_size$throughput <- round(tmp_size$obj_sizes*1000000/tmp_size$time, digits=2)
 # plot throughput
 p <- tmp_size %>% plot.box.throughput
 filename <- sprintf("%sall.throughput.%s.png", dir_path, mode)
-ggsave(filename, width=7, height=5)
+ggsave(filename, width=7, height=6)
 
 # save raw data to csv file
 towrite <- tmp_size[order(tmp_size$expr, tmp_size$time),]

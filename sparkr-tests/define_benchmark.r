@@ -474,9 +474,11 @@ run.mbm.gapplyCollect.keytype <- function(n) {
 }
 
 # ============== compute object sizes ==================
-
+ser <- function(data) {
+	serialize(data, connection = NULL)
+}
 get.sizes <- function(obj_names, objs) {
-	obj_sizes <- lapply(objs, object.size)
+	obj_sizes <- objs %>% lapply(ser) %>% lapply(object.size)
 	data.frame(cbind(obj_names, obj_sizes))
 }
 
