@@ -145,3 +145,21 @@ ggsave(filename, width=7, height=6)
 # save raw data to csv file
 towrite <- tmp_size[order(tmp_size$expr, tmp_size$time),]
 write.csv(towrite, file="results/results.csv", row.names = F)
+
+# save mean value in ml.perf_metrics format
+# timestamp: timestamp, benchmarkId: string, benchmarkName: string,
+# metricName: string, metricValue: string, isLargerBetter: boolean, parameters map<string, string>
+op <- options(digits.secs = 3)
+curTimestamp <- Sys.time()
+benchmarkName <- "com.databricks.spark.sql.perf.sparkr.UserDefinedFunction"
+metricName <- "throughput.byte.per.second"
+isLargerBetter <- TRUE
+
+perf_metric <- aggregate(towrite$throughput, list(towrite$expr), mean)
+names(perf_metric) <- c("benchmarkId", "throughput")
+perf_metric$timestamp <- curTimestamp
+perf_metric$benchmarkName <- benchmarkName
+perf_metric$metricName <- metricName
+perf_metric$isLargerBetter <- isLargerBetter
+perf_metric$parameters <- NULL
+write.csv(perf_metric, file="results/perf_metrics.csv", row.names = F)
